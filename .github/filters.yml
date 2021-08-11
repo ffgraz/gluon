@@ -73,14 +73,6 @@
     "targets/generic",
     "targets/targets.mk"
   ],
-  "mpc85xx-p1010": [
-    "targets/mpc85xx-p1010",
-    "modules",
-    "Makefile",
-    "patches/**",
-    "targets/generic",
-    "targets/targets.mk"
-  ],
   "mpc85xx-p1020": [
     "targets/mpc85xx-p1020",
     "modules",
@@ -174,6 +166,14 @@
     "targets/generic",
     "targets/targets.mk",
     "targets/bcm27xx.inc"
+  ],
+  "bcm27xx-bcm2711": [
+    "targets/bcm27xx-bcm2711",
+    "modules",
+    "Makefile",
+    "patches/**",
+    "targets/generic",
+    "targets/targets.mk"
   ],
   "mvebu-cortexa9": [
     "targets/mvebu-cortexa9",
