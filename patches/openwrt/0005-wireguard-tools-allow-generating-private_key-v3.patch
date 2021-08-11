@@ -15,10 +15,10 @@ v2: We now use a new uci cli flag to commit only the private_key and do
     now.
 
 diff --git a/package/network/utils/wireguard-tools/files/wireguard.sh b/package/network/utils/wireguard-tools/files/wireguard.sh
-index 63261aea71daa058bf37014ba7d670a5e74a2e04..845f9eb902bf3655b631d52aa3ee69231366f657 100644
+index 2e6d74bc913def99a7381c94b9fa07c4141e8c0b..f6ad967b404ea6116f14e8ce2ff79c0d47049c23 100644
 --- a/package/network/utils/wireguard-tools/files/wireguard.sh
 +++ b/package/network/utils/wireguard-tools/files/wireguard.sh
-@@ -95,6 +95,23 @@ proto_wireguard_setup_peer() {
+@@ -102,6 +102,23 @@ proto_wireguard_setup_peer() {
  	fi
  }
  
@@ -42,7 +42,7 @@ index 63261aea71daa058bf37014ba7d670a5e74a2e04..845f9eb902bf3655b631d52aa3ee6923
  proto_wireguard_setup() {
  	local config="$1"
  	local wg_dir="/tmp/wireguard"
-@@ -104,6 +121,8 @@ proto_wireguard_setup() {
+@@ -111,6 +128,8 @@ proto_wireguard_setup() {
  	local listen_port
  	local mtu
  
