@@ -1,0 +1,22 @@
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=gluon-mesh-olsrd
+PKG_VERSION=1
+
+PKG_BUILD_DEPENDS += libjson-c
+
+include ../gluon.mk
+
+define Package/gluon-mesh-olsrd
+  TITLE:=olsrd mesh
+  DEPENDS:= \
+		+gluon-core \
+		+olsrd \
+		+firewall \
+		+libgluonutil \
+		+libjson-c
+  # +gluon-mmfd +libiwinfo  +libjson-c +libnl-tiny +libubus +libubox +libblobmsg-json +libbabelhelper +luabitop
+  PROVIDES:=gluon-mesh-provider
+endef
+
+$(eval $(call BuildPackageGluon,gluon-mesh-olsrd))

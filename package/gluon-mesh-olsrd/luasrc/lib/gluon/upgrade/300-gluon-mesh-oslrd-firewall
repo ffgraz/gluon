@@ -1,0 +1,16 @@
+#!/usr/bin/lua
+
+local uci = require('simple-uci').cursor()
+local site = require "gluon.site"
+
+-- TODO: all *all* the rules we need, plus additional zones if necesarrry
+
+uci:section('firewall', 'rule',  'allow_oslr', {
+	src = 'wan',
+	dest_port = '698',
+	proto = 'udp',
+	target = 'ACCEPT',
+})
+
+uci:save('firewall')
+
