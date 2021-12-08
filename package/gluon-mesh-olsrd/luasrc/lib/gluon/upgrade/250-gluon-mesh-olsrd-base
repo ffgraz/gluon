@@ -1,0 +1,11 @@
+#!/usr/bin/lua
+
+local uci = require('simple-uci').cursor()
+local site = require "gluon.site"
+
+uci:section('olsrd', 'plugin', {
+	library = 'olsrd_jsoninfo',
+	ignore = 0,
+})
+
+uci:save('olsrd')
