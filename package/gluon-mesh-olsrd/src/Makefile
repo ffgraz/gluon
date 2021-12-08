@@ -1,6 +1,6 @@
-all: respondd.so
+all: respondd.so libolsrdhelper.so
 
-CFLAGS += -Wall
+CFLAGS += -Wall -D_GNU_SOURCE
 
 ifeq ($(origin PKG_CONFIG), undefined)
   PKG_CONFIG = pkg-config
@@ -9,18 +9,17 @@ ifeq ($(origin PKG_CONFIG), undefined)
   endif
 endif
 
-ifeq ($(origin LIBNL_CFLAGS) $(origin LIBNL_LDLIBS), undefined undefined)
-  LIBNL_NAME ?= libnl-tiny
-  ifeq ($(shell $(PKG_CONFIG) --modversion $(LIBNL_NAME) 2>/dev/null),)
-    $(error No $(LIBNL_NAME) development libraries found!)
-  endif
-  LIBNL_CFLAGS += $(shell $(PKG_CONFIG) --cflags $(LIBNL_NAME))
-  LIBNL_LDLIBS +=  $(shell $(PKG_CONFIG) --libs $(LIBNL_NAME))
-endif
-CFLAGS += $(LIBNL_CFLAGS)
-LDLIBS += $(LIBNL_LDLIBS)
+CFLAGS += $(shell pkg-config --cflags json-c)
+LDFLAGS += $(shell pkg-config --libs json-c)
 
-SOURCES = respondd.c
+SOURCES_HELPER = libolsrdhelper.c uclient.c
+FILES_HELPER = $(SOURCES_HELPER) libolsrdhelper.h uclient.h
 
-respondd.so: $(SOURCES) respondd-common.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -shared -fPIC -fvisibility=hidden -D_GNU_SOURCE -o $@ $(SOURCES) $(LDLIBS) -lgluonutil
+SOURCES_RESPONDD = respondd.c
+FILES_RESPONDD = $(SOURCES) respondd-common.h
+
+respondd.so: $(FILES_RESPONDD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -shared -fPIC -fvisibility=hidden -D_GNU_SOURCE -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil
+
+libolsrdhelper.so:
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -fvisibility=hidden -D_GNU_SOURCE -o $@ $(SOURCES_HELPER) $(LDLIBS) -lgluonutil
