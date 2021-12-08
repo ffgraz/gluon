@@ -40,37 +40,38 @@
 
 struct recv_json_ctx {
 	long size;
+	int error;
   char *data;
+	json_object *parsed;
 };
 
 /** Receives data from uclient and writes it to memory */
 static void recv_json_cb(struct uclient *cl) {
-	/* struct recv_json_ctx *ctx = uclient_get_custom(cl);
-	char buf[1024];
-	int len;
+	struct recv_json_ctx *ctx = uclient_get_custom(cl);
 
-	while (true) {
-		len = uclient_read_account(cl, buf, sizeof(buf));
-		if (len <= 0)
-			return;
+	ctx->size = uclient_data(cl)->length;
 
-		printf(
-			"\rDownloading image: % 5zi / %zi KiB",
-			uclient_data(cl)->downloaded / 1024,
-			uclient_data(cl)->length / 1024
-		);
-		fflush(stdout);
+	char buf[ctx->size + 1];
 
-		if (write(ctx->fd, buf, len) < len) {
-			fputs("autoupdater: error: downloading firmware image failed: ", stderr);
-			perror(NULL);
-			return;
-		}
-	} */
+	int len = uclient_read_account(cl, buf, sizeof(buf));
+	if (len != ctx->size) {
+		ctx->error = UCLIENT_ERROR_SIZE_MISMATCH;
+		return;
+	}
+
+	if (buf[0] != "{") {
+		ctx->error = UCLIENT_ERROR_NOT_JSON;
+		return;
+	}
+
+	buf[ctx->size] = '\0';
+
+	// TODO: handle parser error, add error code for malformed json
+	ctx->parsed = json_tokener_parse(ctx->data);
 }
 
-int olsrd_get_nodeinfo(char *path, json_object *out) {
-  char url[BASE_URL_LEN + strlen(path)];
+int olsrd_get_nodeinfo(char *path, json_object **out) {
+  char url[BASE_URL_LEN + strlen(path) + 2];
 	sprintf(url, "%s/%s", url, path);
 
   struct recv_json_ctx json_ctx = { };
@@ -80,7 +81,11 @@ int olsrd_get_nodeinfo(char *path, json_object *out) {
     return err_code;
   }
 
-  out = json_tokener_parse(json_ctx.data);
+	if (json_ctx.error) {
+		return json_ctx.error;
+	}
+
+	*out = json_ctx.parsed;
 
   return 0;
 }
