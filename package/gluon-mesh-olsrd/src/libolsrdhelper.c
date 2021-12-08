@@ -41,7 +41,6 @@
 struct recv_json_ctx {
 	long size;
 	int error;
-  char *data;
 	json_object *parsed;
 };
 
@@ -67,7 +66,7 @@ static void recv_json_cb(struct uclient *cl) {
 	buf[ctx->size] = '\0';
 
 	// TODO: handle parser error, add error code for malformed json
-	ctx->parsed = json_tokener_parse(ctx->data);
+	ctx->parsed = json_tokener_parse(&buf);
 }
 
 int olsrd_get_nodeinfo(char *path, json_object **out) {
