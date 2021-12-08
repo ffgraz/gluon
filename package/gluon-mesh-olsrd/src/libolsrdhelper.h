@@ -28,4 +28,4 @@
 #include <json-c/json.h>
 #include <libubox/uclient.h>
 
-int olsrd_get_nodeinfo(char *path, json_object *out);
+int olsrd_get_nodeinfo(char *path, json_object **out);
