@@ -2,10 +2,49 @@
 
 local uci = require('simple-uci').cursor()
 local site = require "gluon.site"
+local wireless = require 'gluon.wireless'
 
-uci:section('olsrd', 'plugin', {
-	library = 'olsrd_jsoninfo',
+-- NOTE: stuff in here is idempotent as those are list entries with an id associated
+-- TODO: all *all* the rules we need, plus additional zones if necesarrry
+
+uci:save('firewall')
+
+-- add jsoninfo
+uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
+	library = 'olsrd_jsoninfo.so',
 	ignore = 0,
+})
+
+-- get all mesh radios and mesh lans and then add them to olsrd
+-- TODO: code to cleanup leftover radios if needed?
+wireless.foreach_radio(uci, function(radio, index, config)
+	local radio_name = radio['.name']
+	uci:section('olsrd', 'Interface', 'radio0', {
+		interface = { 'mesh_' .. radio_name },
+		disable = '0',
+		Mode = 'mesh',
+	})
+
+	uci:section('firewall', 'rule', 'allow_olsr_' .. radio_name, {
+		src = 'mesh_' .. radio_name,
+		dest_port = '698',
+		proto = 'udp',
+		target = 'ACCEPT',
+	})
+end)
+
+-- TODO: does this make sense?
+-- TODO: only if allow wan mesh
+uci:section('olsrd', 'Interface', 'mesh_wan', {
+	interface = { 'mesh_wan' },
+	disable = '0',
+	Mode = 'mesh',
+})
+uci:section('firewall', 'rule', 'allow_olsr_wan', {
+	src = 'mesh_wan',
+	dest_port = '698',
+	proto = 'udp',
+	target = 'ACCEPT',
 })
 
 uci:save('olsrd')
