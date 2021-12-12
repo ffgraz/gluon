@@ -26,7 +26,7 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	})
 
 	uci:section('firewall', 'rule', 'allow_olsr_' .. radio_name, {
-		src = 'mesh_' .. radio_name,
+		src = 'mesh' .. index,
 		dest_port = '698',
 		proto = 'udp',
 		target = 'ACCEPT',
@@ -36,7 +36,7 @@ end)
 -- TODO: does this make sense?
 -- TODO: only if allow wan mesh
 uci:section('olsrd', 'Interface', 'mesh_wan', {
-	interface = { 'mesh_wan' },
+	interface = { 'br-wan' },
 	disable = '0',
 	Mode = 'mesh',
 })
