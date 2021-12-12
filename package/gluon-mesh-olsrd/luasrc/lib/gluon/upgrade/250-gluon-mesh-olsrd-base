@@ -5,7 +5,7 @@ local site = require "gluon.site"
 local wireless = require 'gluon.wireless'
 
 -- NOTE: stuff in here is idempotent as those are list entries with an id associated
--- TODO: all *all* the rules we need, plus additional zones if necesarrry
+-- TODO: add *all* the rules we need, plus additional zones if necesarrry
 
 uci:save('firewall')
 
@@ -19,7 +19,7 @@ uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
 -- TODO: code to cleanup leftover radios if needed?
 wireless.foreach_radio(uci, function(radio, index, config)
 	local radio_name = radio['.name']
-	uci:section('olsrd', 'Interface', 'radio0', {
+	uci:section('olsrd', 'Interface', radio_name, {
 		interface = { 'mesh' .. index },
 		disable = '0',
 		Mode = 'mesh',
