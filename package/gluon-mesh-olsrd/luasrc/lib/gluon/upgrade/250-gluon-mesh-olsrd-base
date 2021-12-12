@@ -20,13 +20,13 @@ uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
 wireless.foreach_radio(uci, function(radio, index, config)
 	local radio_name = radio['.name']
 	uci:section('olsrd', 'Interface', 'radio0', {
-		interface = { 'mesh_' .. radio_name },
+		interface = { 'mesh' .. index },
 		disable = '0',
 		Mode = 'mesh',
 	})
 
 	uci:section('firewall', 'rule', 'allow_olsr_' .. radio_name, {
-		src = 'mesh' .. index,
+		src = 'mesh_' .. radio_name,
 		dest_port = '698',
 		proto = 'udp',
 		target = 'ACCEPT',
