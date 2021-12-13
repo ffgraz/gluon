@@ -34,7 +34,7 @@ end)
 -- TODO: does this make sense?
 -- TODO: only if allow wan mesh
 uci:section('olsrd', 'Interface', 'mesh_wan', {
-	interface = { 'br-wan' },
+	interface = { 'mesh_wan' },
 	disable = '0',
 	Mode = 'mesh',
 })
