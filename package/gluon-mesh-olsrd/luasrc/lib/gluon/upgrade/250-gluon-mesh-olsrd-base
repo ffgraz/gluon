@@ -7,11 +7,9 @@ local wireless = require 'gluon.wireless'
 -- NOTE: stuff in here is idempotent as those are list entries with an id associated
 -- TODO: add *all* the rules we need, plus additional zones if necesarrry
 
-uci:save('firewall')
-
 -- add jsoninfo
 uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
-	library = 'olsrd_jsoninfo.so',
+	library = 'olsrd_jsoninfo.so.1.1',
 	ignore = 0,
 })
 
@@ -20,7 +18,7 @@ uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
 wireless.foreach_radio(uci, function(radio, index, config)
 	local radio_name = radio['.name']
 	uci:section('olsrd', 'Interface', radio_name, {
-		interface = { 'mesh' .. index },
+		interface = { 'mesh_' .. radio_name },
 		disable = '0',
 		Mode = 'mesh',
 	})
@@ -48,3 +46,5 @@ uci:section('firewall', 'rule', 'allow_olsr_wan', {
 })
 
 uci:save('olsrd')
+uci:save('firewall')
+uci:save('network')
