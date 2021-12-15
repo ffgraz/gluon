@@ -7,7 +7,7 @@ local ip = require "luci.ip" -- luci-lib-ip
 
 IPV4_PREFIX_MAX = 32
 
-local tmp4 = ip.new(site.tmpIpPrefix4())
+local tmp4 = ip.new(site.tmpIp4())
 
 function startswith(text, prefix)
     return text:find(prefix, 1, true) == 1
@@ -19,7 +19,7 @@ local function static_ip_4(name, ifname, macaddr, actually_use)
 	local static4 = uci:get('gluon-static-ip', interface, 'ip4')
 
 	if not static4 then
-		local prefixOverflow = IPV4_PREFIX_MAX - tmp4:prefix()
+		local prefixOverflow = IPV4_PREFIX_MAX - site.tmpIp4Range()
 		-- magic that turns mac into random number
 		local ipnum = math.fmod(tonumber(macaddr:gsub(":", ""):sub(-6), 16), 2 ^ prefixOverflow)
 
