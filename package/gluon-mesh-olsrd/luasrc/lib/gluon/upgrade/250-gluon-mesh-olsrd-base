@@ -34,6 +34,16 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	table.insert(fw.mesh, intf)
 end)
 
+if pcall(function() require 'gluon.mesh-vpn' end) then
+	local vpn_core = require 'gluon.mesh-vpn'
+
+	if vpn_core.enabled() then
+		-- mesh_vpn is a interface that has the right ifname
+		-- we can't use mesh-vpn (dash instead of underscore) since it's not a uci interface
+		table.insert(fw.mesh, 'mesh_vpn')
+	end
+end
+
 uci:section('olsrd', 'Interface', 'mesh', {
 	interface = fw.mesh,
 	Mode = 'mesh',
@@ -70,7 +80,6 @@ uci:section('firewall', 'rule', 'allow_olsr_wired_mesh', {
 	proto = 'udp',
 	target = 'ACCEPT',
 })
-
 
 uci:save('olsrd')
 uci:save('firewall')
