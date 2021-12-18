@@ -61,7 +61,9 @@ wireless.foreach_radio(uci, function(radio, index, config)
   end
 
   do_config('mesh_')
-  do_config('ibss_')
+  if uci:get('network', 'ibss_' .. radio['.name'], 'proto') then
+    do_config('ibss_')
+  end
 end)
 
 local function apply_network(name, use, mac)

@@ -26,7 +26,9 @@ local fw = {
 wireless.foreach_radio(uci, function(radio, index, config)
 	local radio_name = radio['.name']
 	table.insert(fw.mesh, 'mesh_' .. radio_name)
-	table.insert(fw.mesh, 'ibss_' .. radio_name)
+	if uci:get('network', 'ibss_' .. radio_name, 'proto') then
+		table.insert(fw.mesh, 'ibss_' .. radio_name)
+	end
 end)
 
 if pcall(function() require 'gluon.mesh-vpn' end) then
