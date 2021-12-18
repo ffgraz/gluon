@@ -53,18 +53,15 @@ local function static_ip_4(name, ifname, macaddr, actually_use)
 end
 
 wireless.foreach_radio(uci, function(radio, index, config)
-	net = 'mesh_' .. radio['.name']
+  local function do_config(type)
+    net = type .. radio['.name']
 
-	if uci:get('network', net, 'proto') == nil then
-		uci:section('network', 'interface', net, {
-			proto = 'static',
-			type = 'bridge',
-			ifname = net,
-		})
-	end
+  	use = uci:get('wireless', net, 'disabled') ~= '1'
+  	static_ip_4(net, uci:get('wireless', net, 'ifname'), uci:get('wireless', net, 'macaddr'), use)
+  end
 
-	use = uci:get('wifi-iface', net, 'disabled') ~= '1'
-	static_ip_4(net, uci:get('wifi-iface', net, 'ifname'), uci:get('wifi-iface', net, 'macaddr'), use)
+  do_config('mesh_')
+  do_config('ibss_')
 end)
 
 local function apply_network(name, use, mac)

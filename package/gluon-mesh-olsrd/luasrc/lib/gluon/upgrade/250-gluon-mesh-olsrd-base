@@ -23,11 +23,10 @@ local fw = {
 }
 
 -- get all mesh radios and mesh lans and then add them to olsrd
--- TODO: code to cleanup leftover radios if needed?
 wireless.foreach_radio(uci, function(radio, index, config)
 	local radio_name = radio['.name']
-	local intf = 'mesh_' .. radio_name
-	table.insert(fw.mesh, intf)
+	table.insert(fw.mesh, 'mesh_' .. radio_name)
+	table.insert(fw.mesh, 'ibss_' .. radio_name)
 end)
 
 if pcall(function() require 'gluon.mesh-vpn' end) then
