@@ -71,7 +71,9 @@ util.remove_from_set(fw.mesh, 'client')
 uci:set_list('firewall', 'drop', 'network', networks)
 
 uci:section('firewall', 'rule', 'allow_olsr_mesh', {
-	src = 'mesh',
+	-- src = 'mesh',
+	-- HACK: this is a temporary hack because firewall doesn't want to work
+	src = '*',
 	dest_port = '698',
 	proto = 'udp',
 	target = 'ACCEPT',
