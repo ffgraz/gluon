@@ -1,7 +1,8 @@
 #!/usr/bin/lua
 
 local uci = require('simple-uci').cursor()
-local site = require "gluon.site"
+local site = require 'gluon.site'
+local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
 
 -- NOTE: stuff in here is idempotent as those are list entries with an id associated
@@ -14,16 +15,11 @@ uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
 	ignore = 0,
 })
 
-uci:section('firewall', 'rule', 'allow_olsr_mesh', {
-	src = 'mesh',
-	dest_port = '698',
-	proto = 'udp',
-	target = 'ACCEPT',
-})
-
+-- NOTE: this is a gigantic hack that overrides the gluon rules because they rely on gluon_proto
+-- this will need a rework once olsr and gluon_proto go together
 local fw = {
-	wired_mesh = uci:get('firewall', 'wired_mesh', 'network'), -- these are preset by 300-firewall-rules
-	mesh = {}, -- these aren't apparently
+	wired_mesh = {},
+	mesh = {},
 }
 
 -- get all mesh radios and mesh lans and then add them to olsrd
@@ -40,39 +36,45 @@ if pcall(function() require 'gluon.mesh-vpn' end) then
 	if vpn_core.enabled() then
 		-- mesh_vpn is a interface that has the right ifname
 		-- we can't use mesh-vpn (dash instead of underscore) since it's not a uci interface
-		table.insert(fw.mesh, 'mesh_vpn')
+		table.insert(fw.wired_mesh, 'mesh_vpn')
 	end
 end
+
+local wan_mesh = not uci:get_bool('network', 'mesh_wan', 'disabled')
+
+if wan_mesh then
+	table.insert(fw.wired_mesh, 'mesh_wan')
+end
+
+local lan_mesh = uci:get('network', 'mesh_lan', 'proto') and not uci:get_bool('network', 'mesh_lan', 'disabled')
+
+if lan_mesh then
+	table.insert(fw.wired_mesh, 'mesh_lan')
+end
+
+-- put all the mesh things in mesh firewall table
+for key, value in ipairs(fw.wired_mesh) do
+	table.insert(fw.mesh, value)
+end
+
+-- TODO: does this make sense?
 
 uci:section('olsrd', 'Interface', 'mesh', {
 	interface = fw.mesh,
 	Mode = 'mesh',
 })
-uci:set('firewall', 'mesh', 'network', fw.mesh)
+uci:set_list('firewall', 'mesh', 'network', fw.mesh)
+uci:set_list('firewall', 'wired_mesh', 'network', fw.wired_mesh)
 
--- TODO: does this make sense?
--- TODO: only if allow wan mesh is on
-local wan_mesh = true
+networks = uci:get_list('firewall', 'drop', 'network')
+util.remove_from_set(fw.mesh, 'client')
+uci:set_list('firewall', 'drop', 'network', networks)
 
-if wan_mesh then
-	uci:section('olsrd', 'Interface', 'mesh_wan', {
-		interface = { 'mesh_wan' },
-		Mode = 'mesh',
-	})
-	uci:section('firewall', 'rule', 'allow_olsr_mesh_wan', {
-		src = 'mesh_wan',
-		dest_port = '698',
-		proto = 'udp',
-		target = 'ACCEPT',
-	})
-else
-	uci:delete('firewall', 'allow_olsr_mesh_wan')
-	uci:delete('olsrd', 'mesh_wan')
-end
-
-uci:section('olsrd', 'Interface', 'wired_mesh', {
-	interface = fw.wired_mesh,
-	Mode = 'mesh',
+uci:section('firewall', 'rule', 'allow_olsr_mesh', {
+	src = 'mesh',
+	dest_port = '698',
+	proto = 'udp',
+	target = 'ACCEPT',
 })
 uci:section('firewall', 'rule', 'allow_olsr_wired_mesh', {
 	src = 'wired_mesh',
