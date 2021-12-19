@@ -26,10 +26,10 @@ msgstr ""
 msgid "disabled"
 msgstr ""
 
-msgid "The address %s for \"%s\" is an address in the temporary address range %s. It should be replaced by a properly assigned address as soon as possible."
+msgid "The address %s for \"%s\" is an address in the temporary address range %s.<br />It should be replaced by a properly assigned address as soon as possible."
 msgstr ""
 
-msgid "The address %s for \"%s\" is an address in the temporary address range %s. If you are planning to use this interface, you will need to replace this address with a properly assigned one."
+msgid "The address %s for \"%s\" is an address in the temporary address range %s.<br />If you are planning to use this interface, you will need to replace this address with a properly assigned one."
 msgstr ""
 
 msgid "IPv4 for %s (%s)"

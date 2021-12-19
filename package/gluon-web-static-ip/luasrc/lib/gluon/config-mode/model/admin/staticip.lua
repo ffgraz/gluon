@@ -28,10 +28,10 @@ local function intf_setting(intf, desc, enabled)
 		if isTmp then
 			local w = Warning()
 			if enabled then
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s. It should be replaced by a properly assigned address as soon as possible.',
+				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />It should be replaced by a properly assigned address as soon as possible.',
 					v4addr, desc, tmp:string()))
 			else
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s. If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
+				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
 					v4addr, desc, tmp:string()))
 			end
 			s4:append(w)
@@ -60,10 +60,10 @@ local function intf_setting(intf, desc, enabled)
 		if isTmp then
 			local w = Warning()
 			if enabled then
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s. It should be replaced by a properly assigned address as soon as possible.',
+				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />It should be replaced by a properly assigned address as soon as possible.',
 					v6addr, desc, tmp:string()))
 			else
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s. If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
+				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
 					v6addr, desc, tmp:string()))
 			end
 			s6:append(w)
