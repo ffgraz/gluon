@@ -104,11 +104,11 @@ if pcall(function() require 'gluon.mesh-vpn' end) then
 end
 
 local wan_mesh = not uci:get_bool('network', 'mesh_wan', 'disabled')
-intf_setting('mesh_wan', 'Mesh on WAN', wan_esh)
+intf_setting('mesh_wan', 'Mesh on WAN', wan_mesh)
 
 if uci:get('network', 'mesh_lan', 'proto') then
   local lan_mesh = not uci:get_bool('network', 'mesh_lan', 'disabled')
-  intf_setting('mesh_lan', 'Mesh on LAN', lan_mesh)
+  intf_setting('mesh_lan', 'Mesh on LAN', lan_lan)
 end
 
 function f:write()
