@@ -9,12 +9,6 @@ local wireless = require 'gluon.wireless'
 -- TODO: add *all* the rules we need, plus additional zones if necesarrry
 -- FIXME: firewall rules are currently broken, there's only mesh / wired_mesh zone, need to ensure they are properly assigned
 
--- add jsoninfo
-uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
-	library = 'olsrd_jsoninfo.so.1.1',
-	ignore = 0,
-})
-
 -- NOTE: this is a gigantic hack that overrides the gluon rules because they rely on gluon_proto
 -- this will need a rework once olsr and gluon_proto go together
 local fw = {
@@ -60,10 +54,29 @@ end
 
 -- TODO: does this make sense?
 
-uci:section('olsrd', 'Interface', 'mesh', {
-	interface = fw.mesh,
-	Mode = 'mesh',
-})
+local function setup_olsr(type, config)
+	-- add jsoninfo
+	uci:section(type, 'LoadPlugin', 'jsoninfo', {
+		library = 'olsrd_jsoninfo.so.1.1',
+		ignore = 0,
+	})
+
+	uci:section(type, 'Interface', 'mesh', {
+		interface = fw.mesh,
+		Mode = 'mesh',
+	})
+end
+
+-- TODO: teardown when not enabled
+
+if site.olsrd.v4.enable then
+	setup_olsr('olsrd', site.olsrd.v4)
+end
+
+if site.olsrd.v6.enable then
+	setup_olsr('olsrd6', site.olsrd.v6)
+end
+
 uci:set_list('firewall', 'mesh', 'network', fw.mesh)
 uci:set_list('firewall', 'wired_mesh', 'network', fw.wired_mesh)
 
@@ -87,5 +100,6 @@ uci:section('firewall', 'rule', 'allow_olsr_wired_mesh', {
 })
 
 uci:save('olsrd')
+uci:save('olsrd6')
 uci:save('firewall')
 uci:save('network')
