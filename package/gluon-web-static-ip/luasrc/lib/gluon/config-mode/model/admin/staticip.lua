@@ -5,11 +5,11 @@ local site = require 'gluon.site'
 
 local f = Form(translate("Static IPs"))
 
-local s4 = f:section(Section, nil, translate(
+local s4 = site.prefix4() and f:section(Section, nil, translate(
 	'Configure the IPv4 addresses of your node.'
 ))
 
-local s6 = site.tmpIp6() and f:section(Section, nil, translate(
+local s6 = site.prefix6() and f:section(Section, nil, translate(
 	'Configure the IPv6 addresses of your node.'
 ))
 
@@ -20,31 +20,39 @@ end
 local function intf_setting(intf, desc, enabled)
 	local status = enabled and translate("enabled") or translate("disabled")
 
-	if site.tmpIp4() then
+	if site.prefix4() then
 		local v4addr = uci:get('gluon-static-ip', intf, 'ip4')
-		local tmp = ip.new(site.tmpIp4(), site.tmpIp4Range())
-		local isTmp = tmp:contains(ip.new(v4addr):host())
 
-		if isTmp then
-			local w = Warning()
-			if enabled then
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />It should be replaced by a properly assigned address as soon as possible.',
-					v4addr, desc, tmp:string()))
-			else
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
-					v4addr, desc, tmp:string()))
+		if site.tmpIp4() and v4addr then
+			local tmp = ip.new(site.tmpIp4(), site.tmpIp4Range())
+			local isTmp = tmp:contains(ip.new(v4addr):host())
+
+			if isTmp then
+				local w = Warning()
+				if enabled then
+					w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />It should be replaced by a properly assigned address as soon as possible.',
+						v4addr, desc, tmp:string()))
+				else
+					w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
+						v4addr, desc, tmp:string()))
+				end
+				s4:append(w)
 			end
-			s4:append(w)
 		end
 
 		local v4 = s4:option(Value, intf .. '_ip4', translate_format("IPv4 for %s (%s)", desc, status), translate("IPv4 CIDR (e.g. 1.2.3.4/12)"))
 		-- TODO: datatype = "ip4cidr"
 		v4.datatype = "maxlength(32)"
 		v4.default = v4addr
+		v4.required = site.tmpIp4()
 
 		function v4:write(data)
 			-- TODO: validate via datatype
-			if not ip.new(data) or not ip.new(data):is4() then
+			if data == '' and not site.tmpIp4() then
+				data = null
+			end
+
+			if data and (not ip.new(data) or not ip.new(data):is4()) then
 				error('Not a valid IPv4 for ' .. intf)
 			end
 
@@ -52,31 +60,38 @@ local function intf_setting(intf, desc, enabled)
 		end
 	end
 
-	if site.tmpIp6() then
+	if site.prefix6() then
 		local v6addr = uci:get('gluon-static-ip', intf, 'ip6')
-		local tmp = ip.new(site.tmpIp6(), site.tmpIp6Range())
-		local isTmp = tmp:contains(ip.new(v6addr):host())
 
-		if isTmp then
-			local w = Warning()
-			if enabled then
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />It should be replaced by a properly assigned address as soon as possible.',
-					v6addr, desc, tmp:string()))
-			else
-				w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
-					v6addr, desc, tmp:string()))
+		if site.tmpIp6() and v6addr then
+			local tmp = ip.new(site.tmpIp6(), site.tmpIp6Range())
+			local isTmp = tmp:contains(ip.new(v6addr):host())
+
+			if isTmp then
+				local w = Warning()
+				if enabled then
+					w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />It should be replaced by a properly assigned address as soon as possible.',
+						v6addr, desc, tmp:string()))
+				else
+					w:setcontent(translate_format('The address %s for "%s" is an address in the temporary address range %s.<br />If you are planning to use this interface, you will need to replace this address with a properly assigned one.',
+						v6addr, desc, tmp:string()))
+				end
+				s6:append(w)
 			end
-			s6:append(w)
 		end
 
 		local v6 = s6:option(Value, intf .. '_ip6', translate_format("IPv6 for %s (%s)", desc, status), translate("IPv6 CIDR (e.g. aa:bb:cc:dd:ee::ff/64)"))
 		-- TODO: datatype = "ip6cidr"
 		v6.datatype = "maxlength(132)"
-		v6.default = uci:get('gluon-static-ip', intf, 'ip6')
+		v6.default = v6addr
 
 		function v6:write(data)
 			-- TODO: validate via datatype
-			if not ip.new(data) or not ip.new(data):is6() then
+			if data == '' and not site.tmpIp6() then
+				data = null
+			end
+
+			if data and (not ip.new(data) or not ip.new(data):is6()) then
 				error('Not a valid IPv6 for ' .. intf)
 			end
 
@@ -114,8 +129,5 @@ end
 function f:write()
 	uci:save("gluon-static-ip")
 end
-
--- TODO: warning about 23 addrs
-
 
 return f
