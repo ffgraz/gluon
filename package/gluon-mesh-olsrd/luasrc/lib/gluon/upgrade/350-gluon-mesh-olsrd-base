@@ -52,30 +52,59 @@ for key, value in ipairs(fw.wired_mesh) do
 	table.insert(fw.mesh, value)
 end
 
--- TODO: does this make sense?
+-- TODO: teardown when not enabled
 
-local function setup_olsr(type, config)
+if site.mesh.olsrd.v1.enable then
 	-- add jsoninfo
-	uci:section(type, 'LoadPlugin', 'jsoninfo', {
+	uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
 		library = 'olsrd_jsoninfo.so.1.1',
 		ignore = 0,
 	})
 
-	uci:section(type, 'Interface', 'mesh', {
+	uci:section('olsrd', 'Interface', 'mesh', {
 		interface = fw.mesh,
 		Mode = 'mesh',
 	})
+
+	uci:section('firewall', 'rule', 'allow_olsr_mesh', {
+		-- src = 'mesh',
+		-- HACK: this is a temporary hack because firewall doesn't want to work
+		src = '*',
+		dest_port = '698',
+		proto = 'udp',
+		target = 'ACCEPT',
+	})
+
+	uci:section('firewall', 'rule', 'allow_olsr_wired_mesh', {
+		src = 'wired_mesh',
+		dest_port = '698',
+		proto = 'udp',
+		target = 'ACCEPT',
+	})
 end
 
--- TODO: teardown when not enabled
+if site.mesh.olsrd.v2.enable then
+	uci:section('olsrd2', 'interface', 'mesh', {
+		ifname = fw.mesh,
+	})
 
-if site.olsrd.v4.enable then
-	setup_olsr('olsrd', site.olsrd.v4)
+	uci:section('firewall', 'rule', 'allow_olsr2_mesh', {
+		-- src = 'mesh',
+		-- HACK: this is a temporary hack because firewall doesn't want to work
+		src = '*',
+		dest_port = '269',
+		proto = 'udp',
+		target = 'ACCEPT',
+	})
+
+	uci:section('firewall', 'rule', 'allow_olsr2_wired_mesh', {
+		src = 'wired_mesh',
+		dest_port = '269',
+		proto = 'udp',
+		target = 'ACCEPT',
+	})
 end
 
-if site.olsrd.v6.enable then
-	setup_olsr('olsrd6', site.olsrd.v6)
-end
 
 uci:set_list('firewall', 'mesh', 'network', fw.mesh)
 uci:set_list('firewall', 'wired_mesh', 'network', fw.wired_mesh)
@@ -84,22 +113,7 @@ networks = uci:get_list('firewall', 'drop', 'network')
 util.remove_from_set(fw.mesh, 'client')
 uci:set_list('firewall', 'drop', 'network', networks)
 
-uci:section('firewall', 'rule', 'allow_olsr_mesh', {
-	-- src = 'mesh',
-	-- HACK: this is a temporary hack because firewall doesn't want to work
-	src = '*',
-	dest_port = '698',
-	proto = 'udp',
-	target = 'ACCEPT',
-})
-uci:section('firewall', 'rule', 'allow_olsr_wired_mesh', {
-	src = 'wired_mesh',
-	dest_port = '698',
-	proto = 'udp',
-	target = 'ACCEPT',
-})
-
 uci:save('olsrd')
-uci:save('olsrd6')
+uci:save('olsrd2')
 uci:save('firewall')
 uci:save('network')
