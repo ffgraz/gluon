@@ -54,6 +54,8 @@ end
 
 -- TODO: teardown when not enabled
 
+uci:delete_all('olsrd', 'Interface')
+
 if site.mesh.olsrd.v1.enable then
 	-- add jsoninfo
 	uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
@@ -83,9 +85,23 @@ if site.mesh.olsrd.v1.enable then
 	})
 end
 
+uci:delete_all('olsrd2', 'interface')
+
 if site.mesh.olsrd.v2.enable then
+	local addrs = { '-::1/128', 'default_accept' }
+	local config = uci:get_first("olsrd2", "olsrv2")
+
+	if site.mesh.olsrd.v2.ip6_exclusive_mode then
+		table.insert(addrs, '-0.0.0.0/0')
+	else
+		table.insert(addrs, '-127.0.0.1/8')
+	end
+
+	uci:set("olsrd2", config, "originator", addrs)
+
 	uci:section('olsrd2', 'interface', 'mesh', {
-		ifname = fw.mesh,
+		name = fw.mesh,
+		bindto = addrs,
 	})
 
 	uci:section('firewall', 'rule', 'allow_olsr2_mesh', {
