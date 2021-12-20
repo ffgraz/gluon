@@ -100,7 +100,7 @@ if site.mesh.olsrd.v2.enable then
 	uci:set("olsrd2", config, "originator", addrs)
 
 	uci:section('olsrd2', 'interface', 'mesh', {
-		name = fw.mesh,
+		ifname = fw.mesh,
 		bindto = addrs,
 	})
 
