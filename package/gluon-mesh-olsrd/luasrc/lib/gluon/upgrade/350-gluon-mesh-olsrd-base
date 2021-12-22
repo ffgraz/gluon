@@ -52,6 +52,13 @@ for key, value in ipairs(fw.wired_mesh) do
 	table.insert(fw.mesh, value)
 end
 
+uci:set_list('firewall', 'mesh', 'network', fw.mesh)
+uci:set_list('firewall', 'wired_mesh', 'network', fw.wired_mesh)
+
+networks = uci:get_list('firewall', 'drop', 'network')
+util.remove_from_set(fw.mesh, 'client')
+uci:set_list('firewall', 'drop', 'network', networks)
+
 -- TODO: teardown when not enabled
 
 uci:delete_all('olsrd', 'Interface')
@@ -119,6 +126,8 @@ if site.mesh.olsrd.v2.enable then
 	uci:set("olsrd2", config, "originator", addrs)
 	uci:set("olsrd2", config, "lan", lan)
 
+	-- we're screwing fw up here but fw has already been set
+	table.insert(fw.mesh, 'loopback')
 	uci:section('olsrd2', 'interface', 'mesh', {
 		ifname = fw.mesh,
 		bindto = addrs,
@@ -141,13 +150,6 @@ if site.mesh.olsrd.v2.enable then
 	})
 end
 
-
-uci:set_list('firewall', 'mesh', 'network', fw.mesh)
-uci:set_list('firewall', 'wired_mesh', 'network', fw.wired_mesh)
-
-networks = uci:get_list('firewall', 'drop', 'network')
-util.remove_from_set(fw.mesh, 'client')
-uci:set_list('firewall', 'drop', 'network', networks)
 
 uci:save('olsrd')
 uci:save('olsrd2')
