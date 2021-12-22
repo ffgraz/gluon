@@ -20,7 +20,7 @@ end
 local function intf_setting(intf, desc, enabled)
 	local status = enabled and translate("enabled") or translate("disabled")
 
-	if site.prefix4() then
+	if site.prefix4() and intf ~= 'loopback' then
 		local v4addr = uci:get('gluon-static-ip', intf, 'ip4')
 
 		if site.tmpIp4() and v4addr then
@@ -87,7 +87,7 @@ local function intf_setting(intf, desc, enabled)
 
 		function v6:write(data)
 			-- TODO: validate via datatype
-			if data == '' and not site.tmpIp6() then
+			if data == '' and (not site.tmpIp6() or (not site.tmpIp6Everywhere() or intf ~= 'loopback')) then
 				data = null
 			end
 
@@ -99,6 +99,8 @@ local function intf_setting(intf, desc, enabled)
 		end
 	end
 end
+
+intf_setting('loopback', 'this Node', true)
 
 wireless.foreach_radio(uci, function(radio, index, config)
 	local function do_conf(type, desc)

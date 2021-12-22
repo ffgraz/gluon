@@ -64,3 +64,6 @@ msgstr "Mesh auf WAN"
 
 msgid "Mesh on LAN"
 msgstr "Mesh auf LAN"
+
+msgid "this Node"
+msgstr "diesen Knoten"
