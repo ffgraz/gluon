@@ -1,6 +1,6 @@
 CFLAGS  += -Wall -fPIC
 LDFLAGS += -llua -lm
-OBJ = hexutil.o ecdsa_util.o util.c ecdsa.o
+OBJ = hexutil.o ecdsa_util.o ecdsa_nolegacy.c util.c ecdsa.o
 LIB = ecdsa.so
 
 CFLAGS += $(shell pkg-config --cflags ecdsautil)

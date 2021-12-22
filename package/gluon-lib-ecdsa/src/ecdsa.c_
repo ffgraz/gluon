@@ -1,0 +1,177 @@
+/*
+Copyright 2021 Maciej Krüger <maciej@xeredo.it>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <limits.h>
+
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
+
+#include <libuecc/ecc.h>
+
+#include "ecdsautil/src/hexutil.h"
+#include "ecdsautil/src/sha256.h"
+#include "ecdsautil/src/ecdsa.h"
+#include "ecdsautil/src/array.h"
+
+#define ECDSA "gluon.ecdsa"
+
+static bool verify_multi(char* error, array* pubkeys, array* signatures, int min_good_signatures) {
+	// from verify.c mostly
+  unsigned char signature[64];
+
+
+  int opt;
+  while ((opt = getopt(argc, argv, "s:p:n:")) != -1) {
+    ecc_int256_t pubkey_packed;
+    ecc_25519_work_t pubkey;
+
+    switch (opt) {
+      case 's':
+        if (!parsehex(signature, optarg, 64)) {
+          fprintf(stderr, "Error while reading signature %s\n", optarg);
+          break;
+        }
+
+        if (!array_add(&signatures, signature, sizeof(signature))) {
+          fprintf(stderr, "Error in array_add\n");
+          goto error_out;
+        }
+        break;
+      case 'p':
+        if (!parsehex(pubkey_packed.p, optarg, 32)) {
+          fprintf(stderr, "Error while reading pubkey %s\n", optarg);
+          break;
+        }
+
+        int ret;
+
+        ret = ecc_25519_load_packed(&pubkey, &pubkey_packed);
+
+        if (!ret || !ecdsa_is_valid_pubkey(&pubkey)) {
+          fprintf(stderr, "Invalid pubkey %s\n", optarg);
+          break;
+        }
+
+        if (!array_add(&pubkeys, &pubkey, sizeof(ecc_25519_work_t))) {
+          fprintf(stderr, "Error in array_add\n");
+          goto error_out;
+        }
+        break;
+      case 'n':
+        min_good_signatures = atoi(optarg);
+    }
+  }
+
+  if (optind > argc) {
+    fprintf(stderr, "Usage: %s [-s signature ...] [-p pubkey ...] [-n num] file\n", argv[0]);
+    goto error_out;
+  }
+
+  ecc_int256_t hash;
+
+  if (!sha256_file((optind <= argc) ? argv[optind] : NULL, hash.p)) {
+    fprintf(stderr, "Error while hashing file\n");
+    goto error_out;
+  }
+
+  int good_signatures = 0;
+
+  array_nub(&pubkeys);
+  array_nub(&signatures);
+
+  for (int i = 0; i < signatures.size; i++) {
+    unsigned char *signature;
+    ecdsa_verify_context ctx;
+
+    signature = ARRAY_INDEX(signatures, i);
+
+    ecdsa_verify_prepare(&ctx, &hash, signature);
+
+    for (int i = 0; i < pubkeys.size; i++) {
+      ecc_25519_work_t *pubkey;
+      pubkey = ARRAY_INDEX(pubkeys, i);
+
+      if (ecdsa_verify_with_pubkey(&ctx, pubkey)) {
+        good_signatures++;
+        array_rm(&pubkeys, i);
+        break;
+      }
+    }
+  }
+
+  array_destroy(&pubkeys);
+  array_destroy(&signatures);
+
+  if (good_signatures >= min_good_signatures)
+    return 0;
+
+  return 1;
+
+error_out:
+  array_destroy(&pubkeys);
+  array_destroy(&signatures);
+  return 1;
+}
+
+
+static bool verify(lua_State *L, const char *data, const char *sig, const char *key) {
+	array pubkeys, signatures;
+	array_init(&pubkeys, sizeof(ecc_25519_work_t), 5);
+	array_init(&signatures, sizeof(signature), 5);
+
+	char bla;
+
+	int min_good_signatures = 1;
+
+	if (!parsehex(signature, sig, 64)) {
+		array_destroy(&pubkeys);
+	  array_destroy(&signatures);
+		return luaL_error(L, "Error while reading signature %s", sig);
+	}
+
+	if (!array_add(&signatures, signature, sizeof(signature))) {
+		array_destroy(&pubkeys);
+	  array_destroy(&signatures);
+		return luaL_error(L, "Error in array_add");
+	}
+}
+
+static int lua_verify(lua_State *L) {
+	lua_pushboolean(L, verify(L, luaL_checkstring(L, 1), luaL_checkstring(L, 2), luaL_checkstring(L, 3)));
+	return 1;
+}
+
+static const luaL_reg ecdsa_methods[] = {
+	{ "verify",			lua_verify          },
+
+	{ }
+};
+
+int luaopen_gluon_ecdsa(lua_State *L)
+{
+	luaL_register(L, ECDSA, ecdsa_methods);
+
+	return 1;
+}

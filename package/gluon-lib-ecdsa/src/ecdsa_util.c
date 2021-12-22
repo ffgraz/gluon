@@ -13,9 +13,9 @@
 bool do_verify(struct verify_params* params) {
 	ecdsa_verify_context_t ctxs[params->n_signatures];
 	for (size_t i = 0; i < params->n_signatures; i++)
-		ecdsa_verify_prepare_legacy(&ctxs[i], &params->hash, &params->signatures[i]);
+		ecdsa_verify_prepare_ed25519(&ctxs[i], &params->hash, &params->signatures[i]);
 
-	long unsigned int good_signatures = ecdsa_verify_list_legacy(ctxs, params->n_signatures, params->pubkeys, params->n_pubkeys);
+	long unsigned int good_signatures = ecdsa_verify_list_ed25519(ctxs, params->n_signatures, params->pubkeys, params->n_pubkeys);
 
 	if (good_signatures < params->good_signatures) {
 		return false;
@@ -45,7 +45,7 @@ int load_pubkeys(struct verify_params* params, const size_t n_pubkeys, const cha
 			goto pubkey_fail;
 		if (!parsehex(pubkey_packed.p, pubkeys_str[i], 32))
 			goto pubkey_fail;
-		if (!ecc_25519_load_packed_legacy(&params->pubkeys[i-ignored_keys], &pubkey_packed))
+		if (!ecc_25519_load_packed_ed25519(&params->pubkeys[i-ignored_keys], &pubkey_packed))
 			goto pubkey_fail;
 		if (!ecdsa_is_valid_pubkey(&params->pubkeys[i-ignored_keys]))
 			goto pubkey_fail;

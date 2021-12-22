@@ -1,5 +1,6 @@
 #include <ecdsautil/ecdsa.h>
 #include <ecdsautil/sha256.h>
+#include "ecdsa_nolegacy.h"
 
 struct verify_params {
   ecc_int256_t hash;
