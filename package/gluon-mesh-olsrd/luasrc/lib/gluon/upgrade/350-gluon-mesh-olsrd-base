@@ -88,16 +88,36 @@ end
 uci:delete_all('olsrd2', 'interface')
 
 if site.mesh.olsrd.v2.enable then
-	local addrs = { '-::1/128', 'default_accept' }
+	local addrs = { }
+	local lan = { }
 	local config = uci:get_first("olsrd2", "olsrv2")
+
+	if site.mesh.olsrd.v2.lan() then
+		lan = site.mesh.olsrd.v2.lan()
+	end
 
 	if site.mesh.olsrd.v2.ip6_exclusive_mode then
 		table.insert(addrs, '-0.0.0.0/0')
 	else
 		table.insert(addrs, '-127.0.0.1/8')
 	end
+	if site.mesh.olsrd.v2.ip4_exclusive_mode then
+		table.insert(addrs, '-::/0')
+	else
+		table.insert(addrs, '-::1/128')
+	end
+
+	if site.prefix4() and not site.mesh.olsrd.v2.ip6_exclusive_mode then
+		table.insert(lan, site.prefix4())
+	end
+	if site.prefix6() and not site.mesh.olsrd.v2.ip4_exclusive_mode then
+		table.insert(lan, site.prefix6())
+	end
+
+	table.insert(addrs, 'default_accept')
 
 	uci:set("olsrd2", config, "originator", addrs)
+	uci:set("olsrd2", config, "lan", lan)
 
 	uci:section('olsrd2', 'interface', 'mesh', {
 		ifname = fw.mesh,
