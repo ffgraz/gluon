@@ -64,6 +64,25 @@ uci:set_list('firewall', 'drop', 'network', networks)
 uci:delete_all('olsrd', 'Interface')
 
 if site.mesh.olsrd.v1.enable then
+	-- set config
+	local olsrConfig = {
+		IpVersion = '4',
+		FIBMetric = 'flat',
+		LinkQualityLevel = '2',
+		OlsrPort = '698',
+		Willingness = '3'
+	}
+
+	local extraConf = site.mesh.olsrd.v1.config()
+	if extraConf then
+		for k, v in pairs(extraConf) do
+			olsrConfig[k] = extraConf[k]
+		end
+	end
+
+	uci:delete_all('olsrd', 'olsrd')
+	uci:section('olsrd', 'olsrd', nil, olsrConfig)
+
 	-- add jsoninfo
 	uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
 		library = 'olsrd_jsoninfo.so.1.1',
@@ -98,6 +117,23 @@ if site.mesh.olsrd.v2.enable then
 	local addrs = { }
 	local lan = { }
 	local config = uci:get_first("olsrd2", "olsrv2")
+
+	-- set global config
+	local olsr2Config = {
+		failfast = 'no',
+		pidfile = '/var/run/olsrd2.pid',
+		lockfile = '/var/lock/olsrd2'
+	}
+
+	local extraConf = site.mesh.olsrd.v2.config()
+	if extraConf then
+		for k, v in pairs(extraConf) do
+			olsr2Config[k] = extraConf[k]
+		end
+	end
+
+	uci:delete_all('olsrd2', 'global')
+	uci:section('olsrd2', 'global', nil, olsr2Config)
 
 	if site.mesh.olsrd.v2.lan() then
 		lan = site.mesh.olsrd.v2.lan()
