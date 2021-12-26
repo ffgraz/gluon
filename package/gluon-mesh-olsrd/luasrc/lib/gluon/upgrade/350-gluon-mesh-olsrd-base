@@ -11,6 +11,8 @@ local wireless = require 'gluon.wireless'
 
 -- NOTE: this is a gigantic hack that overrides the gluon rules because they rely on gluon_proto
 -- this will need a rework once olsr and gluon_proto go together
+-- (i suspect it will pretty much just take an "ip addr add <v4> <intf>" and the same for v6 for the statics to work)
+-- (we could prob also do multiple v6 then on loopback?)
 local fw = {
 	wired_mesh = {},
 	mesh = {},
