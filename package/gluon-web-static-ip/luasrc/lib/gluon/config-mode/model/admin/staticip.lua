@@ -100,7 +100,7 @@ local function intf_setting(intf, desc, enabled)
 	end
 end
 
-intf_setting('loopback', 'this Node', true)
+intf_setting('loopback', translate('this node'), true)
 
 wireless.foreach_radio(uci, function(radio, index, config)
 	local function do_conf(type, desc)

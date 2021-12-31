@@ -53,5 +53,5 @@ msgstr ""
 msgid "Mesh on LAN"
 msgstr ""
 
-msgid "this Node"
+msgid "this node"
 msgstr ""
