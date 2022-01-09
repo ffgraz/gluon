@@ -195,6 +195,69 @@ uci:section('firewall', 'rule', 'allow_mesh_fwd', {
 	target = 'ACCEPT',
 })
 
+uci:section('firewall', 'rule', 'allow_mesh_ping', {
+	src = 'mesh',
+	proto = 'icmp',
+	icmp_type = {
+		'echo-request'
+	},
+	family = 'ipv4',
+	target = 'ACCEPT',
+})
+
+uci:section('firewall', 'rule', 'allow_mesh_mld', {
+	src = 'mesh',
+	proto = 'icmp',
+	src_ip = 'fe80::/10',
+	icmp_type = {
+		'130/0',
+		'131/0',
+		'132/0',
+		'143/0',
+	},
+	family = 'ipv6',
+	target = 'ACCEPT',
+})
+
+uci:section('firewall', 'rule', 'allow_mesh_icmpv6_input', {
+	src = 'mesh',
+	proto = 'icmp',
+	icmp_type = {
+		'echo-request',
+		'echo-reply',
+		'destination-unreachable',
+		'packet-too-big',
+		'time-exceeded',
+		'bad-header',
+		'unknown-header-type',
+		'router-solicitation',
+		'neighbour-solicitation',
+		'router-advertisement',
+		'neighbour-advertisement'
+	},
+ 	limit = '1000/sec',
+	family = 'ipv6',
+	target = 'ACCEPT',
+})
+
+uci:section('firewall', 'rule', 'allow_mesh_icmpv6_forward', {
+	src = 'mesh',
+	dest = '*',
+	proto = 'icmp',
+	icmp_type = {
+		'echo-request',
+		'echo-reply',
+		'destination-unreachable',
+		'packet-too-big',
+		'time-exceeded',
+		'bad-header',
+		'unknown-header-type'
+	},
+ 	limit = '1000/sec',
+	family = 'ipv6',
+	target = 'ACCEPT',
+})
+
 uci:save('olsrd')
 uci:save('olsrd2')
 uci:save('firewall')
