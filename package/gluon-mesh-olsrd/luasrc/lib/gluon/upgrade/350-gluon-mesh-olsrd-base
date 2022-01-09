@@ -188,6 +188,12 @@ if site.mesh.olsrd.v2.enable then
 	})
 end
 
+uci:section('firewall', 'rule', 'allow_mesh_fwd', {
+	src = 'mesh',
+	dest = 'mesh',
+	proto = 'all',
+	target = 'ACCEPT',
+})
 
 uci:save('olsrd')
 uci:save('olsrd2')
