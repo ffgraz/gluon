@@ -61,6 +61,13 @@ ath79-nand
 
   - GL-AR750S
 
+ath79-mikrotik
+--------------
+
+* Mikrotik
+
+  - RB951Ui-2nD (hAP)
+
 brcm2708-bcm2708
 ----------------
 
