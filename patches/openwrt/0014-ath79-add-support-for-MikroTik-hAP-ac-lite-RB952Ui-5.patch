@@ -1,0 +1,322 @@
+From 0b475e16aadef7e82fb02d9e58b0179c7f80ce55 Mon Sep 17 00:00:00 2001
+From: Damien Mascord <tusker@tusker.org>
+Date: Thu, 27 Aug 2020 09:39:42 +1000
+Subject: [PATCH 1/2] ath79: add support for MikroTik hAP ac lite
+ (RB952Ui-5ac2nD)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The MikroTik hAP ac lite (product code RB952Ui-5ac2nD) is
+an indoor 2.4Ghz and 5GHz AP with a 2 dBi integrated antenna built around the
+Atheros QCA9531 SoC.
+
+Specifications:
+ - SoC: Atheros QCA9531
+ - RAM: 64 MB
+ - Storage: 16 MB NOR - Winbond 25Q128FVSG
+ - Wireless: Atheros QCA9531 (SoC) 802.11b/g/n 2x2
+ - Wireless: Atheros QCA9887 802.11a/n/ac 2x2
+ - Ethernet: Atheros AR934X switch, 5x 10/100 ports,
+    10-28 V passive PoE in port 1, 500 mA PoE out on port 5
+ - 8 user-controllable LEDs:
+  · 1x power (green)
+  · 1x user (green)
+  · 4x LAN status (green)
+  · 1x WAN status (green)
+  · 1x PoE power status (red)
+
+ See https://mikrotik.com/product/RB952Ui-5ac2nD for more details.
+
+Notes:
+ The device was already supported in the ar71xx target.
+ WAN LED is not lit, though the port is functional.
+ Serial console enablement needs version 3.27 of routerboot
+
+Flashing:
+ TFTP boot initramfs image and then perform sysupgrade. Follow common
+ MikroTik procedure as in https://openwrt.org/toh/mikrotik/common.
+
+Signed-off-by: Damien Mascord <tusker@tusker.org>
+---
+ ...9533_mikrotik_routerboard-952ui-5ac2nd.dts | 178 ++++++++++++++++++
+ target/linux/ath79/image/mikrotik.mk          |  14 ++
+ .../mikrotik/base-files/etc/board.d/01_leds   |   7 +
+ .../base-files/etc/board.d/02_network         |   5 +
+ .../etc/hotplug.d/firmware/10-ath9k-eeprom    |   3 +
+ .../etc/hotplug.d/firmware/11-ath10k-caldata  |   1 +
+ 6 files changed, 208 insertions(+)
+ create mode 100644 target/linux/ath79/dts/qca9533_mikrotik_routerboard-952ui-5ac2nd.dts
+
+diff --git a/target/linux/ath79/dts/qca9533_mikrotik_routerboard-952ui-5ac2nd.dts b/target/linux/ath79/dts/qca9533_mikrotik_routerboard-952ui-5ac2nd.dts
+new file mode 100644
+index 0000000000..cfb185e37a
+--- /dev/null
++++ b/target/linux/ath79/dts/qca9533_mikrotik_routerboard-952ui-5ac2nd.dts
+@@ -0,0 +1,178 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
++
++#include "qca9533_mikrotik_routerboard-16m.dtsi"
++
++/ {
++	compatible = "mikrotik,routerboard-952ui-5ac2nd", "qca,qca9533";
++	model = "MikroTik RouterBOARD 952Ui-5ac2nD (hAP ac lite)";
++
++	leds {
++		compatible = "gpio-leds";
++		pinctrl-names = "default";
++		pinctrl-0 = <&led_wan_pin>;
++
++		power {
++			label = "green:power";
++			gpios = <&gpio 17 GPIO_ACTIVE_HIGH>;
++			default-state = "on";
++		};
++
++		led_user: user {
++			label = "green:user";
++			gpios = <&gpio 4 GPIO_ACTIVE_HIGH>;
++		};
++		
++		lan1 {
++			label = "green:lan1";
++			gpios = <&gpio_ext 0 GPIO_ACTIVE_LOW>;
++		};
++
++		lan2 {
++			label = "green:lan2";
++			gpios = <&gpio_ext 1 GPIO_ACTIVE_LOW>;
++		};
++
++		lan3 {
++			label = "green:lan3";
++			gpios = <&gpio_ext 2 GPIO_ACTIVE_LOW>;
++		};
++
++		lan4 {
++			label = "green:lan4";
++			gpios = <&gpio_ext 3 GPIO_ACTIVE_LOW>;
++		};
++		
++		lan5 {
++			label = "green:lan5";
++			gpios = <&gpio_ext 4 GPIO_ACTIVE_LOW>;
++		};
++
++	};
++	
++	gpio-export {
++		compatible = "gpio-export";
++
++		usb_power {
++			gpio-export,name = "usb-power";
++			gpio-export,output = <1>;
++			gpios = <&gpio_ext 5 GPIO_ACTIVE_LOW>;
++		};
++		
++		enable_poe_lan5 {
++			gpio-export,name = "enable-poe:lan5";
++			gpio-export,output = <0>;
++			gpios = <&gpio 14 GPIO_ACTIVE_HIGH>;
++		};
++	};
++};
++
++&spi {
++	status = "okay";
++	
++	pinctrl-names = "default";
++	pinctrl-0 = <&pmx_spi_cs1>;
++
++	flash@0 {
++		compatible = "jedec,spi-nor";
++		reg = <0>;
++		spi-max-frequency = <40000000>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "RouterBoot";
++				reg = <0x0 0x20000>;
++				read-only;
++				compatible = "mikrotik,routerboot-partitions";
++				#address-cells = <1>;
++				#size-cells = <1>;
++
++				partition@0 {
++					label = "bootloader1";
++					reg = <0x0 0x0>;
++					read-only;
++				};
++
++				hard_config {
++					read-only;
++				};
++
++				bios {
++					size = <0x1000>;
++					read-only;
++				};
++
++				partition@10000 {
++					label = "bootloader2";
++					reg = <0x10000 0x0>;
++					read-only;
++				};
++
++				soft_config {
++				};
++			};
++
++			partition@20000 {
++				compatible = "mikrotik,minor";
++				label = "firmware";
++				reg = <0x020000 0xfe0000>;
++			};
++		};
++	};
++	
++	gpio_ext: gpio_ext@1 {
++		compatible = "fairchild,74hc595";
++		reg = <1>;
++		gpio-controller;
++		#gpio-cells = <2>;
++		registers-number = <1>;
++		spi-max-frequency = <10000000>;
++	};
++};
++
++
++&pinmux {
++	led_wan_pin: pinmux_led_wan_pin {
++		pinctrl-single,bits = <0x4 0x0 0xff>;
++	};
++	
++	pmx_spi_cs1: pinmux_spi_cs1 {
++		pinctrl-single,bits = <0x8 0x0a000000 0xff000000>;
++	};
++};
++
++&wmac {
++	status = "okay";
++
++	qca,no-eeprom;
++};
++
++&pcie0 {
++	status = "okay";
++
++	wifi@0,0 {
++		compatible = "qcom,ath10k";
++		reg = <0 0 0 0 0>;
++	};
++};
++
++&eth0 {
++	status = "okay";
++
++	phy-handle = <&swphy4>;
++};
++
++&eth1 {
++	status = "okay";
++};
++
++&usb0 {
++	status = "okay";
++};
++
++&usb_phy {
++	status = "okay";
++};
+diff --git a/target/linux/ath79/image/mikrotik.mk b/target/linux/ath79/image/mikrotik.mk
+index 4256f77379..1e3e3a9a11 100644
+--- a/target/linux/ath79/image/mikrotik.mk
++++ b/target/linux/ath79/image/mikrotik.mk
+@@ -37,6 +37,20 @@ define Device/mikrotik_routerboard-922uags-5hpacd
+ endef
+ TARGET_DEVICES += mikrotik_routerboard-922uags-5hpacd
+ 
++define Device/mikrotik_routerboard-952ui-5ac2nd
++  $(Device/mikrotik_nor)
++  SOC := qca9533
++  DEVICE_MODEL := RouterBOARD 952Ui-5ac2nD (hAP ac lite)
++  DEVICE_PACKAGES += kmod-ath10k-ct-smallbuffers ath10k-firmware-qca9887-ct
++  IMAGE_SIZE := 3712k
++  SYSUPGRADE_IMAGE_SIZE := 16256k
++  IMAGE/sysupgrade.bin := append-kernel | kernel2minor -s 1024 -e | \
++	pad-to $$$$(BLOCKSIZE) | append-rootfs | pad-rootfs | \
++	check-size $$$$(SYSUPGRADE_IMAGE_SIZE) | append-metadata
++  SUPPORTED_DEVICES += rb-952ui-5ac2nd
++endef
++TARGET_DEVICES += mikrotik_routerboard-952ui-5ac2nd
++
+ define Device/mikrotik_routerboard-lhg-2nd
+   $(Device/mikrotik_nor)
+   SOC := qca9533
+diff --git a/target/linux/ath79/mikrotik/base-files/etc/board.d/01_leds b/target/linux/ath79/mikrotik/base-files/etc/board.d/01_leds
+index 0d3209c2e3..a4b395e2de 100755
+--- a/target/linux/ath79/mikrotik/base-files/etc/board.d/01_leds
++++ b/target/linux/ath79/mikrotik/base-files/etc/board.d/01_leds
+@@ -7,6 +7,13 @@ board_config_update
+ board=$(board_name)
+ 
+ case "$board" in
++mikrotik,routerboard-952ui-5ac2nd)
++	ucidef_set_led_netdev "lan1" "WAN" "green:lan1" "eth1"
++	ucidef_set_led_switch "lan2" "LAN2" "green:lan2" "switch0" "0x10"
++	ucidef_set_led_switch "lan3" "LAN3" "green:lan3" "switch0" "0x08"
++	ucidef_set_led_switch "lan4" "LAN4" "green:lan4" "switch0" "0x04"
++	ucidef_set_led_switch "lan5" "LAN5" "green:lan5" "switch0" "0x02"
++	;;
+ mikrotik,routerboard-lhg-2nd)
+ 	ucidef_set_led_netdev "lan" "lan" "green:lan" "eth0"
+ 	;;
+diff --git a/target/linux/ath79/mikrotik/base-files/etc/board.d/02_network b/target/linux/ath79/mikrotik/base-files/etc/board.d/02_network
+index bd249e0b86..f1439087c4 100755
+--- a/target/linux/ath79/mikrotik/base-files/etc/board.d/02_network
++++ b/target/linux/ath79/mikrotik/base-files/etc/board.d/02_network
+@@ -23,6 +23,11 @@ ath79_setup_interfaces()
+ 	mikrotik,routerboard-wapr-2nd)
+ 		ucidef_set_interface_lan "eth0"
+ 		;;
++	mikrotik,routerboard-952ui-5ac2nd)
++		ucidef_set_interface_wan "eth1"
++		ucidef_add_switch "switch0" \
++			"0@eth0" "1:lan:4" "2:lan:3" "3:lan:2" "4:lan:1"
++		;;
+ 	*)
+ 		ucidef_set_interfaces_lan_wan "eth0" "eth1"
+ 		;;
+diff --git a/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/10-ath9k-eeprom b/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/10-ath9k-eeprom
+index ae0c94d8ec..78bbaec217 100644
+--- a/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/10-ath9k-eeprom
++++ b/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/10-ath9k-eeprom
+@@ -29,6 +29,9 @@ case "$FIRMWARE" in
+ 	mikrotik,routerboard-wapr-2nd)
+ 		caldata_mikrotik_ath9k 0x1000 0x440 $(macaddr_add "$mac_base" +1)
+ 		;;
++	mikrotik,routerboard-952ui-5ac2nd)
++		caldata_mikrotik_ath9k 0x1000 0x440 $(macaddr_add "$mac_base" +6)
++		;;
+ 	mikrotik,routerboard-wap-g-5hact2hnd)
+ 		caldata_mikrotik_ath9k 0x1000 0x440 $(macaddr_add "$mac_base" +2)
+ 		;;
+diff --git a/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/11-ath10k-caldata b/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
+index 31d4eeedbc..0242f52644 100644
+--- a/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
++++ b/target/linux/ath79/mikrotik/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
+@@ -12,6 +12,7 @@ case "$FIRMWARE" in
+ "ath10k/cal-pci-0000:00:00.0.bin")
+ 	case $board in
+ 	mikrotik,routerboard-921gs-5hpacd-15s|\
++	mikrotik,routerboard-952ui-5ac2nd|\
+ 	mikrotik,routerboard-wap-g-5hact2hnd)
+ 		caldata_sysfsload_from_file $wlan_data 0x5000 0x844
+ 		;;
+-- 
+2.34.1
+

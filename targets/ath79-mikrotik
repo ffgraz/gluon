@@ -1,0 +1,19 @@
+-- Mikrotik images are netbooted via TFTP, then persisted with sysupgrade
+defaults {
+	factory = '-initramfs-kernel'
+}
+
+config('TARGET_ROOTFS_INITRAMFS', true)
+config('TARGET_INITRAMFS_COMPRESSION_LZMA', true)
+
+local ATH10K_PACKAGES_QCA9887 = {
+	'kmod-ath10k',
+	'-kmod-ath10k-ct',
+	'-kmod-ath10k-ct-smallbuffers',
+	'ath10k-firmware-qca9887',
+	'-ath10k-firmware-qca9887-ct',
+}
+
+device('mikrotik-routerboard-951ui-2nd-hap', 'mikrotik_routerboard-951ui-2nd', {
+	packages = ATH10K_PACKAGES_QCA9887,
+})
