@@ -76,7 +76,6 @@ for _,i in pairs(mesh_interfaces) do
 
 	if util.contains(uplink_interfaces, i) then
 		name = 'uplink'
-		i = 'br-wan'
 	end
 
 	if util.contains(client_interfaces, i) then

@@ -13,29 +13,30 @@ uci:section('network', 'interface', 'loopback', {
 	netmask = '255.0.0.0',
 })
 
-uci:section('network', 'interface', 'wan', {
-	proto = wan.proto or 'dhcp',
-	ipaddr = wan.ipaddr,
-	netmask = wan.netmask,
-	gateway = wan.gateway,
-	ifname = util.get_role_interfaces(uci, 'uplink'),
-	type = 'bridge',
-	igmp_snooping = true,
-	multicast_querier = false,
-	peerdns = false,
-	auto = true,
-})
+for _, intf in pairs(util.get_role_interfaces(uci, 'uplink')) do
+	uci:section('network', 'interface', intf .. '_wan', {
+		proto = wan.proto or 'dhcp',
+		ipaddr = wan.ipaddr,
+		netmask = wan.netmask,
+		gateway = wan.gateway,
+		ifname = intf,
+		igmp_snooping = true,
+		multicast_querier = false,
+		peerdns = false,
+		auto = true,
+	})
 
-uci:section('network', 'interface', 'wan6', {
-	proto = wan6.proto or 'dhcpv6',
-	ip6addr = wan6.ip6addr,
-	ip6gw = wan6.ip6gw,
-	ifname = 'br-wan',
-	peerdns = false,
-	ip6table = 1,
-	sourcefilter = false,
-	reqprefix = 'no',
-})
+	uci:section('network', 'interface', intf .. '_wan6', {
+		proto = wan6.proto or 'dhcpv6',
+		ip6addr = wan6.ip6addr,
+		ip6gw = wan6.ip6gw,
+		ifname = intf,
+		peerdns = false,
+		ip6table = 1,
+		sourcefilter = false,
+		reqprefix = 'no',
+	})
+end
 
 uci:section('network', 'rule6', 'wan6_lookup', {
 	mark = '0x01/0x01',
