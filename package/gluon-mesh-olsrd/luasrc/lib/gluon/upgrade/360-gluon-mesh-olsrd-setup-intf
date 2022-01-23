@@ -5,6 +5,21 @@ local site = require 'gluon.site'
 local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
 
+local util = require 'gluon.util'
+
+local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
+local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
+
+local mesh_interfaces_uplink = {}
+local mesh_interfaces_other = {}
+for _, iface in ipairs(mesh_interfaces) do
+	if util.contains(uplink_interfaces, iface) then
+		table.insert(mesh_interfaces_uplink, iface)
+	else
+		table.insert(mesh_interfaces_other, iface)
+	end
+end
+
 -- NOTE: stuff in here is idempotent as those are list entries with an id associated
 -- TODO: add *all* the rules we need, plus additional zones if necesarrry
 -- FIXME: firewall rules are currently broken, there's only mesh / wired_mesh zone, need to ensure they are properly assigned
@@ -18,14 +33,22 @@ local fw = {
 	mesh = {},
 }
 
+local intf = {
+	wired_mesh = {},
+	vpn_mesh = {},
+	radio_mesh = {},
+}
+
 -- get all mesh radios and mesh lans and then add them to olsrd
 wireless.foreach_radio(uci, function(radio, index, config)
 	local radio_name = radio['.name']
-	table.insert(fw.mesh, 'mesh_' .. radio_name)
+	table.insert(intf.radio_mesh, 'mesh_' .. radio_name)
 	if uci:get('network', 'ibss_' .. radio_name, 'proto') then
-		table.insert(fw.mesh, 'ibss_' .. radio_name)
+		table.insert(intf.radio_mesh, 'ibss_' .. radio_name)
 	end
 end)
+
+local vpn_mesh = false
 
 if pcall(function() require 'gluon.mesh-vpn' end) then
 	local vpn_core = require 'gluon.mesh-vpn'
@@ -33,38 +56,66 @@ if pcall(function() require 'gluon.mesh-vpn' end) then
 	if vpn_core.enabled() then
 		-- mesh_vpn is a interface that has the right ifname
 		-- we can't use mesh-vpn (dash instead of underscore) since it's not a uci interface
-		table.insert(fw.wired_mesh, 'mesh_vpn')
+		table.insert(intf.vpn_mesh, 'mesh_vpn')
+		vpn_mesh = true
 	end
 end
 
-local wan_mesh = not uci:get_bool('network', 'mesh_wan', 'disabled')
+local function has_role_mesh(ifname)
+	local roles = uci:get('gluon', 'iface_' .. ifname, 'role')
 
-if wan_mesh then
-	table.insert(fw.wired_mesh, 'mesh_wan')
+	local has_role = false
+
+	if roles then
+		for _, r in ipairs(roles) do
+			if r == 'mesh' then
+				has_role = true
+			end
+		end
+	end
+
+	return has_role
 end
 
-local lan_mesh = uci:get('network', 'mesh_lan', 'proto') and not uci:get_bool('network', 'mesh_lan', 'disabled')
+if #mesh_interfaces_uplink then
+	for _, i in ipairs(mesh_interfaces_uplink) do
+		table.insert(intf.wired_mesh, i)
+	end
 
-if lan_mesh then
-	table.insert(fw.wired_mesh, 'mesh_lan')
+	-- OLSR uses macvlan here to keep things nice and clean
+	if not site.mesh.vxlan() then
+		uci:section('network', 'interface', 'mesh_uplink', {
+			type = 'macvlan',
+			vxlan = null,
+		})
+	end
 end
 
--- put all the mesh things in mesh firewall table
-for key, value in ipairs(fw.wired_mesh) do
-	table.insert(fw.mesh, value)
+if #mesh_interfaces_other then
+	for _, i in ipairs(mesh_interfaces_other) do
+		table.insert(intf.wired_mesh, i)
+	end
 end
 
--- FIXME: use netifd stuff
-for key, value in ipairs(fw.wired_mesh) do
-	uci:set('network', value, 'zone', 'mesh')
+local function set_zone(list, zone)
+	for _, net in ipairs(fw.wired_mesh) do
+		uci:set('network', net, 'zone', 'mesh')
+	end
 end
 
-uci:set_list('firewall', 'mesh', 'network', fw.mesh)
-uci:set_list('firewall', 'wired_mesh', 'network', fw.wired_mesh)
+set_zone(intf.wired_mesh, 'mesh')
+set_zone(intf.vpn_mesh, 'mesh')
+set_zone(intf.radio_mesh, 'mesh')
 
-networks = uci:get_list('firewall', 'drop', 'network')
-util.remove_from_set(fw.mesh, 'client')
-uci:set_list('firewall', 'drop', 'network', networks)
+intf.all_intfs = {}
+
+for _, l in ipairs({ intf.wired_mesh, intf.vpn_mesh, intf.radio_mesh }) do
+	for _, n in ipairs(l) do
+		table.insert(intf.all_intfs, n)
+	end
+end
+
+uci:set_list('firewall', 'mesh', 'network', intf.all_intfs)
 
 -- TODO: teardown when not enabled
 
@@ -96,10 +147,26 @@ if site.mesh.olsrd.v1.enable then
 		ignore = 0,
 	})
 
-	uci:section('olsrd', 'Interface', 'mesh', {
-		interface = fw.mesh,
-		Mode = 'mesh',
-	})
+	if #intf.wired_mesh then
+		uci:section('olsrd', 'Interface', 'wired_mesh', {
+			interface = intf.wired_mesh,
+			Mode = 'ether',
+		})
+	end
+
+	if #intf.vpn_mesh then
+		uci:section('olsrd', 'Interface', 'vpn_mesh', {
+			interface = intf.vpn_mesh,
+			Mode = 'mesh',
+		})
+	end
+
+	if #intf.radio_mesh then
+		uci:section('olsrd', 'Interface', 'radio_mesh', {
+			interface = intf.radio_mesh,
+			Mode = 'mesh',
+		})
+	end
 
 	uci:section('firewall', 'rule', 'allow_olsr_mesh', {
 		-- src = 'mesh',
@@ -169,10 +236,29 @@ if site.mesh.olsrd.v2.enable then
 	uci:set("olsrd2", config, "originator", addrs)
 	uci:set("olsrd2", config, "lan", lan)
 
-	-- we're screwing fw up here but fw has already been set
-	table.insert(fw.mesh, 'loopback')
-	uci:section('olsrd2', 'interface', 'mesh', {
-		ifname = fw.mesh,
+	if #intf.wired_mesh then
+		uci:section('olsrd2', 'interface', 'wired_mesh', {
+			ifname = intf.wired_mesh,
+			bindto = addrs,
+		})
+	end
+
+	if #intf.vpn_mesh then
+		uci:section('olsrd2', 'interface', 'vpn_mesh', {
+			ifname = intf.vpn_mesh,
+			bindto = addrs,
+		})
+	end
+
+	if #intf.radio_mesh then
+		uci:section('olsrd2', 'interface', 'radio_mesh', {
+			ifname = intf.radio_mesh,
+			bindto = addrs,
+		})
+	end
+
+	uci:section('olsrd2', 'interface', 'loopback', {
+		ifname = { 'loopback' },
 		bindto = addrs,
 	})
 
@@ -192,94 +278,6 @@ if site.mesh.olsrd.v2.enable then
 		target = 'ACCEPT',
 	})
 end
-
-uci:section('firewall', 'rule', 'allow_mesh_fwd', {
-	name = 'Allow mesh forward',
-	src = 'mesh',
-	dest = 'mesh',
-	proto = 'all',
-	target = 'ACCEPT',
-})
-
--- FIXME: doesn't work too well
-if wan_mesh then
-	uci:section('firewall', 'rule', 'block_mesh_wan_fwd', {
-		name = 'Block mesh WAN forward',
-		src = 'mesh',
-		dest = 'mesh_wan',
-		proto = 'all',
-		target = 'BLOCK'
-	})
-else
-	uci:delete('firewall', 'block_mesh_wan_fwd')
-end
-
-uci:section('firewall', 'rule', 'allow_mesh_ping', {
-	name = 'Allow mesh ping',
-	src = 'mesh',
-	proto = 'icmp',
-	icmp_type = {
-		'echo-request'
-	},
-	family = 'ipv4',
-	target = 'ACCEPT',
-})
-
-uci:section('firewall', 'rule', 'allow_mesh_mld', {
-	name = 'Allow mesh MLD',
-	src = 'mesh',
-	proto = 'icmp',
-	src_ip = 'fe80::/10',
-	icmp_type = {
-		'130/0',
-		'131/0',
-		'132/0',
-		'143/0',
-	},
-	family = 'ipv6',
-	target = 'ACCEPT',
-})
-
-uci:section('firewall', 'rule', 'allow_mesh_icmpv6_input', {
-	name = 'Allow mesh icmpv6 input',
-	src = 'mesh',
-	proto = 'icmp',
-	icmp_type = {
-		'echo-request',
-		'echo-reply',
-		'destination-unreachable',
-		'packet-too-big',
-		'time-exceeded',
-		'bad-header',
-		'unknown-header-type',
-		'router-solicitation',
-		'neighbour-solicitation',
-		'router-advertisement',
-		'neighbour-advertisement'
-	},
- 	limit = '1000/sec',
-	family = 'ipv6',
-	target = 'ACCEPT',
-})
-
-uci:section('firewall', 'rule', 'allow_mesh_icmpv6_forward', {
-	name = 'Allow mesh icmpv6 forward',
-	src = 'mesh',
-	dest = '*',
-	proto = 'icmp',
-	icmp_type = {
-		'echo-request',
-		'echo-reply',
-		'destination-unreachable',
-		'packet-too-big',
-		'time-exceeded',
-		'bad-header',
-		'unknown-header-type'
-	},
- 	limit = '1000/sec',
-	family = 'ipv6',
-	target = 'ACCEPT',
-})
 
 uci:save('olsrd')
 uci:save('olsrd2')
