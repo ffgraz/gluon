@@ -2,6 +2,21 @@ local uci = require("simple-uci").cursor()
 local wireless = require 'gluon.wireless'
 local ip = require 'luci.ip'
 local site = require 'gluon.site'
+local sysconfig = require 'gluon.sysconfig'
+local util = require 'gluon.util'
+
+local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
+local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
+
+local mesh_interfaces_uplink = {}
+local mesh_interfaces_other = {}
+for _, iface in ipairs(mesh_interfaces) do
+	if util.contains(uplink_interfaces, iface) then
+		table.insert(mesh_interfaces_uplink, iface)
+	else
+		table.insert(mesh_interfaces_other, iface)
+	end
+end
 
 local f = Form(translate("Static IPs"))
 
@@ -121,11 +136,10 @@ if pcall(function() require 'gluon.mesh-vpn' end) then
 end
 
 local wan_mesh = not uci:get_bool('network', 'mesh_wan', 'disabled')
-intf_setting('mesh_wan', 'Mesh on WAN', wan_mesh)
+intf_setting('mesh_uplink', 'Mesh on WAN', #mesh_interfaces_uplink)
 
-if uci:get('network', 'mesh_lan', 'proto') then
-  local lan_mesh = not uci:get_bool('network', 'mesh_lan', 'disabled')
-  intf_setting('mesh_lan', 'Mesh on LAN', lan_mesh)
+if sysconfig.lan_ifname then
+  intf_setting('mesh_other', 'Mesh on LAN', #mesh_interfaces_other)
 end
 
 function f:write()
