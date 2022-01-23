@@ -186,13 +186,11 @@ if pcall(function() require 'gluon.mesh-vpn' end) then
   apply_network('mesh_vpn', vpn_core.enabled(), 7)
 end
 
-local wan_mesh = not uci:get_bool('network', 'mesh_wan', 'disabled')
-apply_network('mesh_wan', wan_mesh, 10)
+local uplink_mesh = not uci:get_bool('network', 'mesh_uplink', 'disabled')
+apply_network('mesh_uplink', uplink_mesh, 10)
 
-if uci:get('network', 'mesh_lan', 'proto') then
-  local lan_mesh = not uci:get_bool('network', 'mesh_lan', 'disabled')
-  apply_network('mesh_lan', lan_mesh, 11)
-end
+local other_mesh = not uci:get_bool('network', 'mesh_other', 'disabled')
+apply_network('mesh_other', other_mesh, 11)
 
 apply_network('loopback', true, 12)
 
