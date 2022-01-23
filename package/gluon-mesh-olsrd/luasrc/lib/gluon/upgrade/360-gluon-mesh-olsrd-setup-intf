@@ -77,17 +77,19 @@ for _,i in pairs(mesh_interfaces) do
 	end
 
 	if sysconfig.wan_ifname == i or sysconfig.single_ifname == i then
+		-- the bridge takes presedence so we have to attach there
 		name = 'uplink'
+		i = 'br-wan'
 	end
 
-	uci:section('network', 'device', 'm-' .. name, {
-		name = 'm-' .. name,
+	uci:section('network', 'device', 'm_' .. name, {
+		name = 'm_' .. name,
 		type = 'macvlan',
 		ifname = i,
 	})
 
 	uci:section('network', 'interface', 'mesh_' .. name, {
-		ifname = 'm-' .. name,
+		ifname = 'm_' .. name,
 	})
 
 	table.insert(intf.wired_mesh, 'mesh_' .. name)
