@@ -4,7 +4,7 @@ local uci = require('simple-uci').cursor()
 local site = require 'gluon.site'
 local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
-
+local sysconfig = require 'gluon.sysconfig'
 local util = require 'gluon.util'
 
 local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
@@ -20,18 +20,10 @@ for _, iface in ipairs(mesh_interfaces) do
 	end
 end
 
--- NOTE: stuff in here is idempotent as those are list entries with an id associated
--- TODO: add *all* the rules we need, plus additional zones if necesarrry
--- FIXME: firewall rules are currently broken, there's only mesh / wired_mesh zone, need to ensure they are properly assigned
-
 -- NOTE: this is a gigantic hack that overrides the gluon rules because they rely on gluon_proto
 -- this will need a rework once olsr and gluon_proto go together
 -- (i suspect it will pretty much just take an "ip addr add <v4> <intf>" and the same for v6 for the statics to work)
 -- (we could prob also do multiple v6 then on loopback?)
-local fw = {
-	wired_mesh = {},
-	mesh = {},
-}
 
 local intf = {
 	wired_mesh = {},
@@ -77,29 +69,33 @@ local function has_role_mesh(ifname)
 	return has_role
 end
 
-if #mesh_interfaces_uplink then
-	for _, i in ipairs(mesh_interfaces_uplink) do
-		table.insert(intf.wired_mesh, i)
+for _,i in pairs(mesh_interfaces) do
+	local name = i
+
+	if sysconfig.lan_ifname == i then
+		name = 'other'
 	end
 
-	-- OLSR uses macvlan here to keep things nice and clean
-	if not site.mesh.vxlan() then
-		uci:section('network', 'interface', 'mesh_uplink', {
-			type = 'macvlan',
-			vxlan = null,
-		})
+	if sysconfig.wan_ifname == i or sysconfig.single_ifname == i then
+		name = 'uplink'
 	end
-end
 
-if #mesh_interfaces_other then
-	for _, i in ipairs(mesh_interfaces_other) do
-		table.insert(intf.wired_mesh, i)
-	end
+	uci:section('network', 'device', 'm-' .. name, {
+		name = 'm-' .. name,
+		type = 'macvlan',
+		ifname = i,
+	})
+
+	uci:section('network', 'interface', 'mesh_' .. name, {
+		ifname = 'm-' .. name,
+	})
+
+	table.insert(intf.wired_mesh, 'mesh_' .. name)
 end
 
 local function set_zone(list, zone)
-	for _, net in ipairs(fw.wired_mesh) do
-		uci:set('network', net, 'zone', 'mesh')
+	for _, net in ipairs(list) do
+		uci:set('network', net, 'zone', zone)
 	end
 end
 
@@ -116,6 +112,7 @@ for _, l in ipairs({ intf.wired_mesh, intf.vpn_mesh, intf.radio_mesh }) do
 end
 
 uci:set_list('firewall', 'mesh', 'network', intf.all_intfs)
+uci:set_list('firewall', 'wired_mesh', 'network', intf.wired_mesh)
 
 -- TODO: teardown when not enabled
 

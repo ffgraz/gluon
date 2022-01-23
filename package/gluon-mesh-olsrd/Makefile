@@ -11,6 +11,7 @@ define Package/gluon-mesh-olsrd
   TITLE:=olsrd mesh
   DEPENDS:= \
 		+gluon-core \
+		+kmod-macvlan \
 		@IPV6 +olsrd +oonf-olsrd2 \
 		+firewall \
 		+libgluonutil \

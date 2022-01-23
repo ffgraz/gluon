@@ -84,7 +84,4 @@ uci:section('firewall', 'rule', 'allow_mesh_icmpv6_forward', {
 	target = 'ACCEPT',
 })
 
-uci:save('olsrd')
-uci:save('olsrd2')
 uci:save('firewall')
-uci:save('network')
