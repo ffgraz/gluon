@@ -9,6 +9,7 @@ local util = require 'gluon.util'
 
 local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
 local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
+local client_interfaces = util.get_role_interfaces(uci, 'client')
 
 local mesh_interfaces_uplink = {}
 local mesh_interfaces_other = {}
@@ -72,15 +73,18 @@ end
 for _,i in pairs(mesh_interfaces) do
 	local name = i
 
-	if sysconfig.lan_ifname == i then
-		name = 'other'
-	end
-
-	if sysconfig.wan_ifname == i or sysconfig.single_ifname == i then
-		-- the bridge takes presedence so we have to attach there
+	if util.contains(uplink_interfaces, i) then
 		name = 'uplink'
 		i = 'br-wan'
 	end
+
+	if util.contains(client_interfaces, i) then
+		name = 'client'
+		i = 'br-client'
+	end
+
+	-- TODO: we need to fix collissions and shit
+	name = 'other'
 
 	uci:section('network', 'device', 'm_' .. name, {
 		name = 'm_' .. name,
