@@ -83,8 +83,13 @@ for _,i in pairs(mesh_interfaces) do
 		i = 'br-client'
 	end
 
-	-- TODO: we need to fix collissions and shit
-	name = 'other'
+	if name ~= 'client' and name ~= 'uplink' then
+		-- FIXME: right now we assume there will be exactly one "other mesh"
+		-- so static-ip detects it and assigns the address to it
+		-- there can actually be multiple and one possible idea is to bridge them all aswell
+		-- and just put a macvlan on that bridge
+		name = 'other'
+	end
 
 	uci:section('network', 'device', 'm_' .. name, {
 		name = 'm_' .. name,
