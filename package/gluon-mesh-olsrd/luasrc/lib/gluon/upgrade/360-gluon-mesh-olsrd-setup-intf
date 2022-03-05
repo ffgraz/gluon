@@ -127,10 +127,13 @@ uci:set_list('firewall', 'wired_mesh', 'network', intf.wired_mesh)
 
 -- TODO: teardown when not enabled
 
+os.execute('/etc/init.d/olsrd6 disable')
+
 uci:delete_all('olsrd', 'Interface')
 
 if site.mesh.olsrd.v1.enable then
-	-- set config
+        os.execute('/etc/init.d/olsrd enable')
+        -- set config
 	local olsrConfig = {
 		IpVersion = '4',
 		FIBMetric = 'flat',
@@ -191,11 +194,16 @@ if site.mesh.olsrd.v1.enable then
 		proto = 'udp',
 		target = 'ACCEPT',
 	})
+else
+        -- site.mesh.olsrd.v1.enable false
+        os.execute('/etc/init.d/olsrd disable')
 end
 
 uci:delete_all('olsrd2', 'interface')
 
 if site.mesh.olsrd.v2.enable then
+        os.execute('/etc/init.d/olsrd2 enable')
+
 	local addrs = { }
 	local lan = { }
 	local config = uci:get_first("olsrd2", "olsrv2")
@@ -285,6 +293,9 @@ if site.mesh.olsrd.v2.enable then
 		proto = 'udp',
 		target = 'ACCEPT',
 	})
+else
+        -- site.mesh.olsrd.v2.enable false
+        os.execute('/etc/init.d/olsrd2 disable')
 end
 
 uci:save('olsrd')
