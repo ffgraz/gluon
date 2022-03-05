@@ -6,6 +6,7 @@ local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
 local sysconfig = require 'gluon.sysconfig'
 local util = require 'gluon.util'
+local olsrd = require 'gluon.olsrd'
 
 local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
 local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
@@ -155,18 +156,18 @@ if site.mesh.olsrd.v1.enable then
 
 	-- add jsoninfo
 	uci:section('olsrd', 'LoadPlugin', 'jsoninfo', {
-		library = 'olsrd_jsoninfo.so.1.1',
-                accept = '127.0.0.1',
+		library = olsrd.find_module_version('olsrd_jsoninfo'),
+    accept = '127.0.0.1',
 	})
 	-- add txtinfo
 	uci:section('olsrd', 'LoadPlugin', 'txtinfo', {
-		library = 'olsrd_txtinfo.so.1.1',
-                accept = '127.0.0.1',
+		library = olsrd.find_module_version('olsrd_txtinfo'),
+		accept = '127.0.0.1',
 	})
 	-- add httpinfo
 	uci:section('olsrd', 'LoadPlugin', 'httpinfo', {
-		library = 'olsrd_httpinfo.so.0.1',
-                Net = {'127.0.0.1'},
+		library = olsrd.find_module_version('olsrd_httpinfo'),
+		Net = {'127.0.0.1'},
 	})
 
 	if #intf.wired_mesh then

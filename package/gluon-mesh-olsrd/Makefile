@@ -18,9 +18,17 @@ define Package/gluon-mesh-olsrd
 		+libjson-c \
 		+olsrd-mod-jsoninfo \
 		+olsrd-mod-httpinfo \
-		+olsrd-mod-txtinfo
+		+olsrd-mod-txtinfo \
+		+liblua
   # +gluon-mmfd +libiwinfo  +libjson-c +libnl-tiny +libubus +libubox +libblobmsg-json +libbabelhelper +luabitop
   PROVIDES:=gluon-mesh-provider
+endef
+
+define Package/gluon-mesh-olsrd/install
+	$(Gluon/Build/Install)
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/gluon
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/olsrd.so $(1)/usr/lib/lua/gluon/
 endef
 
 $(eval $(call BuildPackageGluon,gluon-mesh-olsrd))
