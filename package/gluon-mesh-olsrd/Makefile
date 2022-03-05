@@ -15,7 +15,10 @@ define Package/gluon-mesh-olsrd
 		@IPV6 +olsrd +oonf-olsrd2 \
 		+firewall \
 		+libgluonutil \
-		+libjson-c
+		+libjson-c \
+		+olsrd-mod-jsoninfo \
+		+olsrd-mod-httpinfo \
+		+olsrd-mod-txtinfo
   # +gluon-mmfd +libiwinfo  +libjson-c +libnl-tiny +libubus +libubox +libblobmsg-json +libbabelhelper +luabitop
   PROVIDES:=gluon-mesh-provider
 endef
