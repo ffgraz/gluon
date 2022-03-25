@@ -47,7 +47,15 @@ when(_'status-page' and _'mesh-batman-adv-15', {
 })
 
 when(_'mesh-olsrd', {
+	'gluon-static-ip'
+})
 
+when(_'web-wizard' and _'config-mode', {
+	'gluon-web-static-ip'
+})
+
+when(_'status-page' and _'mesh-olsrd', {
+ 'gluon-status-page-mesh-olsrd'
 })
 
 when(_'mesh-babel', {
