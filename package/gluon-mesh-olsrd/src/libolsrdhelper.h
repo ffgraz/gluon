@@ -28,4 +28,21 @@
 #include <json-c/json.h>
 #include <libubox/uclient.h>
 
-int olsrd_get_nodeinfo(char *path, json_object **out);
+struct olsr1_info {
+  bool enabled;
+  bool running;
+};
+
+struct olsr2_info {
+  bool enabled;
+  bool running;
+};
+
+struct olsr_info {
+	struct olsr1_info olsr1;
+	struct olsr2_info olsr2;
+};
+
+int oi(struct olsr_info **out);
+
+int olsr1_get_nodeinfo(char *path, json_object **out);

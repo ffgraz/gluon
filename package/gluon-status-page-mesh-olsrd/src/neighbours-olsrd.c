@@ -2,99 +2,75 @@
 #include <string.h>
 #include <unistd.h>
 #include <json-c/json.h>
-#include <net/if.h>
 
 #include <libubox/uclient.h>
 #include <libubox/blobmsg.h>
 #include <libubox/uloop.h>
-#include <gluon-mesh-oslrd/libolsrdhelper.h>
-
-static int parse_orig_list_netlink_cb(struct nl_msg *msg, void *arg)
-{
-  struct nlattr *attrs[BATADV_ATTR_MAX+1];
-  struct nlmsghdr *nlh = nlmsg_hdr(msg);
-  struct batadv_nlquery_opts *query_opts = arg;
-  struct genlmsghdr *ghdr;
-  uint8_t *orig;
-  uint8_t *dest;
-  uint8_t tq;
-  uint32_t hardif;
-  char ifname_buf[IF_NAMESIZE], *ifname;
-  struct neigh_netlink_opts *opts;
-  char mac1[18];
-
-  opts = batadv_container_of(query_opts, struct neigh_netlink_opts, query_opts);
-
-  if (!genlmsg_valid_hdr(nlh, 0))
-    return NL_OK;
-
-  ghdr = nlmsg_data(nlh);
-
-  if (ghdr->cmd != BATADV_CMD_GET_ORIGINATORS)
-    return NL_OK;
-
-  if (nla_parse(attrs, BATADV_ATTR_MAX, genlmsg_attrdata(ghdr, 0),
-        genlmsg_len(ghdr), batadv_genl_policy))
-    return NL_OK;
-
-  if (batadv_genl_missing_attrs(attrs, parse_orig_list_mandatory,
-	                        BATADV_ARRAY_SIZE(parse_orig_list_mandatory)))
-    return NL_OK;
-
-  orig = nla_data(attrs[BATADV_ATTR_ORIG_ADDRESS]);
-  dest = nla_data(attrs[BATADV_ATTR_NEIGH_ADDRESS]);
-  tq = nla_get_u8(attrs[BATADV_ATTR_TQ]);
-  hardif = nla_get_u32(attrs[BATADV_ATTR_HARD_IFINDEX]);
-
-  if (memcmp(orig, dest, 6) != 0)
-    return NL_OK;
-
-  ifname = if_indextoname(hardif, ifname_buf);
-  if (!ifname)
-    return NL_OK;
-
-  sprintf(mac1, "%02x:%02x:%02x:%02x:%02x:%02x",
-          orig[0], orig[1], orig[2], orig[3], orig[4], orig[5]);
-
-  struct json_object *neigh = json_object_new_object();
-  if (!neigh)
-    return NL_OK;
-
-  json_object_object_add(neigh, "tq", json_object_new_int(tq * 100 / 255));
-  json_object_object_add(neigh, "ifname", json_object_new_string(ifname));
-  json_object_object_add(neigh, "best", json_object_new_boolean(attrs[BATADV_ATTR_FLAG_BEST]));
-
-  json_object_object_add(opts->obj, mac1, neigh);
-
-  return NL_OK;
-}
+#include <libolsrdhelper.h>
 
 static json_object *neighbours(void) {
-  json_object *out;
-  int error = olsrd_get_nodeinfo("", &out);
-}
-
-static json_object *neighbours(void) {
-  struct neigh_netlink_opts opts = {
-    .query_opts = {
-      .err = 0,
-    },
-  };
-  int ret;
-
-  opts.obj = json_object_new_object();
-  if (!opts.obj)
+  json_object *resp;
+  if (olsr1_get_nodeinfo("links", &resp))
     return NULL;
 
-  ret = batadv_genl_query("bat0", BATADV_CMD_GET_ORIGINATORS,
-                          parse_orig_list_netlink_cb, NLM_F_DUMP,
-                          &opts.query_opts);
-  if (ret < 0) {
-    json_object_put(opts.obj);
+  json_object *out = json_object_new_object();
+  if (!out)
     return NULL;
+
+  /*
+
+  links
+
+  localIP	"10.12.11.43"
+  remoteIP	"10.12.11.1"
+  olsrInterface	"mesh-vpn"
+  ifName	"mesh-vpn"
+  validityTime	141239
+  symmetryTime	123095
+  asymmetryTime	25552910
+  vtime	124000
+  currentLinkStatus	"SYMMETRIC"
+  previousLinkStatus	"SYMMETRIC"
+  hysteresis	0
+  pending	false
+  lostLinkTime	0
+  helloTime	0
+  lastHelloTime	0
+  seqnoValid	false
+  seqno	0
+  lossHelloInterval	3000
+  lossTime	3595
+  lossMultiplier	65536
+  linkCost	1.084961
+  linkQuality	1
+  neighborLinkQuality	0.921
+
+  */
+
+  json_object *links = json_object_object_get(resp, "links");
+	if (!links)
+		return NULL;
+
+	int linkcount = json_object_array_length(links);
+
+	for (int i = 0; i < linkcount; i++) {
+		struct json_object *link = json_object_array_get_idx(links, i);
+		if (!link)
+			return NULL;
+
+    struct json_object *neigh = json_object_new_object();
+    if (!neigh)
+      return NULL;
+
+    json_object_object_add(neigh, "ifname", json_object_object_get(link, "ifName"));
+		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
+		json_object_object_add(neigh, "best", json_object_new_boolean(0));
+		json_object_object_add(neigh, "etx", json_object_object_get(link, "etx"));
+
+    json_object_object_add(out, json_object_get_string(json_object_object_get(link, "remoteIP")), neigh);
   }
 
-  return opts.obj;
+  return out;
 }
 
 int main(void) {

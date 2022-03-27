@@ -30,5 +30,7 @@
 
 __attribute__ ((visibility ("default")))
 const struct respondd_provider_info respondd_providers[] = {
+	{"nodeinfo", respondd_provider_nodeinfo},
+	{"neighbours", respondd_provider_neighbours},
 	{}
 };

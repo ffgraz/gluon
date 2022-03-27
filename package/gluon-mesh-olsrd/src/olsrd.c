@@ -16,7 +16,6 @@ limitations under the License.
 
 */
 
-
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -25,6 +24,8 @@ limitations under the License.
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+
+#include <libolsrdhelper.h>
 
 #define OLSRD "gluon.olsrd"
 
@@ -50,9 +51,15 @@ static int find_module_version (lua_State *L) {
   return luaL_error(L, "mod %s not found", mod);
 }
 
+static int olsr_nodeinfo (lua_State *L) {
+  const char *nodeinfo = luaL_checkstring(L, 1);
+
+  return 0;
+}
 
 static const luaL_reg olsrd_methods[] = {
-	{ "find_module_version", find_module_version },
+  { "find_module_version", find_module_version },
+	{ "olsr_nodeinfo", olsr_nodeinfo },
 	{ }
 };
 

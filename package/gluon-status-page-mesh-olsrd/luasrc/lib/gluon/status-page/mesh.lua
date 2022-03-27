@@ -5,6 +5,6 @@ return {
 	-- 2) human-readable key (not translatable yet)
 	-- 3) value suffix (optional)
 	attrs = {
-		{'tq', 'TQ', ' %'},
+		{'etx', 'Quality', ' '},
 	},
 }

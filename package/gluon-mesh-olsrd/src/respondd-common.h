@@ -25,4 +25,5 @@
 
 #pragma once
 
-// TODO: copy from gluon-mesh-batman-adv, use olsrd jsoninfo (preferebly via netlink) to provide similar information
+struct json_object * respondd_provider_nodeinfo(void);
+struct json_object * respondd_provider_neighbours(void);

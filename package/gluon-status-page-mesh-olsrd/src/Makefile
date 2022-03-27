@@ -9,9 +9,11 @@ ifeq ($(origin PKG_CONFIG), undefined)
   endif
 endif
 
-CFLAGS_JSONC = $(shell pkg-config --cflags json-c)
-LDFLAGS_JSONC = $(shell pkg-config --libs json-c)
+CFLAGS_JSONC = $(shell $(PKG_CONFIG) --cflags json-c)
+LDFLAGS_JSONC = $(shell $(PKG_CONFIG) --libs json-c)
 
+CFLAGS_OLSR += $(shell $(PKG_CONFIG) --cflags libolsrdhelper)
+LDFLAGS_OLSR += $(shell $(PKG_CONFIG) --libs libolsrdhelper)
 
 neighbours-olsrd: neighbours-olsrd.c
-	$(CC) $(CFLAGS) $(CFLAGS_JSONC) $(LDFLAGS) $(LDFLAGS_JSONC) -o $@ $^ $(LDLIBS)
+	$(CC) $(CFLAGS) $(CFLAGS_JSONC) $(CFLAGS_OLSR) $(LDFLAGS) $(LDFLAGS_JSONC) $(LDFLAGS_OLSR) -o $@ $^ $(LDLIBS)

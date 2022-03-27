@@ -69,7 +69,25 @@ static void recv_json_cb(struct uclient *cl) {
 	ctx->parsed = json_tokener_parse(&buf);
 }
 
-int olsrd_get_nodeinfo(char *path, json_object **out) {
+// get enabled from site.conf mesh.olsrX.enabled, get running from service X status
+int oi(struct olsr_info **out) {
+	struct olsr_info info = {
+		.olsr1 = {
+			.enabled = false,
+			.running = false,
+		},
+		.olsr2 = {
+			.enabled = false,
+			.running = false,
+		}
+	};
+
+	*out = &info;
+
+	return 0;
+}
+
+int olsr1_get_nodeinfo(char *path, json_object **out) {
   char url[BASE_URL_LEN + strlen(path) + 2];
 	sprintf(url, "%s/%s", url, path);
 

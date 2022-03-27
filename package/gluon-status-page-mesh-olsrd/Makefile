@@ -7,7 +7,7 @@ include ../gluon.mk
 
 define Package/gluon-status-page-mesh-olsrd
   TITLE:=OLSRD-data provider for gluon-status-page
-  DEPENDS:=+gluon-status-page +gluon-mesh-olsrd +libjson-c
+  DEPENDS:=+gluon-status-page +gluon-mesh-olsrd +libjson-c +libubox +libuclient
 endef
 
 define Package/gluon-status-page-mesh-olsrd/install
