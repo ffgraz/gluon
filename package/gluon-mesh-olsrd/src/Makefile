@@ -24,7 +24,7 @@ respondd.so: libolsrdhelper.so $(FILES_RESPONDD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -fvisibility=hidden -D_GNU_SOURCE -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper
 
 libolsrdhelper.so: libolsrdhelper.h libolsrdhelper.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -D_GNU_SOURCE -o $@ $(SOURCES_HELPER) $(LDLIBS) -lgluonutil
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -D_GNU_SOURCE -o $@ $(SOURCES_HELPER) $(LDLIBS) -lgluonutil -luclient
 
 olsrd.so: libolsrdhelper.so $(SOURCES_LUA)
 	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -D_GNU_SOURCE -o $@ $(SOURCES_LUA) $(LDLIBS) -lgluonutil -lolsrdhelper

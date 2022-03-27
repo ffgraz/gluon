@@ -16,6 +16,7 @@ define Package/gluon-mesh-olsrd
 		+firewall \
 		+libgluonutil \
 		+libjson-c \
+		+libubox +libuclient \
 		+olsrd-mod-jsoninfo \
 		+olsrd-mod-httpinfo \
 		+olsrd-mod-txtinfo \
