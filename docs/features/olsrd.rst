@@ -63,11 +63,14 @@ Static IP managment has the following options
 .. code-block:: lua
     {
       -- Auto-assign addresses from an IPv4 range
-      tmpIp4 = '10.12.23.0/16',
-      tmpIp4Range = 24, -- range of tmpIp4 that should be randomized with mac
+      node_prefix4 = '10.12.23.0/16',
+      node_prefix4_range = 24, -- range of node_prefix4 that should be randomized with mac
+      node_prefix4_temporary = true, -- (def: true) flag to indicate whether or not this is a temporary range that will need manual change for permanent assignments or not
+
       -- Auto-assign addresses from an IPv6 range
-      tmpIp6 = 'fdff:cafe:cafe:cafe:23::/64',
-      tmpIp6Range = 64, -- range of tmpIp6 that should be randomized with mac
+      node_prefix6 = 'fdff:cafe:cafe:cafe:23::/64',
+      node_prefix6_range = 64, -- (def: 64) range of node_prefix6 that should be randomized with mac
+      node_prefix6_temporary = true, -- (def: false) flag to indicate whether or not this is a temporary range that will need manual change for permanent assignments or not
     }
 
 Note that these addresses are intended to be temporary (TODO: should they or would dynamic4 and dynamic4IsTmp be better?)
