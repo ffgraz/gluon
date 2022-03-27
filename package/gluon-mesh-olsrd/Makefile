@@ -20,7 +20,9 @@ define Package/gluon-mesh-olsrd
 		+olsrd-mod-httpinfo \
 		+olsrd-mod-txtinfo \
 		+liblua \
-		+ip-full
+		+ip-full \
+		+gluon-mmfd \
+		+gluon-l3roamd
   # +gluon-mmfd +libiwinfo  +libjson-c +libnl-tiny +libubus +libubox +libblobmsg-json +libbabelhelper +luabitop
   PROVIDES:=gluon-mesh-provider
 endef
