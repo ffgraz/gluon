@@ -51,15 +51,29 @@ static int find_module_version (lua_State *L) {
   return luaL_error(L, "mod %s not found", mod);
 }
 
-static int olsr_nodeinfo (lua_State *L) {
+static int lua_olsr1_get_nodeinfo (lua_State *L) {
   const char *nodeinfo = luaL_checkstring(L, 1);
+
+  return 0;
+}
+
+static int lua_oi (lua_State *L) {
+  struct olsr_info *info;
+
+  if (oi(&info))
+    return luaL_error(L, "olsr_info() call failed");
+
+  // TODO: properly return
 
   return 0;
 }
 
 static const luaL_reg olsrd_methods[] = {
   { "find_module_version", find_module_version },
-	{ "olsr_nodeinfo", olsr_nodeinfo },
+
+  { "oi", lua_oi },
+
+  { "olsr1_get_nodeinfo", lua_olsr1_get_nodeinfo },
 	{ }
 };
 
