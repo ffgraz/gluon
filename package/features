@@ -50,7 +50,7 @@ when(_'mesh-olsrd', {
 	'gluon-static-ip'
 })
 
-when(_'web-wizard' and _'config-mode', {
+when(_'web-advanced' and _'mesh-olsrd', {
 	'gluon-web-static-ip'
 })
 
