@@ -1,7 +1,7 @@
 OLSRD
 ===========
 
-Gluon support OLSRD, both version v1 and v2 in the following modes:
+Gluon supports OLSRD, both version 1 and 2 in the following modes:
 
 - olsrd
   - v4 only
@@ -28,7 +28,7 @@ The following options exist
             -- Enable v1
             -- enable = true,
 
-            -- Set olsrd configuration
+            -- Set additional olsrd configuration
             -- config = {
             --   DebugLevel = 0,
             --   IpVersion = 4,
@@ -42,10 +42,10 @@ The following options exist
             -- Make v2 IPv6 exclusive
             -- ip6_exclusive_mode = true,
 
-            -- Make v2 IPv4 exclusive useful (for v1 co-existence)
+            -- Make v2 IPv4 exclusive (useful for v1 co-existence)
             -- ip4_exclusive_mode = true,
 
-            -- Set olsrd configuration
+            -- Set additional olsrd2 configuration
             -- config = {
             --
             -- }
