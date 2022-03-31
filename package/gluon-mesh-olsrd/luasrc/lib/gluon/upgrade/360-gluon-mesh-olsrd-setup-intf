@@ -173,7 +173,7 @@ if site.mesh.olsrd.v1.enable then
 	if #intf.wired_mesh then
 		uci:section('olsrd', 'Interface', 'wired_mesh', {
 			interface = intf.wired_mesh,
-			Mode = 'ether',
+			Mode = 'mesh', -- should be mode 'ether' but that appears broken for some reason
 		})
 	end
 
