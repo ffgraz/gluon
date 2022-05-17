@@ -8,7 +8,6 @@ local ATH10K_PACKAGES_QCA9887 = {
 
 local ATH10K_PACKAGES_QCA9888 = {}
 
-
 -- GL.iNet
 
 device('gl.inet-gl-ar300m-nor', 'glinet_gl-ar300m-nor', {
@@ -16,6 +15,10 @@ device('gl.inet-gl-ar300m-nor', 'glinet_gl-ar300m-nor', {
 	manifest_aliases = {
 		'gl.inet-gl-ar300m', -- Upgrade from OpenWrt 19.07
 	},
+})
+
+device('gl.inet-gl-ar300m-nand', 'glinet_gl-ar300m-nand', {
+	factory = false,
 })
 
 device('gl.inet-gl-ar750s-nor', 'glinet_gl-ar750s-nor', {
