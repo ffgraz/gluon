@@ -189,6 +189,13 @@ ipq40xx-generic
   - NBG6617
   - WRE6606  [#device-class-tiny]_
 
+ipq40xx-mikrotik
+----------------
+
+* Mikrotik
+
+  - Mikrotik hAP ac2
+
 ipq806x-generic
 ---------------
 
