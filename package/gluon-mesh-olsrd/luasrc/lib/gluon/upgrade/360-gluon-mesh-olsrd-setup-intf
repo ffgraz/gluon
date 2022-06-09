@@ -6,6 +6,7 @@ local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
 local sysconfig = require 'gluon.sysconfig'
 local olsrd = require 'gluon.olsrd'
+local l3 = require 'gluon.l3'
 
 local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
 local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
@@ -81,7 +82,7 @@ local function has_role_mesh(ifname)
 	return has_role
 end
 
-table.insert(intf.wired_mesh, 'loopback')
+-- table.insert(intf.wired_mesh, 'loopback')
 
 local has_uplink_mesh = false
 local has_other_mesh = false
@@ -242,14 +243,15 @@ for _, _olsr in ipairs({
 end
 
 uci:delete_all('olsrd2', 'interface')
+uci:delete_all('olsrd2', 'lan_import')
 
 if site.mesh.olsrd.v2.enable(true) then
 	os.execute('/etc/init.d/olsrd2 enable')
 
 	local addrs = { }
-	local lan = { }
+	local lan = nil
+	local orig = { }
 	local cfg = site.mesh.olsrd.v2
-	local config = uci:get_first("olsrd2", "olsrv2")
 
 	-- set global config
 	local olsr2Config = {
@@ -278,6 +280,12 @@ if site.mesh.olsrd.v2.enable(true) then
 
 	})
 
+	-- useless on its own, this is for userconfig
+	uci:delete_all('olsrd2', 'log')
+	uci:section('olsrd2', 'log', 'log', {
+
+	})
+
 	if cfg.lan() then
 		lan = cfg.lan()
 	end
@@ -286,17 +294,42 @@ if site.mesh.olsrd.v2.enable(true) then
 		table.insert(addrs, '-0.0.0.0/0')
 	else
 		table.insert(addrs, '-127.0.0.1/8')
+		table.insert(orig, site.node_prefix4())
 	end
 	if cfg.ip4_exclusive_mode(false) then
 		table.insert(addrs, '-::/0')
 	else
 		table.insert(addrs, '-::1/128')
+		local addr = uci:get('network', 'loopback', 'ip6addr')
+		table.insert(orig, addr)
 	end
 
 	table.insert(addrs, 'default_accept')
+	table.insert(orig, 'default_reject')
 
-	uci:set("olsrd2", config, "originator", addrs)
-	uci:set("olsrd2", config, "lan", lan)
+	local client_ranges_v4 = {}
+	local client_ranges_v6 = {}
+	local l3roamd_ranges = {}
+
+	table.insert(client_ranges_v4, site.prefix4())
+
+	if site.ddhcpd.range() then
+		table.insert(client_ranges_v4, site.ddhcpd.range())
+	end
+
+	table.insert(client_ranges_v6, site.prefix6())
+
+	table.insert(client_ranges_v4, 'default_reject')
+	table.insert(client_ranges_v6, 'default_reject')
+
+	table.insert(l3roamd_ranges, l3.node_client_prefix6())
+	table.insert(l3roamd_ranges, 'default_reject')
+
+	uci:delete_all('olsrd2', 'olsrv2')
+	uci:section('olsrd2', 'olsrv2', nil, {
+		originator = orig,
+		lan = lan,
+	})
 
 	if #intf.wired_mesh then
 		uci:section('olsrd2', 'interface', 'wired_mesh', {
@@ -319,9 +352,45 @@ if site.mesh.olsrd.v2.enable(true) then
 		})
 	end
 
-	uci:section('olsrd2', 'interface', 'loopback', {
-		ifname = { 'loopback' },
-		bindto = addrs,
+	if not cfg.ip4_exclusive_mode(false) then
+		local loopback_addrs = {
+			uci:get('network', 'loopback', 'ip6addr'),
+			'default_reject'
+		}
+
+		uci:section('olsrd2', 'interface', 'loopback', {
+			ifname = { 'loopback' },
+			routeable = loopback_addrs,
+			bindto = loopback_addrs,
+		})
+	end
+
+	-- deugging
+	-- uci:section('olsrd2', 'userconfig', '_log', { debug = 'lan_import' })
+	-- ref http://www.olsr.org/mediawiki/index.php/LAN_Import_Plugin
+	-- ref https://github.com/OLSR/OONF/issues/32
+
+	if not cfg.ip6_exclusive_mode(false) then
+		uci:section('olsrd2', 'lan_import', 'l3roamd_clients_v4', {
+			name = 'l3roamd_clients_v4',
+			matches = client_ranges_v4,
+			prefix_length = 32,
+			protocol = 158, -- l3roamd
+		})
+	end
+
+	if not cfg.ip4_exclusive_mode(false) then
+		uci:section('olsrd2', 'lan_import', 'l3roamd_clients_v6', {
+			name = 'l3roamd_clients_v6',
+			matches = client_ranges_v6,
+			prefix_length = 128,
+			protocol = 158, -- l3roamd
+		})
+	end
+
+	uci:section('olsrd2', 'lan_import', 'l3roamd_prefix', {
+		name = 'l3roamd_ranges',
+		matches = l3roamd_ranges,
 	})
 
 	uci:foreach('olsrd2', 'userconfig', function(config)
