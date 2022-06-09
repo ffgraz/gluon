@@ -69,6 +69,7 @@ config('KERNEL_SECCOMP', false)
 try_config('PACKAGE_kmod-mt7915e', false)
 
 try_config('OONF_GENERIC_HTTP', true)
+try_config('OONF_OLSRV2_LAN_IMPORT', true)
 
 config('COLLECT_KERNEL_DEBUG', true)
 
