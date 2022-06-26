@@ -1,6 +1,8 @@
 assert(env.GLUON_LANGS)
 
 
+config('USE_GLIBC', true)
+
 config('GLUON_SITEDIR', env.GLUON_SITEDIR)
 config('GLUON_VERSION', env.GLUON_VERSION)
 config('GLUON_SITE_VERSION', env.GLUON_SITE_VERSION)

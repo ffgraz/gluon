@@ -1,0 +1,37 @@
+From e9cdd7d3aca4f7ea2de863ef707c1ca1e77891c6 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
+Date: Sun, 26 Jun 2022 12:57:07 +0200
+Subject: [PATCH] olsr2 enable libasan
+
+---
+ oonf-olsrd2/Makefile | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/oonf-olsrd2/Makefile b/oonf-olsrd2/Makefile
+index 40190ed..6be72a6 100644
+--- a/oonf-olsrd2/Makefile
++++ b/oonf-olsrd2/Makefile
+@@ -57,7 +57,7 @@ endef
+ define Package/oonf-olsrd2
+ 	$(call Package/oonf-git/template)
+ 	TITLE:= Build Olsrd V2 Routing Agent
+-	DEPENDS:=+librt +libnl-tiny +libuci +oonf-init-scripts
++	DEPENDS:=+librt +libnl-tiny +libuci +oonf-init-scripts +libasan
+ 	VERSION:=$(PKG_VERSION)
+ endef
+ 
+@@ -74,6 +74,11 @@ endef
+ 
+ TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include -I${STAGING_DIR}/usr/include/libnl-tiny
+ 
++TARGET_CPPFLAGS += -fsanitize=address -fno-omit-frame-pointer
++TARGET_CFLAGS += -fsanitize=address -fno-omit-frame-pointer
++TARGET_LDFLAGS += -lasan -fsanitize=address
++TARGET_LDFLAGS_C += -lasan -fsanitize=address
++
+ define Package/oonf-olsrd2/install
+ 	$(INSTALL_BIN)  -D $(PKG_BUILD_DIR)/olsrd2_static $(1)/usr/sbin/olsrd2
+ 	$(INSTALL_BIN)  -D ./files/olsrd2.init            $(1)/etc/init.d/olsrd2
+-- 
+2.36.1
+
