@@ -204,16 +204,7 @@ for _, _olsr in ipairs({
 		end
 
 		uci:section('firewall', 'rule', 'allow_olsr' .. _olsr_ip .. '_mesh', {
-			-- src = 'mesh',
-			-- HACK: this is a temporary hack because firewall doesn't want to work
-			src = '*',
-			dest_port = _olsr_port,
-			proto = 'udp',
-			target = 'ACCEPT',
-		})
-
-		uci:section('firewall', 'rule', 'allow_olsr' .. _olsr_ip .. '_wired_mesh', {
-			src = 'wired_mesh',
+			src = 'mesh',
 			dest_port = _olsr_port,
 			proto = 'udp',
 			target = 'ACCEPT',
