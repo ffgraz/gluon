@@ -162,16 +162,7 @@ if site.mesh.olsrd.v2() ~= nil and site.mesh.olsrd.v2.enable(false) then
 	})
 
 	uci:section('firewall', 'rule', 'allow_olsr2_mesh', {
-		-- src = 'mesh',
-		-- HACK: this is a temporary hack because firewall doesn't want to work
-		src = '*',
-		dest_port = '269',
-		proto = 'udp',
-		target = 'ACCEPT',
-	})
-
-	uci:section('firewall', 'rule', 'allow_olsr2_wired_mesh', {
-		src = 'wired_mesh',
+		src = 'mesh',
 		dest_port = '269',
 		proto = 'udp',
 		target = 'ACCEPT',
