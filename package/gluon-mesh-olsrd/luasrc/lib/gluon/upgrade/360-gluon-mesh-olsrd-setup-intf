@@ -180,7 +180,7 @@ for _, _olsr in ipairs({
 		-- add jsoninfo
 		uci:section(uci_name, 'LoadPlugin', 'jsoninfo', {
 			library = olsrd.find_module_version('olsrd_jsoninfo'),
-	    accept = '127.0.0.1',
+			accept = '127.0.0.1',
 		})
 		-- add txtinfo
 		uci:section(uci_name, 'LoadPlugin', 'txtinfo', {
@@ -222,9 +222,8 @@ for _, _olsr in ipairs({
 		})
 	else
 		-- site.mesh.olsrd.v1/v1_4.enable false
-	  os.execute('/etc/init.d/' .. _olsr_name .. ' disable')
+		os.execute('/etc/init.d/' .. _olsr_name .. ' disable')
 		uci:delete('firewall', 'allow_' .. _olsr_name .. '_mesh')
-		uci:delete('firewall', 'allow_' .. _olsr_name .. '_wired_mesh')
 	end
 end
 
