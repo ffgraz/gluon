@@ -75,7 +75,7 @@ if has_uplink_mesh then
 	})
 
 	uci:section('network', 'interface', 'mesh_uplink', {
-	  ifname = 'm_uplink',
+		ifname = 'm_uplink',
 	})
 
 	table.insert(intf.wired_mesh, 'mesh_uplink')
@@ -169,9 +169,8 @@ if site.mesh.olsrd.v2() ~= nil and site.mesh.olsrd.v2.enable(false) then
 	})
 else
 	-- site.mesh.olsrd.v2.enable false
-  os.execute('/etc/init.d/olsrd2 disable')
+	os.execute('/etc/init.d/olsrd2 disable')
 	uci:delete('firewall', 'allow_olsr2_mesh')
-	uci:delete('firewall', 'allow_olsr2_wired_mesh')
 end
 uci:save('olsrd2')
 uci:save('firewall')
