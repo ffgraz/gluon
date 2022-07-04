@@ -14,7 +14,7 @@ define Package/gluon-mesh-olsrd
 		+oonf-olsrd2 \
 		+firewall \
 		+ip-full \
-		+gluon-layer3-common \
+		+gluon-mesh-layer3-common \
 		+gluon-l3roamd \
 		+gluon-radvd \
 		+lua-jsonc
