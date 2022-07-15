@@ -99,7 +99,7 @@ uci:foreach('wireless', 'wifi-device', function(config)
 	end
 
 	if not is_60ghz then
-		vif_option('client', {'client', 'owe'}, translate('Enable client network (access point)'))
+		p:element('model/info', {}, radio .. '_client', 'Client network not available', 'This is still WIP, just use private ap for the time being')
 		vif_option('ibss',  {'ibss'}, translate("Enable mesh network (IBSS, outdated)"))
 
 		local mesh_vif = vif_option('mesh', {'mesh'}, translate("Enable mesh network (802.11s)"))

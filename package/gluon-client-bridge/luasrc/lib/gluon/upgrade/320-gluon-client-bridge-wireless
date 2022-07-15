@@ -18,7 +18,7 @@ local function configure_ap(radio, index, config, radio_name)
 	local suffix = radio_name:match('^radio(%d+)$')
 
 	local ap = config.ap
-	local disabled = is_disabled(ap, name)
+	local disabled = true
 
 	uci:delete('wireless', name)
 
