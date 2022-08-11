@@ -95,7 +95,18 @@ for _,i in pairs(mesh_interfaces) do
 end
 
 if has_uplink_mesh then
-	table.insert(intf.wired_mesh, 'wan')
+	-- use uplink with macvlan so we do not have traffic leaks
+	uci:section('network', 'device', 'm_uplink', {
+		name = 'm_uplink',
+		type = 'macvlan',
+		ifname = 'br-wan',
+	})
+
+	uci:section('network', 'interface', 'mesh_uplink', {
+		ifname = 'm_uplink',
+	})
+
+	table.insert(intf.wired_mesh, 'mesh_uplink')
 end
 
 if has_other_mesh then
