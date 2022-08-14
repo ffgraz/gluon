@@ -118,4 +118,6 @@ device('ubiquiti-edgerouter-x-sfp', 'ubnt_edgerouter-x-sfp', {
 	},
 })
 
-device('mikrotik-routerboard-750gr3', 'mikrotik_routerboard-750gr3')
+device('mikrotik-routerboard-750gr3', 'mikrotik_routerboard-750gr3', {
+	factory = false,
+})
