@@ -3,6 +3,8 @@
 local site = require 'gluon.site'
 local file = '/etc/dropbear/authorized_keys'
 
+local uci = require('simple-uci').cursor()
+
 local keys = {}
 
 local function load_keys()
@@ -15,7 +17,7 @@ pcall(load_keys)
 
 local f = io.open(file, 'a')
 for _, key in ipairs(site.authorized_keys()) do
-  if not keys[key] then
+  if not keys[key] and not uci:get_bool('gluon', 'core', 'disable_site_keys') then
     f:write(key .. '\n')
   end
 end
