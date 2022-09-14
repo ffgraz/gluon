@@ -155,6 +155,7 @@ local function configure_ibss(config, radio, index, suffix, disabled)
 		mode = 'adhoc',
 		macaddr = macaddr,
 		ssid = ssid,
+		bssid = bssid,
 		ifname = suffix and 'ibss' .. suffix,
 		disabled = disabled,
 	})
