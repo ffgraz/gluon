@@ -1,14 +1,9 @@
-From df92dac989c8ddca5fb4b54db121626b789aa24f Mon Sep 17 00:00:00 2001
-From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
+From: Maciej Krüger <mkg20001@gmail.com>
 Date: Fri, 10 Jun 2022 20:21:02 +0200
-Subject: [PATCH] prune opkg
-
----
- include/image.mk | 4 ++++
- 1 file changed, 4 insertions(+)
+Subject: prune opkg
 
 diff --git a/include/image.mk b/include/image.mk
-index 1703c39797..295844af09 100644
+index 1703c397971ef67583a2e92691a17491a9a40cf9..295844af098e221a9ac541317d33e4b4c6929e0a 100644
 --- a/include/image.mk
 +++ b/include/image.mk
 @@ -330,6 +330,10 @@ target-dir-%: FORCE
@@ -22,6 +17,3 @@ index 1703c39797..295844af09 100644
  
  $(KDIR)/root.%: kernel_prepare
  	$(call Image/mkfs/$(word 1,$(target_params)),$(target_params))
--- 
-2.36.1
-
