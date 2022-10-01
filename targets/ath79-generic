@@ -134,6 +134,11 @@ device('enterasys-ws-ap3705', 'enterasys_ws-ap3705i', {
 	factory = false,
 })
 
+-- Extreme Networks
+
+device('extreme-networks-ws-ap3805i', 'extreme-networks_ws-ap3805i', {
+	factory = false,
+})
 
 -- Extreme Networks
 
