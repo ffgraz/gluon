@@ -14,8 +14,6 @@ local ATH10K_PACKAGES_QCA9887 = {
 	'-ath10k-firmware-qca9887-ct',
 }
 
-local ATH10K_PACKAGES_QCA9557 = ATH10K_PACKAGES_QCA9880
-
 local ATH10K_PACKAGES_QCA9888 = {}
 
 -- ALFA NETWORK
@@ -113,13 +111,6 @@ device('d-link-dir825b1', 'dlink_dir-825-b1', {
 
 device('enterasys-ws-ap3705', 'enterasys_ws-ap3705i', {
 	factory = false,
-})
-
--- Extreme Networks
-
-device('extreme-networks-ap3805i', 'extreme-networks_ws-ap3805i', {
-	factory = false,
-	packages = ATH10K_PACKAGES_QCA9557,
 })
 
 -- Extreme Networks
