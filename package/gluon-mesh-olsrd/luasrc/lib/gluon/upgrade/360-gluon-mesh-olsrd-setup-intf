@@ -219,6 +219,20 @@ for _, _olsr in ipairs({
 			})
 		end
 
+		uci:foreach(uci_name, 'userconfig', function(config)
+			local section_name = config['.name']
+
+			for k, v in pairs(config) do
+				if k:find("^\\.") == nil then
+					if not config['.anonymous'] then
+						uci:set(uci_name, section_name:sub(2), k, v)
+					else
+						uci:set(uci_name, uci:get_first(uci_name, 'olsrd'), k, v)
+					end
+				end
+			end
+		end)
+
 		uci:section('firewall', 'rule', 'allow_olsr' .. _olsr_ip .. '_mesh', {
 			src = 'mesh',
 			dest_port = _olsr_port,
@@ -257,7 +271,7 @@ if site.mesh.olsrd.v2() ~= nil and site.mesh.olsrd.v2.enable(false) then
 	end
 
 	uci:delete_all('olsrd2', 'global')
-	uci:section('olsrd2', 'global', nil, olsr2Config)
+	uci:section('olsrd2', 'global', 'global', olsr2Config)
 
 	uci:delete_all('olsrd2', 'telnet')
 	uci:section('olsrd2', 'telnet', 'telnet', {
@@ -321,6 +335,20 @@ if site.mesh.olsrd.v2() ~= nil and site.mesh.olsrd.v2.enable(false) then
 		ifname = { 'loopback' },
 		bindto = addrs,
 	})
+
+	uci:foreach('olsrd2', 'userconfig', function(config)
+		local section_name = config['.name']
+
+		for k, v in pairs(config) do
+			if k:find("^\\.") == nil then
+				if not config['.anonymous'] then
+					uci:set('olsrd2', section_name:sub(2), k, v)
+				else
+					uci:set('olsrd2', uci:get_first('olsrd2', 'olsrv2'), k, v)
+				end
+			end
+		end
+	end)
 
 	uci:section('firewall', 'rule', 'allow_olsr2_mesh', {
 		src = 'mesh',
