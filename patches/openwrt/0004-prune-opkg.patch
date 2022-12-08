@@ -1,19 +1,30 @@
-From: Maciej Krüger <mkg20001@gmail.com>
-Date: Fri, 10 Jun 2022 20:21:02 +0200
-Subject: prune opkg
+From cfca12fc74429407d08444f9a8b8fc439a59d5f4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
+Date: Thu, 8 Dec 2022 22:12:12 +0100
+Subject: [PATCH] prune opkg
+
+---
+ include/image.mk | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
 diff --git a/include/image.mk b/include/image.mk
-index 1703c397971ef67583a2e92691a17491a9a40cf9..295844af098e221a9ac541317d33e4b4c6929e0a 100644
+index c7a2e082ab..5d9ba180bc 100644
 --- a/include/image.mk
 +++ b/include/image.mk
-@@ -330,6 +330,10 @@ target-dir-%: FORCE
+@@ -330,6 +330,13 @@ target-dir-%: FORCE
  	-$(CP) -T $(mkfs_cur_target_dir).opkg/ $(mkfs_cur_target_dir)/etc/opkg/
  	rm -rf $(mkfs_cur_target_dir).opkg $(mkfs_cur_target_dir).conf
  	$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files)
-+	rm -rf $(mkfs_cur_target_dir)/usr/lib/opkg
-+	rm -rf $(mkfs_cur_target_dir)/bin/opkg
-+	rm -rf $(mkfs_cur_target_dir)/usr/sbin/opkg-key
-+	rm -rf $(mkfs_cur_target_dir)/etc/opkg
++	$(ifneq ($(GLUON_DEBUG),1), \
++	$(ifneq ($(KEEP_OPKG),1), \
++		rm -rf $(mkfs_cur_target_dir)/usr/lib/opkg \
++		rm -rf $(mkfs_cur_target_dir)/bin/opkg \
++		rm -rf $(mkfs_cur_target_dir)/usr/sbin/opkg-key \
++		rm -rf $(mkfs_cur_target_dir)/etc/opkg \
++	))
  
  $(KDIR)/root.%: kernel_prepare
  	$(call Image/mkfs/$(word 1,$(target_params)),$(target_params))
+-- 
+2.38.1
+
