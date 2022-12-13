@@ -219,6 +219,20 @@
 				parent.parentNode.style.display = (parent.options.length <= 1) ? 'none' : '';
 		}
 
+		var nodes = document.querySelectorAll('[data-exclusive-with]');
+		for (var i = 0, node; (node = nodes[i]) !== undefined; i++) {
+			var excusive_with = JSON.parse(node.getAttribute('data-exclusive-with'));
+
+			node.disabled = false;
+			for (let list_item of excusive_with) {
+				var el = document.getElementById(node.name + '.' + list_item);
+				node.disabled |= el.checked;
+			}
+
+			if (node.disabled)
+				node.checked = false;
+		}
+
 		if (state) {
 			update();
 		}
@@ -532,6 +546,7 @@
 
 			init_dynlist(node, attr);
 		}
+
 
 		update();
 	})();

@@ -3,6 +3,7 @@
 -- Licensed to the public under the Apache License 2.0.
 
 local util = require "gluon.web.util"
+local gluon_util = require "gluon.util"
 
 local datatypes  = require "gluon.web.model.datatypes"
 local class      = util.class
@@ -358,6 +359,89 @@ function ListValue:validate()
 	end
 
 	return false
+end
+
+
+local MultiListValue = class(AbstractValue)
+M.MultiListValue = MultiListValue
+
+function MultiListValue:__init__(...)
+	AbstractValue.__init__(self, ...)
+	self.subtemplate  = "model/mlvalue"
+
+	self.size = 1
+
+	self.keys = {}
+	self.entry_list = {}
+end
+
+function MultiListValue:value(key, val, ...)
+	key = tostring(key)
+
+	if self.keys[key] then
+		return
+	end
+	self.keys[key] = true
+	self.exclusions = {}
+
+	val = val or key
+	table.insert(self.entry_list, {
+		key = key,
+		value = tostring(val),
+		deps = {...},
+	})
+end
+
+function MultiListValue:entries()
+	local ret = {unpack(self.entry_list)}
+
+	return ret
+end
+
+function MultiListValue:validate()
+	for _, val in ipairs(self.data) do
+		if not self.keys[val] then
+			return false
+		end
+	end
+
+	for key, exclusive_with in pairs(self.exclusions) do
+		if gluon_util.contains(self.data, key) then
+			for _, exclusion in ipairs(exclusive_with) do
+				if gluon_util.contains(self.data, exclusion) then
+					return false
+				end
+			end
+		end
+	end
+
+	return true
+end
+
+function MultiListValue:exclusive(a, b)
+	if not self.exclusions[a] then
+		self.exclusions[a] = {}
+	end
+	if not self.exclusions[b] then
+		self.exclusions[b] = {}
+	end
+
+	gluon_util.add_to_set(self.exclusions[a], b)
+	gluon_util.add_to_set(self.exclusions[b], a)
+end
+
+function MultiListValue:defaultvalue()
+	local value = self.default
+
+	if type(value) == "table" then
+		return value
+	else
+		return { value }
+	end
+end
+
+function MultiListValue:formvalue(http)
+	return http:formvaluetable(self:id())
 end
 
 
