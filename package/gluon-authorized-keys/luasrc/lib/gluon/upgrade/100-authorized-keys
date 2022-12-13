@@ -3,6 +3,11 @@
 local site = require 'gluon.site'
 local file = '/etc/dropbear/authorized_keys'
 
+local uci = require('simple-uci').cursor()
+if uci:get_bool('gluon', 'core', 'disable_site_keys') then
+  return
+end
+
 local keys = {}
 
 local function load_keys()

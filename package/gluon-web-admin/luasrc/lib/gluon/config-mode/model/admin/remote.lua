@@ -35,6 +35,44 @@ function keys:write(value)
 	end
 end
 
+local file = '/etc/dropbear/authorized_keys'
+local uci = require('simple-uci').cursor()
+local keys = {}
+
+local site_keys = s:option(Flag, "disable_site_keys", translate("Disable and remove site keys"))
+site_keys.default = uci:get_bool('gluon', 'core', 'disable_site_keys')
+
+local function load_keys()
+	for line in io.lines(file) do
+		keys[line] = true
+	end
+end
+
+function site_keys:write(value)
+	-- NOTE: re-adding keys happens automatically if this option is off, so we don't need to take care of that
+	if value and not site_keys.default then
+		pcall(load_keys)
+
+		local f = io.open(file, 'w')
+		local all_site_keys = {}
+		for _, key in ipairs(site.authorized_keys()) do
+			all_site_keys[key] = true
+		end
+
+		for key, _ in pairs(keys) do
+			if not all_site_keys[key] then
+				f:write(key .. '\n')
+			end
+		end
+
+		f:close()
+		keys.default = ""
+	end
+
+	uci:set('gluon', 'core', 'disable_site_keys', value)
+	uci:save('gluon')
+end
+
 local config = site.config_mode.remote_login
 if not config.show_password_form(false) then
 	-- password login is disabled in site.conf
