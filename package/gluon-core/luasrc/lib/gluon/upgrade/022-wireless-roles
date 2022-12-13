@@ -10,6 +10,7 @@ local default_wifi_roles = {
 	["2g"] = {},
 	["5g"] = {},
 	["6g"] = {},
+	["60g"] = {},
 }
 
 -- enable client if it is not disabled
@@ -36,9 +37,15 @@ if site.wifi6.mesh() and not site.wifi6.mesh.disabled(false) then
 	util.add_to_set(default_wifi_roles['6g'], 'mesh')
 end
 
+-- 60 GHz radios only do point-to-point links, so p2p is their default role
+if site.wifi60.p2p() and not site.wifi60.p2p.disabled(false) then
+	util.add_to_set(default_wifi_roles['60g'], 'p2p')
+end
+
 local role_iface_names = {
 	client = 'client_',
 	mesh = 'mesh_',
+	p2p = 'p2p_',
 	private = 'wan_',
 }
 

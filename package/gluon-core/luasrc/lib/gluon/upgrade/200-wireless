@@ -4,12 +4,13 @@ local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
 local site = require 'gluon.site'
 local iwinfo = require 'iwinfo'
+local sysconfig = require 'gluon.sysconfig'
 
 local uci = require('simple-uci').cursor()
 
 uci:delete_all('wireless', 'wifi-iface')
 
-local radio_band_count = {band_2g=0, band_5g=0, band_6g=0}
+local radio_band_count = {band_2g=0, band_5g=0, band_6g=0, band_60g=0}
 
 local function count_band(band)
 	radio_band_count[band] = radio_band_count[band] + 1
@@ -30,6 +31,9 @@ wireless.foreach_radio(uci, function(radio)
 	elseif hwmodes.ax and not hwmodes.ac then
 		-- 6 GHz
 		count_band("band_6g")
+	elseif hwmodes.ad then
+		-- 60 GHz
+		count_band("band_60g")
 	end
 end)
 
@@ -153,6 +157,64 @@ local function configure_mesh(radio, index, mesh_config)
 	})
 end
 
+local function configure_p2p(radio, index, p2p_config)
+	local radio_name = radio['.name']
+	local name = 'p2p_' .. radio_name
+
+	local macfilter = uci:get('wireless', name, 'macfilter')
+	local maclist = uci:get('wireless', name, 'maclist')
+	local suffix = radio_name:match('^radio(%d+)$')
+
+	local ssid = uci:get('wireless', name, 'ssid')
+		or 'gluon-' .. radio.band .. '-p2p-'
+		.. string.sub(string.gsub(sysconfig.primary_mac, ':', ''), 8)
+	local mode = uci:get('wireless', name, 'mode') or 'ap'
+
+	uci:delete('wireless', name)
+
+	if not p2p_config or not suffix then
+		return
+	end
+
+	local macaddr = wireless.get_wlan_mac('p2p', index, radio)
+	if not macaddr then
+		return
+	end
+
+	uci:section('network', 'interface', name, {
+		proto = 'gluon_mesh',
+		ifname = 'p2p' .. suffix,
+	})
+
+	uci:section('wireless', 'wifi-iface', name, {
+		device = radio_name,
+		network = name,
+		ssid = ssid,
+		mode = mode,
+		macaddr = macaddr,
+		ifname = 'p2p' .. suffix,
+		encryption = 'none',
+		macfilter = macfilter,
+		maclist = maclist,
+	})
+end
+
+local function fixup_wan(radio, index)
+	local radio_name = radio['.name']
+	local name = 'wan_' .. radio_name
+
+	if not uci:get('wireless', name) then
+		return
+	end
+
+	local macaddr = wireless.get_wlan_mac('wan_radio', index, radio)
+	if not macaddr then
+		return
+	end
+
+	uci:set('wireless', name, 'macaddr', macaddr)
+end
+
 local function set_channels(radio, radio_name, config)
 	if wireless.preserve_channels(uci) then
 		return
@@ -197,6 +259,7 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	-- now we assign radios to roles
 	local roles = wireless.radio_roles(uci, radio)
 	local enable_mesh = wireless.supports_channel(radio, config.channel()) and util.contains(roles, 'mesh')
+	local enable_p2p = util.contains(roles, 'p2p')
 
 	if band == '2g' then
 		uci:set('wireless', radio_name, 'legacy_rates', false)
@@ -206,6 +269,11 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	elseif band == '6g' then
 		if enable_mesh then
 			configure_mesh(radio, index, config.mesh())
+		end
+	elseif band == '60g' then
+		-- 60 GHz radios carry point-to-point links instead of a mesh
+		if enable_p2p then
+			configure_p2p(radio, index, config.p2p())
 		end
 	elseif band == '5g' then
 		if wireless.is_outdoor(uci) then
@@ -221,6 +289,8 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	end
 
 	uci:set('wireless', radio_name, 'beacon_int', beacon_interval)
+
+	fixup_wan(radio, index)
 end)
 
 

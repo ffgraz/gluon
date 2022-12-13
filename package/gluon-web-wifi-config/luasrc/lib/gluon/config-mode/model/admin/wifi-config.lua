@@ -3,6 +3,7 @@ local uci = require("simple-uci").cursor()
 local site = require 'gluon.site'
 local wireless = require 'gluon.wireless'
 local util = require 'gluon.util'
+local sysconfig = require 'gluon.sysconfig'
 
 local function txpower_list(phy)
 	local list = iwinfo.nl80211.txpwrlist(phy) or { }
@@ -64,6 +65,7 @@ uci:foreach('gluon', 'wireless_band', function(band_config)
 	local band = band_config['.name']
 
 	local is_5ghz = false
+	local is_60ghz = false
 	local title
 
 	if band == 'band_2g' then
@@ -73,17 +75,30 @@ uci:foreach('gluon', 'wireless_band', function(band_config)
 		title = translate("5GHz WLAN")
 	elseif band == 'band_6g' then
 		title = translate("6GHz WLAN")
+	elseif band == 'band_60g' then
+		is_60ghz = true
+		title = translate("60GHz WLAN")
 	else
 		return
 	end
 
 	local p = f:section(Section, title)
 
-	vif_option(p, 'client', band, band_config, translate('Enable client network (access point)'))
+	if is_60ghz then
+		-- 60 GHz radios carry point-to-point links, not a client network
+		-- or an 802.11s mesh; the link's SSID and mode are per radio and
+		-- are configured in the per-radio section below.
+		vif_option(p, 'p2p', band, band_config,
+			translate('Enable point-to-point AP/STA mesh'))
+	else
+		vif_option(p, 'client', band, band_config,
+			translate('Enable client network (access point)'))
 
-	local mesh_vif = vif_option(p, 'mesh', band, band_config, translate("Enable mesh network (802.11s)"))
-	if is_5ghz then
-		table.insert(mesh_vifs_5ghz, mesh_vif)
+		local mesh_vif = vif_option(p, 'mesh', band, band_config,
+			translate("Enable mesh network (802.11s)"))
+		if is_5ghz then
+			table.insert(mesh_vifs_5ghz, mesh_vif)
+		end
 	end
 end)
 
@@ -94,12 +109,36 @@ uci:foreach('wireless', 'wifi-device', function(config)
 		return
 	end
 
+	local radio = config['.name']
+
+	if config.band == '60g' then
+		-- SSID and role of the point-to-point link are per radio
+		local name = 'p2p_' .. radio
+
+		local id = p:option(Value, radio .. '_p2pid',
+			translate('SSID') .. ' (' .. radio .. ')')
+		id.datatype = 'maxlength(32)'
+		id.default = uci:get('wireless', name, 'ssid')
+			or 'g-' .. string.sub(string.gsub(sysconfig.primary_mac, ':', ''), 8)
+		function id:write(data)
+			uci:set('wireless', name, 'ssid', data)
+		end
+
+		local mode = p:option(ListValue, radio .. '_p2pmode',
+			translate('P2P Mode') .. ' (' .. radio .. ')',
+			translate('Master=AP Slave=Station'))
+		mode.default = uci:get('wireless', name, 'mode') or 'ap'
+		mode:value('ap', translate('Master'))
+		mode:value('sta', translate('Slave'))
+		function mode:write(data)
+			uci:set('wireless', name, 'mode', data)
+		end
+	end
+
 	local txpowers = txpower_list(phy)
 	if #txpowers <= 1 then
 		return
 	end
-
-	local radio = config['.name']
 	local tp = p:option(ListValue, radio .. '_txpower', translate("Transmission power") .. ' (' .. radio .. ')')
 	tp.default = uci:get('wireless', radio, 'txpower') or 'default'
 
