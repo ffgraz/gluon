@@ -116,4 +116,9 @@ packages {
 	'-ip6tables-nft',
 	'-iptables-nft',
 	'-kmod-ipt-core',
+	-- old shit that doesnt build
+	'-kmod-fs-antfs',
+	'-kmod-ipt-coova',
+	'-kmod-usb-serial-dmx_usb_module',
+	'-kmod-jool-netfilter',
 }
