@@ -2,6 +2,14 @@
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/license/bsd-2-clause/)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/freifunk-gluon/gluon?sort=semver)](https://github.com/freifunk-gluon/gluon/releases/latest)
 
+# FFGraz Fork
+
+This is a fork of gluon to add olsrd and L3 mesh support.
+
+This is intended to be eventually upstreamed. Currently it's a bit messy and the best documentation of the site config would be the  [ffgraz site](https://github.com/mkg20001/funkfeuer-graz-gluon-site/blob/master/site.conf)
+
+See [the github project](https://github.com/ffgraz/gluon/projects/1?query=is%3Aopen+sort%3Aupdated-desc) for more details
+
 # Gluon
 
 Gluon is a firmware framework to build preconfigured OpenWrt images for public mesh networks.
