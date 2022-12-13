@@ -3,4 +3,5 @@
 . /lib/gluon/autoupdater/lib.sh
 
 
+start_enabled olsrd
 start_enabled olsrd2
