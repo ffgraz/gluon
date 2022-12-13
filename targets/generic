@@ -107,4 +107,9 @@ packages {
 	'-firewall4',
 	'gluon-core',
 	'ip6tables-zz-legacy',
+	-- old shit that doesnt build
+	'-kmod-fs-antfs',
+	'-kmod-ipt-coova',
+	'-kmod-usb-serial-dmx_usb_module',
+	'-kmod-jool-netfilter',
 }
