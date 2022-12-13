@@ -55,7 +55,11 @@ local function is_outdoor()
 end
 
 local function get_channel(radio, config)
-	if radio.band == '5g' and is_outdoor() then
+	local channel
+	if config.channel_adjustable(false) and uci:get_bool('wireless', radio['.name'], 'configured') then
+		-- preserved channel always wins
+		channel = radio.channel
+	elseif radio.band == '5g' and is_outdoor() then
 		-- actual channel will be picked and probed from chanlist
 		return 'auto'
 	end
@@ -291,6 +295,7 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	end
 
 	uci:set('wireless', radio_name, 'beacon_int', beacon_interval)
+	uci:set('wireless', radio_name, 'configured', true)
 
 	fixup_wan(radio, index)
 end)
