@@ -43,12 +43,16 @@ uci:foreach('wireless', 'wifi-device', function(config)
 	local radio = config['.name']
 
 	local is_5ghz = false
+	local is_60ghz = false
 	local title
 	if config.band == '2g' then
 		title = translate("2.4GHz WLAN")
 	elseif config.band == '5g' then
 		is_5ghz = true
 		title = translate("5GHz WLAN")
+	elseif config.band == '60g' then
+		is_60ghz = true
+		title = translate("60Ghz WLAN")
 	else
 		return
 	end
@@ -93,12 +97,41 @@ uci:foreach('wireless', 'wifi-device', function(config)
 		return o
 	end
 
-	vif_option('client', {'client', 'owe'}, translate('Enable client network (access point)'))
+	if not is_60ghz then
+		vif_option('client', {'client', 'owe'}, translate('Enable client network (access point)'))
 		vif_option('ibss',  {'ibss'}, translate("Enable mesh network (IBSS, outdated)"))
 
-	local mesh_vif = vif_option('mesh', {'mesh'}, translate("Enable mesh network (802.11s)"))
-	if is_5ghz then
-		table.insert(mesh_vifs_5ghz, mesh_vif)
+		local mesh_vif = vif_option('mesh', {'mesh'}, translate("Enable mesh network (802.11s)"))
+		if is_5ghz then
+			table.insert(mesh_vifs_5ghz, mesh_vif)
+		end
+	end
+
+	if is_60ghz then
+		local name6 = 'p2p_' .. radio
+		-- leftover todos for 60ghz
+		-- - since client AP on 60ghz makes no sense (and additional APs can't be created due to limit of 1 device)
+		--   a function would be needed to say "device.supports_access_points()" or "device.client_facing()" or similar
+		--   that would return a bool whether to setup & show private AP, client AP, etc options
+		-- - 802.11s on 60ghz may or may not become a thing
+		--   could be handeled dynamically. a toggle to switch between p2p and mesh if driver supports it.
+		local vif = vif_option('p2p', {'p2p'}, translate('Enable point-to-point AP/STA mesh'))
+		local id = p:option(Value, radio .. '_p2pid', translate('SSID'))
+		id.datatype = "maxlength(32)"
+		id.default = uci:get('wireless', name6, 'ssid') or 'g-' .. string.sub(string.gsub(sysconfig.primary_mac, ':', ''), 8)
+		id:depends(vif, true)
+		function id:write(data)
+			uci:set('wireless', name6, 'ssid', data)
+		end
+
+		local mode = p:option(ListValue, radio .. '_p2pmode', translate("P2P Mode"), translate("Master=AP Slave=Station"))
+		mode.default = uci:get('wireless', name6, 'mode') or 'ap'
+		mode:value('ap', translate('Master'))
+		mode:value('sta', translate('Slave'))
+		mode:depends(vif, true)
+		function mode:write(data)
+			uci:set('wireless', name6, 'mode', data)
+		end
 	end
 
 	local phy = wireless.find_phy(config)
