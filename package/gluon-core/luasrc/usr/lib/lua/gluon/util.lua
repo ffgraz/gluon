@@ -147,13 +147,26 @@ function M.get_role_interfaces(uci, role, exclusive)
 	local ret = {}
 
 	local function add(name)
+		local subindex = nil
+
 		-- Interface names with a / prefix refer to sysconfig interfaces
 		-- (lan_ifname/wan_ifname/single_ifname)
 		if string.sub(name, 1, 1) == '/' then
+			subindex = tonumber(string.match(name, "%[(%d+)%]"))
+			if subindex then
+				-- handle something like "/lan[10]":
+				name = string.gsub(name, "%[%d+%]", "")
+			end
+
 			name = sysconfig[string.sub(name, 2) .. '_ifname'] or ''
 		end
+		local i = 0
 		for iface in string.gmatch(name, '%S+') do
-			M.add_to_set(ret, iface)
+			if not subindex or subindex == i then
+				M.add_to_set(ret, iface)
+			end
+
+			i = i + 1
 		end
 	end
 
@@ -186,7 +199,7 @@ end
 -- 6: owe1
 -- 7: wan_radio1 (private WLAN); mesh VPN
 function M.generate_mac(i)
-	if i > 7 or i < 0 then return nil end -- max allowed id (0b111)
+	if i > 15 or i < 0 then return nil end -- max allowed id (0b111)
 
 	local hashed = string.sub(hash.md5(sysconfig.primary_mac), 0, 12)
 	local m1, m2, m3, m4, m5, m6 = string.match(hashed, '(%x%x)(%x%x)(%x%x)(%x%x)(%x%x)(%x%x)')
@@ -201,7 +214,7 @@ function M.generate_mac(i)
 	-- vary on a single hardware interface, since some chips are using
 	-- a hardware MAC filter. (e.g 'rt305x')
 
-	m6 = bit.band(m6, 0xF8) -- zero the last three bits (space needed for counting)
+	m6 = bit.band(m6, 0xF0) -- zero the last four bits (space needed for counting)
 	m6 = m6 + i                   -- add virtual interface id
 
 	return string.format('%02x:%s:%s:%s:%s:%02x', m1, m2, m3, m4, m5, m6)
