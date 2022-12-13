@@ -3,4 +3,5 @@
 . /lib/gluon/autoupdater/lib.sh
 
 
+stop olsrd
 stop olsrd2
