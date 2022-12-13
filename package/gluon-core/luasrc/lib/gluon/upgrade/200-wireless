@@ -292,6 +292,8 @@ wireless.foreach_radio(uci, function(radio, index, config)
 			uci:delete('wireless', radio_name, 'country3')
 			configure_mesh_wireless(radio, index, config)
 		end
+	elseif (band == '60g') then
+		configure_mesh_wireless(radio, index, config, true)
 	end
 
 	uci:set('wireless', radio_name, 'beacon_int', beacon_interval)
