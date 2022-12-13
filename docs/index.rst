@@ -30,6 +30,7 @@ Several Freifunk communities in Germany use Gluon as the foundation of their Fre
   features/multidomain
   features/authorized-keys
   features/roles
+  features/static-ip
   features/vpn
 
 .. toctree::
