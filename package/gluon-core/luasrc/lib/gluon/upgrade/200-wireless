@@ -57,6 +57,13 @@ wireless.foreach_radio(uci, function(radio)
 end)
 
 local function get_channel(radio, config)
+	-- a channel the user picked through the config mode wins over
+	-- anything the site would select
+	if config.channel_adjustable(false)
+			and uci:get_bool('wireless', radio['.name'], 'configured') then
+		return radio.channel
+	end
+
 	if (radio.band == '5g' and wireless.is_outdoor(uci)) or not wireless.supports_channel(radio, config.channel()) then
 		-- actual channel will be picked and probed from chanlist
 		return 'auto'
@@ -289,6 +296,7 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	end
 
 	uci:set('wireless', radio_name, 'beacon_int', beacon_interval)
+	uci:set('wireless', radio_name, 'configured', true)
 
 	fixup_wan(radio, index)
 end)

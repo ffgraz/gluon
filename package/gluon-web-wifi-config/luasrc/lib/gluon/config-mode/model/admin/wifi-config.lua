@@ -156,6 +156,34 @@ uci:foreach('wireless', 'wifi-device', function(config)
 		end
 		uci:set('wireless', radio, 'txpower', data)
 	end
+
+	-- this section is per radio, so the band configuration comes from
+	-- the radio rather than from the band loop above
+	local band_conf = ({
+		['2g'] = site.wifi24,
+		['5g'] = site.wifi5,
+		['6g'] = site.wifi6,
+		['60g'] = site.wifi60,
+	})[config.band]
+
+	if band_conf and band_conf.channel_adjustable(false) then
+		local ch = p:option(ListValue, radio .. '_channel',
+			translate("Channel") .. ' (' .. radio .. ')')
+		ch.default = uci:get('wireless', radio, 'channel')
+
+		local default_channel = band_conf.channel()
+
+		for _, entry in ipairs(iwinfo.nl80211.freqlist(phy)) do
+			ch:value(entry.channel, string.format(
+				entry.channel == default_channel
+					and "%i " .. translate("(default)") or "%i",
+				entry.channel))
+		end
+
+		function ch:write(data)
+			uci:set('wireless', radio, 'channel', data)
+		end
+	end
 end)
 
 
