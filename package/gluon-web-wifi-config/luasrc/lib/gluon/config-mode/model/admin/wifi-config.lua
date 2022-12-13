@@ -2,6 +2,7 @@ local iwinfo = require 'iwinfo'
 local uci = require("simple-uci").cursor()
 local site = require 'gluon.site'
 local wireless = require 'gluon.wireless'
+local sysconfig = require 'gluon.sysconfig'
 
 
 local function txpower_list(phy)
@@ -160,6 +161,34 @@ uci:foreach('wireless', 'wifi-device', function(config)
 			data = nil
 		end
 		uci:set('wireless', radio, 'txpower', data)
+	end
+
+	local conf
+
+	if is_5ghz then
+		conf = site.wifi5
+	elseif is_60ghz then
+		conf = site.wifi60
+	else
+		conf = site.wifi24
+	end
+
+	if conf.channel_adjustable(false) then
+		local ch = p:option(ListValue, radio .. '_channel', translate("Channel"))
+		ch.default = uci:get('wireless', radio, 'channel')
+
+		local defaultChannel = conf.channel()
+
+		local phy = wireless.find_phy(uci:get_all('wireless', radio))
+		local channels = iwinfo.nl80211.freqlist(phy)
+
+		for _, entry in ipairs(channels) do
+			ch:value(entry.channel, string.format(entry.channel == defaultChannel and "%i " .. translate("(default)") or "%i", entry.channel))
+		end
+
+		function ch:write(data)
+			uci:set('wireless', radio, 'channel', data)
+		end
 	end
 end)
 
