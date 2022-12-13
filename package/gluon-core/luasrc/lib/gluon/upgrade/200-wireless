@@ -109,10 +109,56 @@ local function first_non_nil(first, ...)
 end
 
 
-local function delete_ibss(radio_name)
+local function configure_ibss(config, radio, index, suffix, disabled)
+	local radio_name = radio['.name']
 	local name = 'ibss_' .. radio_name
 
 	uci:delete('wireless', name)
+
+	if not config then
+		return
+	end
+
+	local macaddr = wireless.get_wlan_mac(uci, radio, index, 3)
+	if not macaddr then
+		return
+	end
+
+	local ssid = config.ssid
+	local bssid = config.bssid
+
+	if radio.wireless_config.include_channel_in_id then
+		ssid = string.format(ssid, radio.current_channel)
+		bssid = string.format(bssid, radio.current_channel)
+	end
+
+	if config.vlan then
+		uci:section('network', 'interface', name, {
+			ifname = suffix and 'ibss' .. suffix,
+			proto = 'none',
+		})
+
+		uci:section('network', 'interface', name .. '_vlan', {
+			ifname = '@' .. name .. '.' .. config.vlan,
+			proto = 'gluon_mesh',
+		})
+	else
+		uci:section('network', 'interface', name, {
+			proto = 'gluon_mesh',
+			ifname = suffix and 'ibss' .. suffix,
+		})
+	end
+
+	uci:section('wireless', 'wifi-iface', name, {
+		device = radio_name,
+		network = name,
+		mode = 'adhoc',
+		macaddr = macaddr,
+		ssid = ssid,
+		bssid = bssid,
+		ifname = suffix and 'ibss' .. suffix,
+		disabled = disabled,
+	})
 end
 
 local function configure_mesh(config, radio, index, suffix, disabled)
@@ -133,15 +179,22 @@ local function configure_mesh(config, radio, index, suffix, disabled)
 		return
 	end
 
+	local id = config.id
+
+	if radio.wireless_config.include_channel_in_id then
+		id = string.format(id, radio.current_channel)
+	end
+
 	uci:section('network', 'interface', name, {
 		proto = 'gluon_mesh',
+		ifname = suffix and 'mesh' .. suffix,
 	})
 
 	uci:section('wireless', 'wifi-iface', name, {
 		device = radio_name,
 		network = name,
 		mode = 'mesh',
-		mesh_id = config.id,
+		mesh_id = id,
 		mesh_fwding = false,
 		macaddr = macaddr,
 		mcast_rate = config.mcast_rate,
@@ -215,12 +268,10 @@ local function configure_mesh_wireless(radio, index, config, disabled)
 	local radio_name = radio['.name']
 	local suffix = radio_name:match('^radio(%d+)$')
 
-	configure_mesh(config.mesh(), radio, index, suffix,
-		first_non_nil(
-			disabled,
-			is_disabled('mesh_' .. radio_name),
-			config.mesh.disabled(false)
-		)
+	local ibss_disabled = is_disabled('ibss_' .. radio_name)
+	local mesh_disabled = is_disabled('p2p_' .. radio_name)
+	local mesh_disabled = is_disabled('mesh_' .. radio_name)
+
 	if radio.band == '60g' then
 		configure_p2p(config.mesh(), radio, index, suffix,
 			first_non_nil(
@@ -230,12 +281,25 @@ local function configure_mesh_wireless(radio, index, config, disabled)
 			)
 	)
 	else
+		configure_ibss(config.ibss(), radio, index, suffix,
+			first_non_nil(
+				ibss_disabled,
+				mesh_disabled,
+				config.ibss.disabled(false)
+			)
+		)
+		configure_mesh(config.mesh(), radio, index, suffix,
+			first_non_nil(
+				mesh_disabled,
+				ibss_disabled,
+				config.mesh.disabled(false)
+			)
+		)
+	end
 end
 
 wireless.foreach_radio(uci, function(radio, index, config)
 	local radio_name = radio['.name']
-
-	delete_ibss(radio_name)
 
 	if not config() then
 		uci:set('wireless', radio_name, 'disabled', true)
@@ -256,6 +320,9 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	uci:set('wireless', radio_name, 'channel', channel)
 	uci:set('wireless', radio_name, 'htmode', htmode)
 	uci:set('wireless', radio_name, 'country', site.regdom())
+
+	radio.current_channel = channel
+	radio.wireless_config = config
 
 	uci:delete('wireless', radio_name, 'supported_rates')
 	uci:delete('wireless', radio_name, 'basic_rate')
@@ -293,7 +360,12 @@ end)
 
 
 if uci:get('system', 'rssid_wlan0') then
-	uci:set('system', 'rssid_wlan0', 'dev', 'mesh0')
+	if uci:get('wireless', 'mesh_radio0') then
+		uci:set('system', 'rssid_wlan0', 'dev', 'mesh0')
+	else
+		uci:set('system', 'rssid_wlan0', 'dev', 'ibss0')
+	end
+
 	uci:save('system')
 end
 
