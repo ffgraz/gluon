@@ -4,6 +4,7 @@ local uci = require('simple-uci').cursor()
 local site = require 'gluon.site'
 local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
+local sysconfig = require 'gluon.sysconfig'
 local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
 local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
 local client_interfaces = util.get_role_interfaces(uci, 'client')
@@ -38,8 +39,10 @@ end
 -- get all mesh radios and mesh lans and then add them to olsrd
 wireless.foreach_radio(uci, function(radio, _, _)
 	local radio_name = radio['.name']
-	table.insert(intf.radio_mesh, 'mesh_' .. radio_name)
+		table.insert(intf.radio_mesh, 'mesh_' .. radio_name)
 end)
+
+local vpn_mesh = false
 
 if pcall(function() require 'gluon.mesh-vpn' end) then
 	local vpn_core = require 'gluon.mesh-vpn'
@@ -48,6 +51,7 @@ if pcall(function() require 'gluon.mesh-vpn' end) then
 		-- mesh_vpn is a interface that has the right ifname
 		-- we can't use mesh-vpn (dash instead of underscore) since it's not a uci interface
 		table.insert(intf.vpn_mesh, 'mesh_vpn')
+		vpn_mesh = true
 	end
 end
 
@@ -71,7 +75,6 @@ end
 if has_other_mesh then
 	table.insert(intf.wired_mesh, 'mesh_other')
 end
-
 uci:delete_all('olsrd2', 'interface')
 
 if site.mesh.olsrd.v2.enable(true) then
@@ -113,8 +116,8 @@ if site.mesh.olsrd.v2.enable(true) then
 		lan = cfg.lan()
 	end
 
-	table.insert(addrs, '-127.0.0.1/8')
-	table.insert(addrs, '-::1/128')
+		table.insert(addrs, '-127.0.0.1/8')
+		table.insert(addrs, '-::1/128')
 
 	table.insert(addrs, 'default_accept')
 
