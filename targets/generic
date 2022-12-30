@@ -86,6 +86,7 @@ packages {
 	'-kmod-ipt-offload',
 	'-kmod-nft-offload',
 	'-libustream-wolfssl',
+	'-opkg',
 	'-libwolfssl',
 	'-odhcpd-ipv6only',
 	'-ppp',
