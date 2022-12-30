@@ -129,9 +129,10 @@ static json_object * olsr2_get_addresses (void) {
 	json_object *origs = json_object_object_get(resp, "originator");
 
 	for (int i = 0; i < json_object_array_length(origs); i++) {
-		struct json_object *el = json_object_array_get_idx(origs, i);
-		if (json_object_get_string(el)[0] != "-"[0]) {
-			json_object_array_add(out, el);
+		json_object *el = json_object_array_get_idx(origs, i);
+		json_object *orig = json_object_object_get(el, "originator");
+		if (json_object_get_string(orig)[0] != "-"[0]) {
+			json_object_array_add(out, orig);
 		}
 	}
 
@@ -305,13 +306,13 @@ struct json_object * olsr2_get_interfaces (void) {
 
 		json_object_object_add(intf, "mac", json_object_object_get(el, "if_mac"));
 
-		if (json_object_get_string(json_object_object_get(intf, "v4"))[0] != "-"[0]) {
+		if (json_object_get_string(json_object_object_get(el, "if_bindto_v4"))[0] != "-"[0]) {
 			json_object_object_add(intf, "v4", json_object_object_get(el, "if_bindto_v4"));
 		} else {
 			json_object_object_add(intf, "v4", json_object_new_null());
 		}
 
-		if (json_object_get_string(json_object_object_get(intf, "v6"))[0] != "-"[0]) {
+		if (json_object_get_string(json_object_object_get(el, "if_bindto_v6"))[0] != "-"[0]) {
 			json_object_object_add(intf, "v6", json_object_object_get(el, "if_bindto_v6"));
 		} else {
 			json_object_object_add(intf, "v6", json_object_new_null());
