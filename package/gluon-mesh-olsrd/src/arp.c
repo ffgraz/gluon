@@ -372,7 +372,7 @@ char * read_arp(int fd, struct arp_cache * res)
           arp_resp->sender_mac[4],
           arp_resp->sender_mac[5]);
 
-    sprintf(res->hwAddr, "%02X:%02X:%02X:%02X:%02X:%02X",
+    sprintf(res->hwAddr, "%02x:%02x:%02x:%02x:%02x:%02x",
           arp_resp->sender_mac[0],
           arp_resp->sender_mac[1],
           arp_resp->sender_mac[2],
