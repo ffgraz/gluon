@@ -45,6 +45,8 @@ struct json_object * make_safe(const char * name) {
 
 	json_object * root = json_object_from_fd(fileno(fp));
 
+	pclose(fp);
+
   return root;
 }
 
