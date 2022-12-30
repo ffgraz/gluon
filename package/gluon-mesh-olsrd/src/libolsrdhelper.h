@@ -54,3 +54,4 @@ int olsr2_get_nodeinfo_raw(const char *cmd, char **out);
 
 struct json_object * olsr1_get_neigh(void);
 struct json_object * olsr2_get_neigh(void);
+void merge_neighs(json_object * out, json_object * neighs, char * version);

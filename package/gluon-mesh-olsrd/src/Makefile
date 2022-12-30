@@ -18,14 +18,14 @@ FILES_HELPER = $(SOURCES_HELPER) libolsrdhelper.h uclient.h
 SOURCES_RESPONDD = respondd.c respondd-nodeinfo.c respondd-neighbours.c
 FILES_RESPONDD = $(SOURCES_RESPONDD) respondd-common.h
 
-SOURCES_DEBUG = olsrd-debug.c respondd.c respondd-nodeinfo.c respondd-neighbours.c
-FILES_DEBUG = $(SOURCES_DEBUG) respondd-common.h
+SOURCES_DEBUG = olsrd-debug.c
+FILES_DEBUG = $(SOURCES_DEBUG)
 
 SOURCES_LUA = olsrd.c
 FILES_LUA = $(SOURCES_LUA)
 
 respondd.so: libolsrdhelper.so $(FILES_RESPONDD)
-	$(CC) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -fvisibility=hidden -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper -luci
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -fvisibility=hidden -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper -luci
 
 libolsrdhelper.so: libolsrdhelper.h libolsrdhelper.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(SOURCES_HELPER) $(LDLIBS) -lgluonutil -luclient
@@ -34,4 +34,4 @@ olsrd.so: libolsrdhelper.so $(FILES_LUA)
 	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -o $@ $(SOURCES_LUA) $(LDLIBS) -lgluonutil -lolsrdhelper -luci -llua-jsonc
 
 olsrd-debug: libolsrdhelper.so $(FILES_DEBUG)
-	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -o $@ $(SOURCES_DEBUG) $(LDLIBS) -lgluonutil -lolsrdhelper -luci -llua-jsonc
+	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -fPIE -I. -L. -o $@ $(SOURCES_DEBUG) $(LDLIBS) -lgluonutil -lolsrdhelper -luci -llua-jsonc -llua

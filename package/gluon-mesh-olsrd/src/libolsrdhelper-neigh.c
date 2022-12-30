@@ -104,7 +104,7 @@ struct arp_cache * read_arp () {
 
 		prev = current;
 	}
-    
+
 cleanup:
 	cleanup_arp_cache(first);
 
@@ -128,6 +128,57 @@ char * resolve_mac(const struct arp_cache * cache, const char * intf, const char
 	}
 
 	return NULL;
+}
+
+void merge_neighs(json_object * out, json_object * neighs, char * version) {
+	json_object_object_foreach(neighs, mac, neighbour_original) {
+		json_object * neighbour = json_object_object_get(out, mac);
+
+		if (!neighbour) {
+			neighbour = json_object_new_object();
+			json_object_object_add(out, mac, neighbour);
+		}
+
+    json_object_object_foreach(neighbour_original, key, new) {
+			json_object * cur = json_object_object_get(neighbour, key);
+
+			if (!strcmp(key, "tq")) {
+				if (cur) {
+					json_object_object_add(
+						neighbour,
+						"tq",
+						json_object_new_double(
+							(json_object_get_double(cur) + json_object_get_double(new)) / 2
+						)
+					);
+				} else {
+					json_object_object_add(neighbour, "tq", new);
+				}
+			} else if (!strcmp(key, "ip")) {
+				char * str = malloc(10);
+				if (!str) {
+					return;
+				}
+				sprintf(str, "%s_%s", version, key);
+
+				json_object_object_add(neighbour, str, new);
+			} else if (!strcmp(key, "best")) {
+				if (cur) {
+					json_object_object_add(
+						neighbour,
+						"best",
+						json_object_new_boolean(
+							json_object_get_boolean(cur) || json_object_get_boolean(new)
+						)
+					);
+				} else {
+					json_object_object_add(neighbour, "best", new);
+				}
+			} else {
+				json_object_object_add(neighbour, key, new);
+			}
+		}
+	}
 }
 
 struct json_object * olsr1_get_neigh(void) {
@@ -208,10 +259,13 @@ struct json_object * olsr1_get_neigh(void) {
 		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
 
-		json_object_object_add(neigh, "etx", json_object_object_get(link, "etx"));
-		json_object_object_add(neigh, "ip4", json_object_object_get(link, "remoteIP"));
+    const double linkQuality = json_object_get_double(json_object_object_get(link, "linkQuality"));
+    const double neighborLinkQuality = json_object_get_double(json_object_object_get(link, "neighborLinkQuality"));
 
-		json_object_object_add(neigh, "tq", json_object_object_get(link, "linkQuality"));
+		json_object_object_add(neigh, "etx", json_object_new_double(1 / (linkQuality * neighborLinkQuality)));
+		json_object_object_add(neigh, "ip", json_object_object_get(link, "remoteIP"));
+
+		json_object_object_add(neigh, "tq", json_object_new_double(255 * (linkQuality * neighborLinkQuality)));
 
 		char * mac = resolve_mac(
 			cache,
