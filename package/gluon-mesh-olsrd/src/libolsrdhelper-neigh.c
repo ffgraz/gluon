@@ -24,111 +24,8 @@
 */
 
 #include "libolsrdhelper.h"
-
-// adapted from https://codereview.stackexchange.com/a/58107/130114
-
 #include <stdio.h>
-
-/**
- * Macros to turn a numeric macro into a string literal.  See
- * https://gcc.gnu.org/onlinedocs/cpp/Stringification.html
- */
-#define xstr(s) str(s)
-#define str(s) #s
-
-#define ARP_CACHE       "/proc/net/arp"
-#define ARP_STRING_LEN  1023
-#define ARP_BUFFER_LEN  (ARP_STRING_LEN + 1)
-
-/* Format for fscanf() to read the 1st, 4th, and 6th space-delimited fields */
-#define ARP_LINE_FORMAT "%" xstr(ARP_STRING_LEN) "s %*s %*s " \
-                        "%" xstr(ARP_STRING_LEN) "s %*s " \
-                        "%" xstr(ARP_STRING_LEN) "s"
-
-struct arp_cache {
-  char ipAddr[ARP_BUFFER_LEN];
-  char hwAddr[ARP_BUFFER_LEN];
-  char device[ARP_BUFFER_LEN];
-  struct arp_cache * next;
-};
-
-void cleanup_arp_cache (struct arp_cache * cache) {
-	struct arp_cache * del;
-
-	while(cache) {
-		del = cache;
-		cache = del->next;
-		free(del);
-	}
-}
-
-struct arp_cache * read_arp () {
-	FILE *arpCache = fopen(ARP_CACHE, "r");
-	if (!arpCache) {
-		perror("Arp Cache: Failed to open file \"" ARP_CACHE "\"");
-		return NULL;
-	}
-
-	/* Ignore the first line, which contains the header */
-	char header[ARP_BUFFER_LEN];
-	if (!fgets(header, sizeof(header), arpCache)) {
-		return NULL;
-	}
-
-	struct arp_cache * first = NULL;
-	struct arp_cache * prev = first;
-	struct arp_cache * current = first;
-
-	while(true) {
-		current = malloc(sizeof(struct arp_cache));
-		current->next = NULL;
-
-		if (!current) {
-			goto cleanup;
-		}
-
-		if (!first) {
-			first = current;
-		}
-
-		if (fscanf(arpCache, ARP_LINE_FORMAT, current->ipAddr, current->hwAddr, current->device) != 3) {
-			fclose(arpCache);
-			free(current);
-
-			return first;
-		}
-
-		if (prev) {
-			prev->next = current;
-		}
-
-		prev = current;
-	}
-
-cleanup:
-	cleanup_arp_cache(first);
-
-	return NULL;
-}
-
-char * resolve_mac(const struct arp_cache * cache, const char * intf, const char * ip)
-{
-	while(cache) {
-		if (!strcmp(&cache->ipAddr, ip) && !strcmp(&cache->device, intf)) {
-			char * out = malloc(ARP_BUFFER_LEN);
-			if (!out) {
-				return NULL;
-			}
-
-			strcpy(out, &cache->hwAddr);
-			return out;
-		}
-
-		cache = cache->next;
-	}
-
-	return NULL;
-}
+#include "arp.h"
 
 void merge_neighs(json_object * out, json_object * neighs, char * version) {
 	json_object_object_foreach(neighs, mac, neighbour_original) {
@@ -196,7 +93,7 @@ struct json_object * olsr1_get_neigh(void) {
 	// note that we run on the assumption that we've already commounicated with this ip,
   // otherwise we just ping it
 
-	struct arp_cache * cache = read_arp();
+	struct arp_cache * cache = read_arp_cache();
 	if (!cache) {
 		return NULL;
 	}
@@ -270,30 +167,15 @@ struct json_object * olsr1_get_neigh(void) {
 		char * mac = resolve_mac(
 			cache,
 			json_object_get_string(json_object_object_get(link, "ifName")),
-			json_object_get_string(json_object_object_get(link, "remoteIP"))
+			json_object_get_string(json_object_object_get(link, "remoteIP")),
+      true
 		);
 
 		if (!mac) {
-      char cmd[50];
-      sprintf(cmd, "ping -c1 -w1 %s >/dev/null 2>/dev/null", json_object_object_get(link, "remoteIP"));
-      system(cmd);
+      printf("no mac for %s %s\n", json_object_get_string(json_object_object_get(link, "ifName")),
+			json_object_get_string(json_object_object_get(link, "remoteIP")));
 
-      struct arp_cache * last = cache;
-      while(last->next) {
-        last = last->next;
-      }
-      // append
-      last->next = read_arp();
-
-      mac = resolve_mac(
-  			cache,
-  			json_object_get_string(json_object_object_get(link, "ifName")),
-  			json_object_get_string(json_object_object_get(link, "remoteIP"))
-  		);
-
-      if (!mac) {
-        continue;
-      }
+      continue;
 		}
 
 		json_object_object_add(out, mac, neigh);
