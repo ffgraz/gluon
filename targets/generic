@@ -101,6 +101,7 @@ packages {
 	'-libustream-wolfssl',
 	'-libwolfssl',
 	'-mbedtls',
+	'-opkg',
 	'-odhcpd-ipv6only',
 	'-ppp',
 	'-ppp-mod-pppoe',
