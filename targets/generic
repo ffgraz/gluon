@@ -99,6 +99,7 @@ packages {
 	'-kmod-nft-offload',
 	'-libustream-mbedtls20201210',
 	'-libmbedtls12',
+	'-opkg',
 	'-odhcpd-ipv6only',
 	'-ppp',
 	'-ppp-mod-pppoe',
