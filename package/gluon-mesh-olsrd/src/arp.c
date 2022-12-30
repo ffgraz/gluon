@@ -260,7 +260,7 @@ int get_if_info(const char *ifname, uint32_t *ip, char *mac, int *ifindex)
         goto out;
     }
     if (strlen(ifname) > (IFNAMSIZ - 1)) {
-        printf("Too long interface name, MAX=%i\n", IFNAMSIZ - 1);
+        err("Too long interface name, MAX=%i\n", IFNAMSIZ - 1);
         goto out;
     }
 
@@ -272,7 +272,7 @@ int get_if_info(const char *ifname, uint32_t *ip, char *mac, int *ifindex)
         goto out;
     }
     *ifindex = ifr.ifr_ifindex;
-    printf("interface index is %d\n", *ifindex);
+    debug("interface index is %d\n", *ifindex);
 
     //Get MAC address of the interface
     if (ioctl(sd, SIOCGIFHWADDR, &ifr) == -1) {
@@ -403,7 +403,7 @@ struct arp_cache * test_arping(const char *ifname, const char *ip) {
     int ret = -1;
     uint32_t dst = inet_addr(ip);
     if (dst == 0 || dst == 0xffffffff) {
-        printf("Invalid source IP\n");
+        err("Invalid source IP\n");
         return 1;
     }
 
@@ -457,13 +457,13 @@ char * resolve_mac(struct arp_cache * cache, const char * intf, const char * ip,
 			return out;
 		}
 
+    if (!cache->next && active_resolve) {
+      cache->next = test_arping(intf, ip);
+      active_resolve = false;
+    }
+
 		cache = cache->next;
 	}
-
-  if (active_resolve) {
-    cache->next = test_arping(intf, ip);
-    if (cache->next) return resolve_mac(cache, intf, ip, false);
-  }
 
 	return NULL;
 }

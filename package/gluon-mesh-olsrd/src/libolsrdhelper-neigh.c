@@ -172,9 +172,6 @@ struct json_object * olsr1_get_neigh(void) {
 		);
 
 		if (!mac) {
-      printf("no mac for %s %s\n", json_object_get_string(json_object_object_get(link, "ifName")),
-			json_object_get_string(json_object_object_get(link, "remoteIP")));
-
       continue;
 		}
 
