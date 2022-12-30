@@ -12,8 +12,8 @@ endif
 CFLAGS += $(shell pkg-config --cflags json-c)
 LDFLAGS += $(shell pkg-config --libs json-c)
 
-SOURCES_HELPER = libolsrdhelper.c libolsrdhelper-neigh.c uclient.c
-FILES_HELPER = $(SOURCES_HELPER) libolsrdhelper.h uclient.h
+SOURCES_HELPER = libolsrdhelper.c libolsrdhelper-neigh.c uclient.c arp.c
+FILES_HELPER = $(SOURCES_HELPER) libolsrdhelper.h uclient.h arp.h
 
 SOURCES_RESPONDD = respondd.c respondd-nodeinfo.c respondd-neighbours.c
 FILES_RESPONDD = $(SOURCES_RESPONDD) respondd-common.h
