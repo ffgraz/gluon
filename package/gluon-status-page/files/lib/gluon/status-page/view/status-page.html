@@ -154,7 +154,7 @@
 					<%- end %>
 					<dt><%:Model%></dt><dd><%| nodeinfo.hardware.model %></dd>
 					<dt><%:Primary MAC address%></dt><dd><%| nodeinfo.network.mac %></dd>
-					<dt><%:IP address%></dt><dd><%= pcdata(table.concat(sorted(nodeinfo.network.addresses), '\n')):gsub('\n', '<br>') %></dd>
+					<dt><%:IP address%></dt><dd><%= pcdata(table.concat(sorted(nodeinfo.network.addresses or {}), '\n')):gsub('\n', '<br>') %></dd>
 					<dt><%:Firmware%></dt><dd><%| nodeinfo.software.firmware.release %></dd>
 					<% if nodeinfo.network.mesh_vpn then -%>
 						<dt><%:Mesh VPN%></dt>
