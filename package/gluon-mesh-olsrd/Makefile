@@ -15,7 +15,7 @@ define Package/gluon-mesh-olsrd
 		@IPV6 \
 		+olsrd \
 		+oonf-olsrd2 \
-		+firewall \
+		+firewall4 \
 		+libgluonutil \
 		+libjson-c \
 		+libubox +libuclient \
