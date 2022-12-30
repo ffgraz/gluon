@@ -29,56 +29,23 @@
 
 #include <json-c/json.h>
 
-#define RESP_SIZE 1024 * 1024 * 1024
-
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
-struct json_object * make_safe(struct json_object * (*fnc)(void)) {
-	char * shared = mmap(NULL, RESP_SIZE, PROT_READ | PROT_WRITE,
-  	MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+struct json_object * make_safe(const char * name) {
+	FILE *fp;
 
-	pid_t pid = fork();
+	char exec[40];
+	sprintf(exec, "%s %s", "/usr/bin/olsr-respondd", name);
 
-	struct json_object *r = NULL;
+  fp = popen(exec, "r");
+  if (fp == NULL) {
+    return NULL;
+  }
 
-	if (pid == 0) {
-		struct json_object *resp = fnc();
-		if (!resp) {
-			_exit(EXIT_FAILURE);
-		}
+	json_object * root = json_object_from_fd(fileno(fp));
 
-		const char *resp_str = json_object_to_json_string(resp);
-		size_t len = strlen(resp_str);
-		if (len > RESP_SIZE) {
-			_exit(EXIT_FAILURE);
-		}
-
-		memcpy(shared, resp_str, len);
-		_exit(EXIT_SUCCESS);
-	} else {
-		int status;
-
-		if (waitpid(pid, &status, 0) == -1) {
-			goto ret;
-		}
-
-		if (WIFEXITED(status)) {
-			if (WEXITSTATUS(status) == 0) {
-				r = json_tokener_parse(shared);
-			}
-		}
-	}
-
-ret:
-	munmap(shared, RESP_SIZE);
-
-	return r;
+  return root;
 }
 
 __attribute__ ((visibility ("default")))

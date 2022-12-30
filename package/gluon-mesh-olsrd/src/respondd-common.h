@@ -25,12 +25,14 @@
 
 #pragma once
 
-#define make_safe_fnc(name, real_name) \
+#define make_safe_fnc(name, arg) \
 struct json_object * name (void) { \
-	return make_safe(&(real_name)); \
+	return make_safe(&(arg)); \
 }
 
-struct json_object * make_safe(struct json_object * (*fnc)(void));
+struct json_object * make_safe(const char * name);
 
-struct json_object * respondd_provider_nodeinfo(void);
-struct json_object * respondd_provider_neighbours(void);
+struct json_object * respondd_provider_nodeinfo();
+struct json_object * respondd_provider_neighbours();
+struct json_object * real_respondd_provider_nodeinfo();
+struct json_object * real_respondd_provider_neighbours();

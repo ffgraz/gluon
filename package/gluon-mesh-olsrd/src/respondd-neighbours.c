@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct json_object * real_respondd_provider_neighbours(void) {
+struct json_object * real_respondd_provider_neighbours() {
 	struct olsr_info *info;
 
 	struct json_object *ret = json_object_new_object();
@@ -80,4 +80,4 @@ struct json_object * real_respondd_provider_neighbours(void) {
 	return ret;
 }
 
-make_safe_fnc(respondd_provider_neighbours, real_respondd_provider_neighbours)
+make_safe_fnc(respondd_provider_neighbours, "n")
