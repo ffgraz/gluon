@@ -65,14 +65,24 @@ struct json_object * real_respondd_provider_neighbours() {
 			continue;
 		}
 
-		json_object * intf = json_object_object_get(out, ifname);
-
-		if (!intf) {
-			intf = json_object_new_object();
-			json_object_object_add(out, ifname, intf);
+		char *ifaddr = gluonutil_get_interface_address(ifname);
+		if (!ifaddr) {
+			continue;
 		}
 
-		json_object_object_add(intf, mac, neigh);
+		json_object * intf = json_object_object_get(out, ifaddr);
+		if (!intf) {
+			intf = json_object_new_object();
+			json_object_object_add(out, ifaddr, intf);
+		}
+
+		json_object * ifneigh = json_object_object_get(intf, "neighbours");
+		if (!ifneigh) {
+			ifneigh = json_object_new_object();
+			json_object_object_add(intf, "neighbours", ifneigh);
+		}
+
+		json_object_object_add(ifneigh, mac, neigh);
 	}
 
 	json_object_object_add(ret, "batadv", out);
