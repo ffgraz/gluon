@@ -330,7 +330,7 @@ struct json_object * olsr2_get_interfaces (void) {
 	return ret;
 } */
 
-struct json_object * real_respondd_provider_nodeinfo(void) {
+struct json_object * real_respondd_provider_nodeinfo() {
 	struct olsr_info *info;
 
 	struct json_object *ret = json_object_new_object();
@@ -474,4 +474,4 @@ struct json_object * real_respondd_provider_nodeinfo(void) {
 	return ret;
 }
 
-make_safe_fnc(respondd_provider_nodeinfo, real_respondd_provider_nodeinfo)
+make_safe_fnc(respondd_provider_nodeinfo, "i")
