@@ -156,3 +156,12 @@ msgstr "nicht verbunden"
 
 #~ msgid "Gateway Nexthop"
 #~ msgstr "Gateway Nexthop"
+
+msgid "running"
+msgstr "läuft"
+
+msgid "yes"
+msgstr "ja"
+
+msgid "no"
+msgstr "nein"
