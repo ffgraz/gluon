@@ -194,7 +194,7 @@ struct json_object * olsr1_get_neigh(void) {
 	// but since it's IP we can just do ARP
 
 	// note that we run on the assumption that we've already commounicated with this ip,
-	// because of the way olsr1 works, so we can just ask the cache
+  // otherwise we just ping it
 
 	struct arp_cache * cache = read_arp();
 	if (!cache) {
@@ -272,8 +272,28 @@ struct json_object * olsr1_get_neigh(void) {
 			json_object_get_string(json_object_object_get(link, "ifName")),
 			json_object_get_string(json_object_object_get(link, "remoteIP"))
 		);
+
 		if (!mac) {
-			goto cleanup;
+      char cmd[50];
+      sprintf(cmd, "ping -c1 -w1 %s >/dev/null 2>/dev/null", json_object_object_get(link, "remoteIP"));
+      system(cmd);
+
+      struct arp_cache * last = cache;
+      while(last->next) {
+        last = last->next;
+      }
+      // append
+      last->next = read_arp();
+
+      mac = resolve_mac(
+  			cache,
+  			json_object_get_string(json_object_object_get(link, "ifName")),
+  			json_object_get_string(json_object_object_get(link, "remoteIP"))
+  		);
+
+      if (!mac) {
+        continue;
+      }
 		}
 
 		json_object_object_add(out, mac, neigh);
