@@ -118,6 +118,8 @@ packages {
 	'-kmod-nft-offload',
 	'-libustream-mbedtls',
 	'-libmbedtls',
+	'-libustream-wolfssl',
+	'-libwolfssl',
 	'-odhcpd-ipv6only',
 	'-ppp',
 	'-ppp-mod-pppoe',
