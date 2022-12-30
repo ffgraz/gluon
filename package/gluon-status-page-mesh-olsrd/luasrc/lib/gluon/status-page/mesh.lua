@@ -5,6 +5,8 @@ return {
 	-- 2) human-readable key (not translatable yet)
 	-- 3) value suffix (optional)
 	attrs = {
-		{'etx', 'Quality', ' '},
+		{'etx', 'Quality (ETX)', ' '},
+		{'olsr1_ip', 'OLSRv1 IP', ' '},
+		{'olsr2_ip', 'OLSRv2 IP', ' '},
 	},
 }
