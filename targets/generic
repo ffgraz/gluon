@@ -105,9 +105,13 @@ packages {
 	'-wpad-basic',
 	'-wpad-basic-wolfssl',
 	'gluon-core',
+	'-iptables',
 	'-nftables',
 	'nftables-json',
 	'-xtables-legacy',
+	'ip6tables-nft',
+	'iptables-nft',
+	'-kmod-ipt-core',
 	-- old shit that doesnt build
 	'-kmod-fs-antfs',
 	'-kmod-ipt-coova',
