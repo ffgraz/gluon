@@ -1,6 +1,6 @@
-all: respondd.so libolsrdhelper.so olsrd.so
+all: respondd.so libolsrdhelper.so olsrd.so olsrd-debug
 
-CFLAGS += -Wall -D_GNU_SOURCE
+CFLAGS += -Wall -D_GNU_SOURCE -g
 
 ifeq ($(origin PKG_CONFIG), undefined)
   PKG_CONFIG = pkg-config
@@ -18,8 +18,8 @@ FILES_HELPER = $(SOURCES_HELPER) libolsrdhelper.h uclient.h
 SOURCES_RESPONDD = respondd.c respondd-nodeinfo.c respondd-neighbours.c
 FILES_RESPONDD = $(SOURCES_RESPONDD) respondd-common.h
 
-SOURCES_CLI = olsrd-cli.c
-FILES_CLI = $(SOURCES_CLI)
+SOURCES_DEBUG = olsrd-debug.c respondd.c respondd-nodeinfo.c respondd-neighbours.c
+FILES_DEBUG = $(SOURCES_DEBUG) respondd-common.h
 
 SOURCES_LUA = olsrd.c
 FILES_LUA = $(SOURCES_LUA)
@@ -32,3 +32,6 @@ libolsrdhelper.so: libolsrdhelper.h libolsrdhelper.c
 
 olsrd.so: libolsrdhelper.so $(FILES_LUA)
 	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -o $@ $(SOURCES_LUA) $(LDLIBS) -lgluonutil -lolsrdhelper -luci -llua-jsonc
+
+olsrd-debug: libolsrdhelper.so $(FILES_DEBUG)
+	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -o $@ $(SOURCES_DEBUG) $(LDLIBS) -lgluonutil -lolsrdhelper -luci -llua-jsonc
