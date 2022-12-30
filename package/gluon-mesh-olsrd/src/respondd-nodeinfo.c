@@ -59,7 +59,7 @@ static json_object * olsr2_get_version (void) {
 	if (olsr2_get_nodeinfo("systeminfo jsonraw version", &resp))
 		return NULL;
 
-	return json_object_object_get(json_object_object_get(resp, "version"), "version_text");
+	return json_object_object_get(json_object_array_get_idx(json_object_object_get(resp, "version"), 0), "version_text");
 }
 
 static json_object * olsr1_get_addresses (void) {
