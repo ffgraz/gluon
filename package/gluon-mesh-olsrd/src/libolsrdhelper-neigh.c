@@ -25,18 +25,136 @@
 
 #include "libolsrdhelper.h"
 
+// adapted from https://codereview.stackexchange.com/a/58107/130114
+
+#include <stdio.h>
+
+/**
+ * Macros to turn a numeric macro into a string literal.  See
+ * https://gcc.gnu.org/onlinedocs/cpp/Stringification.html
+ */
+#define xstr(s) str(s)
+#define str(s) #s
+
+#define ARP_CACHE       "/proc/net/arp"
+#define ARP_STRING_LEN  1023
+#define ARP_BUFFER_LEN  (ARP_STRING_LEN + 1)
+
+/* Format for fscanf() to read the 1st, 4th, and 6th space-delimited fields */
+#define ARP_LINE_FORMAT "%" xstr(ARP_STRING_LEN) "s %*s %*s " \
+                        "%" xstr(ARP_STRING_LEN) "s %*s " \
+                        "%" xstr(ARP_STRING_LEN) "s"
+
+struct arp_cache {
+  char ipAddr[ARP_BUFFER_LEN];
+  char hwAddr[ARP_BUFFER_LEN];
+  char device[ARP_BUFFER_LEN];
+  struct arp_cache * next;
+};
+
+void cleanup_arp_cache (struct arp_cache * cache) {
+	struct arp_cache * del;
+
+	while(cache) {
+		del = cache;
+		cache = del->next;
+		free(del);
+	}
+}
+
+struct arp_cache * read_arp () {
+	FILE *arpCache = fopen(ARP_CACHE, "r");
+	if (!arpCache) {
+		perror("Arp Cache: Failed to open file \"" ARP_CACHE "\"");
+		return NULL;
+	}
+
+	/* Ignore the first line, which contains the header */
+	char header[ARP_BUFFER_LEN];
+	if (!fgets(header, sizeof(header), arpCache)) {
+		return NULL;
+	}
+
+	struct arp_cache * first = NULL;
+	struct arp_cache * prev = first;
+	struct arp_cache * current = first;
+
+	while(true) {
+		current = malloc(sizeof(struct arp_cache));
+		current->next = NULL;
+
+		if (!current) {
+			goto cleanup;
+		}
+
+		if (!first) {
+			first = current;
+		}
+
+		if (fscanf(arpCache, ARP_LINE_FORMAT, current->ipAddr, current->hwAddr, current->device) != 3) {
+			fclose(arpCache);
+			free(current);
+
+			return first;
+		}
+
+		if (prev) {
+			prev->next = current;
+		}
+
+		prev = current;
+	}
+    
+cleanup:
+	cleanup_arp_cache(first);
+
+	return NULL;
+}
+
+char * resolve_mac(const struct arp_cache * cache, const char * intf, const char * ip)
+{
+	while(cache) {
+		if (!strcmp(&cache->ipAddr, ip) && !strcmp(&cache->device, intf)) {
+			char * out = malloc(ARP_BUFFER_LEN);
+			if (!out) {
+				return NULL;
+			}
+
+			strcpy(out, &cache->hwAddr);
+			return out;
+		}
+
+		cache = cache->next;
+	}
+
+	return NULL;
+}
+
 struct json_object * olsr1_get_neigh(void) {
 	json_object *resp;
-  int error = olsr1_get_nodeinfo("links", &resp);
+	int error = olsr1_get_nodeinfo("links", &resp);
 
-  if (error) {
-    return NULL;
-  }
+	if (error) {
+		return NULL;
+	}
 
-  json_object *out = json_object_new_object();
+	// olsr1 does not give us the mac that the other side uses
+	// this is bad, since macs are the magic uuids in gluon
+	// but since it's IP we can just do ARP
 
-  if (!out)
-    return NULL;
+	// note that we run on the assumption that we've already commounicated with this ip,
+	// because of the way olsr1 works, so we can just ask the cache
+
+	struct arp_cache * cache = read_arp();
+	if (!cache) {
+		return NULL;
+	}
+
+	json_object *out = json_object_new_object();
+
+	if (!out) {
+		return NULL;
+	}
 
   /*
 
@@ -76,37 +194,62 @@ struct json_object * olsr1_get_neigh(void) {
 
 	for (int i = 0; i < linkcount; i++) {
 		struct json_object *link = json_object_array_get_idx(links, i);
-		if (!link)
-			return NULL;
+		if (!link) {
+			goto cleanup;
+		}
 
-    struct json_object *neigh = json_object_new_object();
-    if (!neigh)
-      return NULL;
+		struct json_object *neigh = json_object_new_object();
+		if (!neigh) {
+			goto cleanup;
+		}
 
-    json_object_object_add(neigh, "ifname", json_object_object_get(link, "ifName"));
+
+		json_object_object_add(neigh, "ifname", json_object_object_get(link, "ifName"));
 		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
+
 		json_object_object_add(neigh, "etx", json_object_object_get(link, "etx"));
-    json_object_object_add(neigh, "ip", json_object_object_get(link, "remoteIP"));
+		json_object_object_add(neigh, "ip4", json_object_object_get(link, "remoteIP"));
 
-    json_object_object_add(out, json_object_get_string(json_object_object_get(link, "remoteIP")), neigh);
-  }
+		json_object_object_add(neigh, "tq", json_object_object_get(link, "linkQuality"));
 
-  return out;
+		char * mac = resolve_mac(
+			cache,
+			json_object_get_string(json_object_object_get(link, "ifName")),
+			json_object_get_string(json_object_object_get(link, "remoteIP"))
+		);
+		if (!mac) {
+			goto cleanup;
+		}
+
+		json_object_object_add(out, mac, neigh);
+
+		free(mac);
+	}
+
+	return out;
+
+cleanup:
+	if (cache) {
+		cleanup_arp_cache(cache);
+	}
+
+	return NULL;
 }
 
 struct json_object * olsr2_get_neigh(void) {
 	json_object *resp;
-  int error = olsr2_get_nodeinfo("nhdpinfo jsonraw link", &resp);
+	int error = olsr2_get_nodeinfo("nhdpinfo jsonraw link", &resp);
 
-  if (error) {
-    return NULL;
-  }
+	if (error) {
+		return NULL;
+	}
 
-  json_object *out = json_object_new_object();
+	json_object *out = json_object_new_object();
 
-  if (!out)
-    return NULL;
+	if (!out) {
+		return NULL;
+	}
 
   /*
 
@@ -137,28 +280,31 @@ struct json_object * olsr2_get_neigh(void) {
   */
 
 	json_object *links = json_object_object_get(resp, "link");
-	if (!links)
+	if (!links) {
 		return NULL;
+	}
 
 	int linkcount = json_object_array_length(links);
 
 	for (int i = 0; i < linkcount; i++) {
 		struct json_object *link = json_object_array_get_idx(links, i);
-		if (!link)
+		if (!link) {
 			return NULL;
+		}
 
-    struct json_object *neigh = json_object_new_object();
-    if (!neigh)
-      return NULL;
+		struct json_object *neigh = json_object_new_object();
+		if (!neigh) {
+			return NULL;
+		}
 
-    json_object_object_add(neigh, "ifname", json_object_object_get(link, "if"));
+		json_object_object_add(neigh, "ifname", json_object_object_get(link, "if"));
 		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
 		json_object_object_add(neigh, "etx", json_object_object_get(link, "link_vtime"));
-    json_object_object_add(neigh, "ip", json_object_object_get(link, "neighbor_originator"));
+		json_object_object_add(neigh, "ip", json_object_object_get(link, "neighbor_originator"));
 
-    json_object_object_add(out, json_object_get_string(json_object_object_get(link, "link_mac")), neigh);
-  }
+		json_object_object_add(out, json_object_get_string(json_object_object_get(link, "link_mac")), neigh);
+	}
 
-  return out;
+	return out;
 }

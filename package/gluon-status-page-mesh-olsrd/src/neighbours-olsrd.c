@@ -8,88 +8,123 @@
 #include <libubox/uloop.h>
 #include <libolsrdhelper.h>
 
+void merge_neighs(json_object * out, json_object * neighs, char * version) {
+	struct json_object_iterator neighs_it = json_object_iter_begin(neighs);
+	struct json_object_iterator neighs_itEnd = json_object_iter_end(neighs);
+
+	while (!json_object_iter_equal(&neighs_it, &neighs_itEnd)) {
+		const char * mac = json_object_iter_peek_name(&neighs_it);
+
+		json_object * neighbour = json_object_object_get(out, mac);
+
+		if (!neighbour) {
+			neighbour = json_object_new_object();
+			json_object_object_add(out, mac, neighbour);
+		}
+
+		json_object * neighbour_original = json_object_object_get(neighs, mac);
+
+		struct json_object_iterator neigh_it = json_object_iter_begin(neighbour_original);
+		struct json_object_iterator neigh_itEnd = json_object_iter_end(neighbour_original);
+
+		while (!json_object_iter_equal(&neigh_it, &neigh_itEnd)) {
+			const char * key = json_object_iter_peek_name(&neigh_it);
+
+			json_object * new = json_object_object_get(neighbour_original, key);
+			json_object * cur = json_object_object_get(neighbour, key);
+
+			if (!strcmp(key, "tq")) {
+				if (cur) {
+					json_object_object_add(
+						neighbour,
+						"tq",
+						json_object_new_double(
+							(json_object_get_double(cur) + json_object_get_double(new)) / 2
+						)
+					);
+				} else {
+					json_object_object_add(neighbour, "tq", new);
+				}
+			} else if (!strcmp(key, "ip")) {
+				char * str = malloc(10);
+				if (!str) {
+					return;
+				}
+				sprintf(str, "%s_%s", version, key);
+
+				json_object_object_add(neighbour, str, new);
+			} else if (!strcmp(key, "best")) {
+				if (cur) {
+					json_object_object_add(
+						neighbour,
+						"best",
+						json_object_new_boolean(
+							json_object_get_boolean(cur) || json_object_get_boolean(new)
+						)
+					);
+				} else {
+					json_object_object_add(neighbour, "best", new);
+				}
+			} else {
+				json_object_object_add(neighbour, key, new);
+			}
+		}
+
+	}
+}
+
 static json_object *neighbours(void) {
-  json_object *resp;
-  if (olsr1_get_nodeinfo("links", &resp))
-    return NULL;
 
-  json_object *out = json_object_new_object();
-  if (!out)
-    return NULL;
+	struct olsr_info *info;
 
-  /*
-
-  links
-
-  localIP	"10.12.11.43"
-  remoteIP	"10.12.11.1"
-  olsrInterface	"mesh-vpn"
-  ifName	"mesh-vpn"
-  validityTime	141239
-  symmetryTime	123095
-  asymmetryTime	25552910
-  vtime	124000
-  currentLinkStatus	"SYMMETRIC"
-  previousLinkStatus	"SYMMETRIC"
-  hysteresis	0
-  pending	false
-  lostLinkTime	0
-  helloTime	0
-  lastHelloTime	0
-  seqnoValid	false
-  seqno	0
-  lossHelloInterval	3000
-  lossTime	3595
-  lossMultiplier	65536
-  linkCost	1.084961
-  linkQuality	1
-  neighborLinkQuality	0.921
-
-  */
-
-  // TODO: use olsr1_get_neigh and olsr2_get_neigh, iterate over both, then copy stuffs into the right format (and use mac as primary)
-
-  json_object *links = json_object_object_get(resp, "links");
-	if (!links)
+	if (oi(&info))
 		return NULL;
 
-	int linkcount = json_object_array_length(links);
+	json_object *out = json_object_new_object();
+	if (!out) {
+		return NULL;
+	}
 
-	for (int i = 0; i < linkcount; i++) {
-		struct json_object *link = json_object_array_get_idx(links, i);
-		if (!link)
+	if (info->olsr2.running) {
+		json_object *olsr2_neigh;
+
+		olsr2_neigh = olsr2_get_neigh();
+		if (!olsr2_neigh) {
 			return NULL;
+		}
 
-    struct json_object *neigh = json_object_new_object();
-    if (!neigh)
-      return NULL;
+		merge_neighs(out, olsr2_neigh, "olsr2");
+	}
 
-    json_object_object_add(neigh, "ifname", json_object_object_get(link, "ifName"));
-		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
-		json_object_object_add(neigh, "best", json_object_new_boolean(0));
-		json_object_object_add(neigh, "etx", json_object_object_get(link, "etx"));
+	if (info->olsr1.running) {
+		json_object *olsr1_neigh;
 
-    json_object_object_add(out, json_object_get_string(json_object_object_get(link, "remoteIP")), neigh);
-  }
+		olsr1_neigh = olsr1_get_neigh();
+		if (!olsr1_neigh) {
+			return NULL;
+		}
 
-  return out;
+		merge_neighs(out, olsr1_neigh, "olsr1");
+	}
+
+	return out;
 }
 
 int main(void) {
-  struct json_object *obj;
+	struct json_object *obj;
 
-  printf("Content-type: text/event-stream\n\n");
-  fflush(stdout);
+	printf("Content-type: text/event-stream\n\n");
+	fflush(stdout);
 
-  while (1) {
-    obj = neighbours();
-    if (obj) {
-      printf("data: %s\n\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
-      fflush(stdout);
-      json_object_put(obj);
-    }
-    sleep(10);
-  }
+	while (1) {
+		obj = neighbours();
+		if (obj) {
+			printf("data: %s\n\n", json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
+			fflush(stdout);
+			json_object_put(obj);
+		}
+		sleep(10);
+	}
 
-  return 0;
+	return 0;
 }
