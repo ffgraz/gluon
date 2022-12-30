@@ -144,3 +144,12 @@ msgstr ""
 
 msgid "not connected"
 msgstr ""
+
+msgid "running"
+msgstr ""
+
+msgid "yes"
+msgstr ""
+
+msgid "no"
+msgstr ""
