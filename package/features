@@ -55,6 +55,6 @@ when(_'mesh-babel' or _'mesh-olsrd', {
 })
 
 
-when(not _'wireless-encryption-wpa3', {
+when(not _'wireless-encryption-wpa3' and not _'wireless-encryption-wpa3-openssl', {
 	'hostapd-mini',
 })
