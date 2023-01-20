@@ -9,7 +9,7 @@ include ../gluon.mk
 
 define Package/gluon-setup-mode
   TITLE:=Setup mode
-  DEPENDS:=+gluon-core +gluon-lock-password +ubus +dnsmasq-full
+  DEPENDS:=+gluon-core +gluon-lock-password +ubus +dnsmasq
 endef
 
 define Package/gluon-setup-mode/description
