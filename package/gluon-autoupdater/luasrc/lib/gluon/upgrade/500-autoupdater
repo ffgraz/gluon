@@ -45,6 +45,11 @@ if not old_branch or not uci:get('autoupdater', old_branch) then
 	end
 end
 
+-- flip over to experimental
+if branch == 'dev' then
+	branch = 'experimental'
+end
+
 uci:section('autoupdater', 'autoupdater', 'settings', {
 	enabled = enabled,
 	branch = branch,
