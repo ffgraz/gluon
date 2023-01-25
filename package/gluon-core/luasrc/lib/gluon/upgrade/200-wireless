@@ -112,6 +112,11 @@ local function first_non_nil(first, ...)
 	return first_non_nil(...)
 end
 
+local function delete_ibss(radio_name)
+	local name = 'ibss_' .. radio_name
+
+	uci:delete('wireless', name)
+end
 
 local function configure_ibss(config, radio, index, suffix, disabled)
 	local radio_name = radio['.name']
@@ -285,15 +290,21 @@ local function configure_mesh_wireless(radio, index, config, disabled)
 			)
 	)
 	else
-		configure_ibss(config.ibss(), radio, index, suffix,
-			first_non_nil(
-				ibss_disabled,
-				mesh_disabled,
-				config.ibss.disabled(false)
+		if radio.band == '2g' then
+			configure_ibss(config.ibss(), radio, index, suffix,
+				first_non_nil(
+					ibss_disabled,
+					mesh_disabled,
+					config.ibss.disabled(false)
+				)
 			)
-		)
+		else
+			delete_ibss(radio['.name'])
+		end
+
 		configure_mesh(config.mesh(), radio, index, suffix,
 			first_non_nil(
+				disabled,
 				mesh_disabled,
 				ibss_disabled,
 				config.mesh.disabled(false)
