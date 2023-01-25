@@ -56,8 +56,12 @@ end
 
 local function get_channel(radio, config)
 	local channel
-	if wireless.preserve_channels(uci) or (config.channel_adjustable(false) and uci:get_bool('wireless', radio['.name'], 'configured')) then
+	if wireless.preserve_channels(uci) or (config.channel_adjustable(false) and uci:get_bool('wireless', radio['.name'], 'configured') and not (radio.band == '5g' and is_outdoor())) then
 		-- preserved channel always wins
+		if radio.channel == 'auto' then
+			-- if channel was auto and is now channel_adjustable use the default from config
+			return config.channel()
+		end
 		channel = radio.channel
 	elseif radio.band == '5g' and is_outdoor() then
 		-- actual channel will be picked and probed from chanlist
