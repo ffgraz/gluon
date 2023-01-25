@@ -273,7 +273,7 @@ local function configure_mesh_wireless(radio, index, config, disabled)
 	local suffix = radio_name:match('^radio(%d+)$')
 
 	local ibss_disabled = is_disabled('ibss_' .. radio_name)
-	local mesh_disabled = is_disabled('p2p_' .. radio_name)
+	local p2p_disabled = is_disabled('p2p_' .. radio_name)
 	local mesh_disabled = is_disabled('mesh_' .. radio_name)
 
 	if radio.band == '60g' then
