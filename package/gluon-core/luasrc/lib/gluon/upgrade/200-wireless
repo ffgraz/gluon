@@ -58,9 +58,15 @@ end)
 
 local function get_channel(radio, config)
 	-- a channel the user picked through the config mode wins over
-	-- anything the site would select
+	-- anything the site would select, except on outdoor 5 GHz radios,
+	-- where the channel has to be probed from the outdoor chanlist
 	if config.channel_adjustable(false)
-			and uci:get_bool('wireless', radio['.name'], 'configured') then
+			and uci:get_bool('wireless', radio['.name'], 'configured')
+			and not (radio.band == '5g' and wireless.is_outdoor(uci)) then
+		if radio.channel == 'auto' then
+			-- nothing picked yet, fall back to the site's channel
+			return config.channel()
+		end
 		return radio.channel
 	end
 
