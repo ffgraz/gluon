@@ -46,6 +46,7 @@ local function add_or_remove_role(roles, role, enabled)
 		util.remove_from_set(roles, role)
 	end
 end
+local mesh_outdoor_dependent = {}
 
 local function vif_option(section, role_name, band, band_config, msg)
 	local o = section:option(Flag, band .. '_' .. role_name .. '_enabled', msg)
@@ -157,6 +158,12 @@ uci:foreach('wireless', 'wifi-device', function(config)
 		uci:set('wireless', radio, 'txpower', data)
 	end
 
+	-- outdoor 5 GHz radios get their channel and power from the outdoor
+	-- chanlist, so those fields are hidden when outdoor mode is on
+	if config.band == '5g' then
+		table.insert(mesh_outdoor_dependent, tp)
+	end
+
 	-- this section is per radio, so the band configuration comes from
 	-- the radio rather than from the band loop above
 	local band_conf = ({
@@ -183,6 +190,10 @@ uci:foreach('wireless', 'wifi-device', function(config)
 		function ch:write(data)
 			uci:set('wireless', radio, 'channel', data)
 		end
+
+		if config.band == '5g' then
+			table.insert(mesh_outdoor_dependent, ch)
+		end
 	end
 end)
 
@@ -204,6 +215,10 @@ if wireless.device_uses_band(uci, '5g') and not wireless.preserve_channels(uci) 
 		if outdoor.default then
 			mesh_vif.default = not site.wifi5.mesh.disabled(false)
 		end
+	end
+
+	for _, field in ipairs(mesh_outdoor_dependent) do
+		field:depends(outdoor, false)
 	end
 
 	function outdoor:write(data)
