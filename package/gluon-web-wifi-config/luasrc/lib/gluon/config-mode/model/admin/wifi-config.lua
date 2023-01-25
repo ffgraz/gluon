@@ -38,7 +38,7 @@ f:section(Section, nil, translate(
 
 
 local mesh_vifs_5ghz = {}
-
+local mesh_outdoor_dependent = {}
 
 uci:foreach('wireless', 'wifi-device', function(config)
 	local radio = config['.name']
@@ -135,32 +135,42 @@ uci:foreach('wireless', 'wifi-device', function(config)
 		end
 	end
 
-	local phy = wireless.find_phy(config)
-	if not phy then
-		return
-	end
-
-	local txpowers = txpower_list(phy)
-	if #txpowers <= 1 then
-		return
-	end
-
-	local tp = p:option(ListValue, radio .. '_txpower', translate("Transmission power"))
-	tp.default = uci:get('wireless', radio, 'txpower') or 'default'
-
-	tp:value('default', translate("(default)"))
-
-	table.sort(txpowers, function(a, b) return a.driver_dbm > b.driver_dbm end)
-
-	for _, entry in ipairs(txpowers) do
-		tp:value(entry.driver_dbm, string.format("%i dBm (%i mW)", entry.display_dbm, entry.display_mw))
-	end
-
-	function tp:write(data)
-		if data == 'default' then
-			data = nil
+	local function txpower_field()
+		local phy = wireless.find_phy(config)
+		if not phy then
+			return
 		end
-		uci:set('wireless', radio, 'txpower', data)
+
+		local txpowers = txpower_list(phy)
+		if #txpowers <= 1 then
+			return
+		end
+
+		local tp = p:option(ListValue, radio .. '_txpower', translate("Transmission power"))
+		tp.default = uci:get('wireless', radio, 'txpower') or 'default'
+
+		tp:value('default', translate("(default)"))
+
+		table.sort(txpowers, function(a, b) return a.driver_dbm > b.driver_dbm end)
+
+		for _, entry in ipairs(txpowers) do
+			tp:value(entry.driver_dbm, string.format("%i dBm (%i mW)", entry.display_dbm, entry.display_mw))
+		end
+
+		function tp:write(data)
+			if data == 'default' then
+				data = nil
+			end
+			uci:set('wireless', radio, 'txpower', data)
+		end
+
+		return tp
+	end
+
+	local tp = txpower_field()
+
+	if tp and is_5ghz then
+		table.insert(mesh_outdoor_dependent, tp)
 	end
 
 	local conf
@@ -189,6 +199,10 @@ uci:foreach('wireless', 'wifi-device', function(config)
 		function ch:write(data)
 			uci:set('wireless', radio, 'channel', data)
 		end
+
+		if is_5ghz then
+			table.insert(mesh_outdoor_dependent, ch)
+		end
 	end
 end)
 
@@ -210,6 +224,10 @@ if wireless.device_uses_11a(uci) and not wireless.preserve_channels(uci) then
 		if outdoor.default then
 			mesh_vif.default = not site.wifi5.mesh.disabled(false)
 		end
+	end
+
+	for _, field in ipairs(mesh_outdoor_dependent) do
+		field:depends(outdoor, false)
 	end
 
 	function outdoor:write(data)
