@@ -221,7 +221,7 @@ local function configure_p2p(config, radio, index, suffix, disabled)
 	local macfilter = uci:get('wireless', name, 'macfilter')
 	local maclist = uci:get('wireless', name, 'maclist')
 
-	local ssid = uci:get('wireless', name, 'ssid') or string.sub(string.gsub(sysconfig.primary_mac, ':', ''), 8)
+	local ssid = uci:get('wireless', name, 'ssid') or 'gluon-' .. radio.band .. '-p2p-' .. string.sub(string.gsub(sysconfig.primary_mac, ':', ''), 8)
 	local mode = uci:get('wireless', name, 'mode') or 'ap'
 
 	uci:delete('wireless', name)
@@ -281,32 +281,29 @@ local function configure_mesh_wireless(radio, index, config, disabled)
 	local p2p_disabled = is_disabled('p2p_' .. radio_name)
 	local mesh_disabled = is_disabled('mesh_' .. radio_name)
 
-	if radio.band == '60g' then
-		configure_p2p(config.mesh(), radio, index, suffix,
-			first_non_nil(
-				p2p_disabled,
-				mesh_disabled,
-				config.mesh.disabled(false)
-			)
+	configure_p2p(config.p2p(), radio, index, suffix,
+		first_non_nil(
+			p2p_disabled,
+			config.p2p.disabled(true)
+		)
 	)
-	else
-		if radio.band == '2g' then
-			configure_ibss(config.ibss(), radio, index, suffix,
-				first_non_nil(
-					ibss_disabled,
-					mesh_disabled,
-					config.ibss.disabled(false)
-				)
-			)
-		else
-			delete_ibss(radio['.name'])
-		end
 
+	if radio.band == '2g' then
+		configure_ibss(config.ibss(), radio, index, suffix,
+			first_non_nil(
+				ibss_disabled,
+				config.ibss.disabled(false)
+			)
+		)
+	else
+		delete_ibss(radio['.name'])
+	end
+
+	if radio.band ~= '60g' then
 		configure_mesh(config.mesh(), radio, index, suffix,
 			first_non_nil(
 				disabled,
 				mesh_disabled,
-				ibss_disabled,
 				config.mesh.disabled(false)
 			)
 		)
