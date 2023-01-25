@@ -37,7 +37,17 @@ if site.wifi6.mesh() and not site.wifi6.mesh.disabled(false) then
 	util.add_to_set(default_wifi_roles['6g'], 'mesh')
 end
 
--- 60 GHz radios only do point-to-point links, so p2p is their default role
+-- point-to-point links can be set up on any band; on 60 GHz they are
+-- all a radio does, so that is where they are enabled by default
+if site.wifi24.p2p() and not site.wifi24.p2p.disabled(true) then
+	util.add_to_set(default_wifi_roles['2g'], 'p2p')
+end
+if site.wifi5.p2p() and not site.wifi5.p2p.disabled(true) then
+	util.add_to_set(default_wifi_roles['5g'], 'p2p')
+end
+if site.wifi6.p2p() and not site.wifi6.p2p.disabled(true) then
+	util.add_to_set(default_wifi_roles['6g'], 'p2p')
+end
 if site.wifi60.p2p() and not site.wifi60.p2p.disabled(false) then
 	util.add_to_set(default_wifi_roles['60g'], 'p2p')
 end

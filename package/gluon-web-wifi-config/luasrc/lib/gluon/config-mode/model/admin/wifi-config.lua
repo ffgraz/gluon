@@ -85,13 +85,9 @@ uci:foreach('gluon', 'wireless_band', function(band_config)
 
 	local p = f:section(Section, title)
 
-	if is_60ghz then
-		-- 60 GHz radios carry point-to-point links, not a client network
-		-- or an 802.11s mesh; the link's SSID and mode are per radio and
-		-- are configured in the per-radio section below.
-		vif_option(p, 'p2p', band, band_config,
-			translate('Enable point-to-point AP/STA mesh'))
-	else
+	-- 60 GHz radios carry point-to-point links only; they have neither a
+	-- client network nor an 802.11s mesh
+	if not is_60ghz then
 		vif_option(p, 'client', band, band_config,
 			translate('Enable client network (access point)'))
 
@@ -101,6 +97,11 @@ uci:foreach('gluon', 'wireless_band', function(band_config)
 			table.insert(mesh_vifs_5ghz, mesh_vif)
 		end
 	end
+
+	-- a point-to-point link can be set up on any band; the SSID and mode
+	-- of the link are per radio and live in the per-radio section below
+	vif_option(p, 'p2p', band, band_config,
+		translate('Enable point-to-point AP/STA mesh'))
 end)
 
 local p = f:section(Section, translate("Per radio settings"))
@@ -112,8 +113,8 @@ uci:foreach('wireless', 'wifi-device', function(config)
 
 	local radio = config['.name']
 
-	if config.band == '60g' then
-		-- SSID and role of the point-to-point link are per radio
+	if util.contains(uci:get_list('gluon', 'band_' .. config.band, 'role') or {}, 'p2p') then
+		-- SSID and mode of the point-to-point link are per radio
 		local name = 'p2p_' .. radio
 
 		local id = p:option(Value, radio .. '_p2pid',

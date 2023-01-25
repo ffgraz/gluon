@@ -274,6 +274,11 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	local enable_mesh = wireless.supports_channel(radio, config.channel()) and util.contains(roles, 'mesh')
 	local enable_p2p = util.contains(roles, 'p2p')
 
+	-- point-to-point links are not limited to 60 GHz radios
+	if enable_p2p then
+		configure_p2p(radio, index, config.p2p())
+	end
+
 	if band == '2g' then
 		uci:set('wireless', radio_name, 'legacy_rates', false)
 		if enable_mesh then
@@ -282,11 +287,6 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	elseif band == '6g' then
 		if enable_mesh then
 			configure_mesh(radio, index, config.mesh())
-		end
-	elseif band == '60g' then
-		-- 60 GHz radios carry point-to-point links instead of a mesh
-		if enable_p2p then
-			configure_p2p(radio, index, config.p2p())
 		end
 	elseif band == '5g' then
 		if wireless.is_outdoor(uci) then
