@@ -27,7 +27,8 @@ define Package/gluon-mesh-olsrd
 		+gluon-mesh-layer3-common \
 		+gluon-l3roamd \
 		+gluon-radvd \
-		+lua-jsonc
+		+lua-jsonc \
+		+gluon-state-check
 	PROVIDES:=gluon-mesh-provider
 endef
 
