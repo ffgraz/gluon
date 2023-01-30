@@ -1,0 +1,156 @@
+assert(env.GLUON_LANGS)
+
+
+config('GLUON_SITEDIR', env.GLUON_SITEDIR)
+config('GLUON_VERSION', env.GLUON_VERSION)
+config('GLUON_SITE_VERSION', env.GLUON_SITE_VERSION)
+config('GLUON_RELEASE', env.GLUON_RELEASE)
+
+config('GLUON_AUTOUPDATER_BRANCH', 'vanilla')
+
+for lang in string.gmatch(env.GLUON_LANGS, '%S+') do
+	try_config('GLUON_WEB_LANG_' .. lang, true)
+end
+
+-- Disable non-default feeds in distfeeds.conf
+config('FEED_gluon_base', false)
+
+
+config('TARGET_ROOTFS_INITRAMFS', false)
+
+config('DEVEL', true)
+config('ALL_NONSHARED', true)
+
+try_config('PACKAGE_usbip', false) -- fails to build
+
+try_config('PACKAGE_ATH_DEBUG', true)
+
+try_config('TARGET_SQUASHFS_BLOCK_SIZE', 256)
+
+config('KERNEL_PROC_STRIPPED', true)
+config('KERNEL_AIO', false)
+config('KERNEL_IO_URING', false)
+config('KERNEL_FHANDLE', false)
+config('KERNEL_FANOTIFY', false)
+config('KERNEL_CGROUPS', false)
+config('KERNEL_IP_MROUTE', false)
+config('KERNEL_IPV6_MROUTE', false)
+config('KERNEL_IPV6_SEG6_LWTUNNEL', false)
+config('SECCOMP', false)
+config('KERNEL_SECCOMP', false)
+-- kmod-mt7915e pulls in CONFIG_KERNEL_RELAY
+-- use try_config, so enabling the package is still possible
+try_config('PACKAGE_kmod-mt7915e', false)
+
+config('COLLECT_KERNEL_DEBUG', true)
+
+config('TARGET_MULTI_PROFILE', true)
+config('TARGET_PER_DEVICE_ROOTFS', true)
+
+config('AUTOREMOVE', istrue(env.GLUON_AUTOREMOVE))
+config('GLUON_MINIFY', istrue(env.GLUON_MINIFY))
+
+-- custom
+
+-- config('TOOLCHAINOPTS', true)
+
+config('GLUON_BASE', true)
+
+-- [imagebuilder stuffs]
+-- config('IB', true)
+-- config('TARGET_ALL_PROFILES', true)
+-- config('SDK', true)
+
+config('IMAGEOPT', true)
+-- config('BUILD_LOG', true)
+
+-- config('KERNEL_DEBUG_INFO', false)
+-- config('KERNEL_DEBUG_KERNEL', false)
+
+config('BUSYBOX_CUSTOM', true)
+config('BUSYBOX_CONFIG_MKSWAP', false)
+config('BUSYBOX_CONFIG_SWAPON', false)
+config('BUSYBOX_CONFIG_SWAPOFF', false)
+config('BUSYBOX_CONFIG_TELNET', true)
+config('BUSYBOX_CONFIG_FEATURE_TELNET_TTYPE', true)
+config('BUSYBOX_CONFIG_FEATURE_TRACEROUTE_USE_ICMP', true)
+
+-- config('STRIP_KERNEL_EXPORTS', true)
+
+config('VERSIONOPT', true)
+config('VERSION_FILENAMES', false)
+config('VERSION_CODE_FILENAMES', false)
+config('VERSION_DIST', 'Funkfeuer Graz Vanilla')
+-- config('VERSION_HWREV', '')
+-- config('VERSION_MANUFACTURER', 'Funkfeuer Graz')
+config('VERSION_NUMBER', env.GLUON_VERSION .. 'g' .. env.GLUON_RELEASE)
+-- config('VERSION_CODE', '')
+config('VERSION_PRODUCT', 'Funkfeuer Graz Vanilla')
+
+
+config('LUCI_SRCDIET', true)
+
+config('OPENVPN_openssl_ENABLE_SMALL', true)
+
+config('OONF_GENERIC_HTTP', true)
+config('OONF_OLSRV2_LAN_IMPORT', true)
+
+packages {
+  '-kmod-ipt-offload',
+  '-kmod-nft-offload',
+  '-libustream-wolfssl',
+  '-libwolfssl',
+  '-odhcpd-ipv6only',
+  '-ppp',
+  '-ppp-mod-pppoe',
+  '-wpad-mini',
+  '-wpad-basic',
+  '-wpad-basic-wolfssl',
+
+  '-iptables',
+	'-nftables',
+	'nftables-json',
+	'-xtables-legacy',
+	'ip6tables-nft',
+	'iptables-nft',
+
+	'luci',
+
+  'luci-app-olsr',
+  'luci-app-olsr-services',
+  'luci-app-olsr-viz',
+
+  'luci-app-firewall',
+
+  'olsrd',
+  'olsrd-mod-jsoninfo',
+  'olsrd-mod-txtinfo',
+  'olsrd-mod-httpinfo',
+
+  'rssileds',
+
+  'oonf-olsrd2',
+
+  'gluon-autoupdater',
+  'gluon-authorized-keys',
+  'gluon-respondd',
+	'gluon-mmfd',
+  'gluon-neighbour-info',
+  'gluon-node-info',
+  'gluon-core',
+}
+
+class_packages('standard', {
+  'hostapd-mini',
+
+  'openvpn-openssl',
+
+  'mtr-nojson',
+  'horst',
+  'iwinfo',
+  'ip-full',
+  -- 'tcpdump-mini',
+  'iperf3',
+
+  'ipip',
+})

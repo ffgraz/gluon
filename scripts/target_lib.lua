@@ -25,6 +25,7 @@ M.site_code = assert(
 	dofile('scripts/site_config.lua')('site.conf').site_code, 'site_code missing in site.conf'
 )
 M.target_packages = {}
+M.target_class_packages = {}
 M.configs = {}
 M.devices = {}
 M.images = {}
@@ -201,6 +202,17 @@ function F.packages(pkgs)
 	end
 end
 M.packages = F.packages
+
+function F.class_packages(target, pkgs)
+	if not M.target_class_packages[target] then
+		M.target_class_packages[target] = {}
+	end
+
+	for _, pkg in ipairs(pkgs) do
+		table.insert(M.target_class_packages[target], pkg)
+	end
+end
+M.class_packages = F.class_packages
 
 local function as_table(v)
 	if type(v) == 'table' then
