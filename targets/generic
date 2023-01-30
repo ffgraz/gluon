@@ -1,25 +1,7 @@
-assert(env.GLUON_LANGS)
-
-
-config('GLUON_SITEDIR', env.GLUON_SITEDIR)
-config('GLUON_VERSION', env.GLUON_VERSION)
-config('GLUON_SITE_VERSION', env.GLUON_SITE_VERSION)
-config('GLUON_RELEASE', env.GLUON_RELEASE)
-
-try_config('GLUON_AUTOUPDATER_BRANCH', env.GLUON_AUTOUPDATER_BRANCH)
-try_config('GLUON_AUTOUPDATER_ENABLED', istrue(env.GLUON_AUTOUPDATER_ENABLED))
-
-for lang in string.gmatch(env.GLUON_LANGS, '%S+') do
-	try_config('GLUON_WEB_LANG_' .. lang, true)
-end
-
 config('TARGET_' .. env.BOARD, true)
 if env.SUBTARGET ~= '' then
 	config(string.format('TARGET_%s_%s', env.BOARD, env.SUBTARGET), true)
 end
-
--- Disable non-default feeds in distfeeds.list
-config('FEED_gluon_base', false)
 
 local default_feeds = {}
 for feed in string.gmatch(exec_capture_raw('. scripts/default_feeds.sh && echo "$DEFAULT_FEEDS"'), '%S+') do
@@ -102,20 +84,3 @@ elseif istrue(env.GLUON_DEBUG) then
 	config('USE_STRIP', true)
 	config('USE_SSTRIP', false)
 end
-
-config('GLUON_MINIFY', istrue(env.GLUON_MINIFY))
-
-packages {
-	'-ca-bundle',
-	'-dnsmasq',
-	'-kmod-nft-offload',
-	'-libustream-mbedtls',
-	'-libmbedtls',
-	'-libustream-wolfssl',
-	'-libwolfssl',
-	'-odhcpd-ipv6only',
-	'-ppp',
-	'-ppp-mod-pppoe',
-	'-wpad-basic-mbedtls',
-	'gluon-core',
-}
