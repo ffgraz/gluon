@@ -26,15 +26,6 @@ try_config('PACKAGE_usbip', false) -- fails to build
 
 try_config('PACKAGE_ATH_DEBUG', true)
 
-try_config('PACKAGE_dnsmasq_full_dhcpv6', false)
-try_config('PACKAGE_dnsmasq_full_auth', false)
-try_config('PACKAGE_dnsmasq_full_ipset', false)
-try_config('PACKAGE_dnsmasq_full_nftset', false)
-try_config('PACKAGE_dnsmasq_full_conntrack', false)
-try_config('PACKAGE_dnsmasq_full_noid', false)
-try_config('PACKAGE_dnsmasq_full_broken_rtc', false)
-try_config('PACKAGE_dnsmasq_full_rtc', false)
-
 try_config('TARGET_SQUASHFS_BLOCK_SIZE', 256)
 
 config('KERNEL_PROC_STRIPPED', true)
@@ -52,12 +43,17 @@ config('KERNEL_SECCOMP', false)
 -- use try_config, so enabling the package is still possible
 try_config('PACKAGE_kmod-mt7915e', false)
 
+try_config('OONF_GENERIC_HTTP', true)
+try_config('OONF_OLSRV2_LAN_IMPORT', true)
+
 config('COLLECT_KERNEL_DEBUG', true)
 
 config('TARGET_MULTI_PROFILE', true)
 config('TARGET_PER_DEVICE_ROOTFS', true)
 
 config('GLUON_MULTIDOMAIN', istrue(env.GLUON_MULTIDOMAIN))
+
+config('OPENVPN_openssl_ENABLE_SMALL', true)
 
 config('AUTOREMOVE', istrue(env.GLUON_AUTOREMOVE))
 
@@ -66,19 +62,28 @@ config('GLUON_MINIFY', istrue(env.GLUON_MINIFY))
 
 packages {
 	'-ca-bundle',
-	'-dnsmasq',
 	'-kmod-ipt-offload',
 	'-kmod-nft-offload',
 	'-libustream-wolfssl',
+	'-opkg',
 	'-libwolfssl',
-	'-nftables',
 	'-odhcpd-ipv6only',
 	'-ppp',
 	'-ppp-mod-pppoe',
 	'-wpad-mini',
 	'-wpad-basic',
 	'-wpad-basic-wolfssl',
-	'-firewall4',
 	'gluon-core',
-	'ip6tables-zz-legacy',
+	'-iptables',
+	'-nftables',
+	'nftables-json',
+	'-xtables-legacy',
+	'ip6tables-nft',
+	'iptables-nft',
+	'-kmod-ipt-core',
+	-- old shit that doesnt build
+	'-kmod-fs-antfs',
+	'-kmod-ipt-coova',
+	'-kmod-usb-serial-dmx_usb_module',
+	'-kmod-jool-netfilter',
 }

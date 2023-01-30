@@ -43,6 +43,10 @@ define Package/gluon-mesh-olsrd/install
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/olsrd-debug $(1)/usr/bin/olsrd-debug
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/olsr-respondd $(1)/usr/bin/olsr-respondd
+
+ifdef CONFIG_GLUON_BASE
+	rm -rf $(1)/lib/gluon/upgrade/
+endif
 endef
 
 define Build/InstallDev
