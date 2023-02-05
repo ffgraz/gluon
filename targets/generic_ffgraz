@@ -113,6 +113,7 @@ packages {
 	'-xtables-legacy',
 	'ip6tables-nft',
 	'iptables-nft',
+	'-firewall3',
 
 	'luci',
 
@@ -138,6 +139,8 @@ packages {
   'gluon-neighbour-info',
   'gluon-node-info',
   'gluon-core',
+	'gluon-mesh-olsrd',
+	'ffgraz-vanilla',
 }
 
 class_packages('standard', {
