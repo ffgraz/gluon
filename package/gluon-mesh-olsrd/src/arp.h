@@ -1,13 +1,16 @@
+/* SPDX-FileCopyrightText: 2021-2023 Maciej Krüger <maciej@xeredo.it> */
+/* SPDX-License-Identifier: BSD-2-Clause */
+
 #include <stdbool.h>
 
 #define ARP_STRING_LEN  1023
 #define ARP_BUFFER_LEN  (ARP_STRING_LEN + 1)
 
 struct arp_cache {
-  char ipAddr[ARP_BUFFER_LEN];
-  char hwAddr[ARP_BUFFER_LEN];
-  char device[ARP_BUFFER_LEN];
-  struct arp_cache * next;
+	char ipAddr[ARP_BUFFER_LEN];
+	char hwAddr[ARP_BUFFER_LEN];
+	char device[ARP_BUFFER_LEN];
+	struct arp_cache * next;
 };
 
 char * resolve_mac(struct arp_cache * cache, const char * intf, const char * ip, bool active_resolve);

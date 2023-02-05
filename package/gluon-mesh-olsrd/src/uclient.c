@@ -1,28 +1,6 @@
-/*
-  Copyright (c) 2017, Jan-Philipp Litza <janphilipp@litza.de>
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-    1. Redistributions of source code must retain the above copyright notice,
-       this list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice,
-       this list of conditions and the following disclaimer in the documentation
-       and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
+/* SPDX-FileCopyrightText: 2017 Jan-Philipp Litza <janphilipp@litza.de> */
+/* SPDX-FileCopyrightText: 2021-2023 Maciej Krüger <maciej@xeredo.it> */
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "uclient.h"
 
@@ -150,42 +128,42 @@ ssize_t uclient_read_account(struct uclient *cl, char *buf, int len) {
 // src https://github.com/curl/curl/blob/2610142139d14265ed9acf9ed83cdf73d6bb4d05/lib/escape.c
 
 /* Portable character check (remember EBCDIC). Do not use isalnum() because
-   its behavior is altered by the current locale.
-   See https://datatracker.ietf.org/doc/html/rfc3986#section-2.3
+	its behavior is altered by the current locale.
+	See https://datatracker.ietf.org/doc/html/rfc3986#section-2.3
 */
 bool Curl_isunreserved(unsigned char in)
 {
-  switch(in) {
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-    case 'a': case 'b': case 'c': case 'd': case 'e':
-    case 'f': case 'g': case 'h': case 'i': case 'j':
-    case 'k': case 'l': case 'm': case 'n': case 'o':
-    case 'p': case 'q': case 'r': case 's': case 't':
-    case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
-    case 'A': case 'B': case 'C': case 'D': case 'E':
-    case 'F': case 'G': case 'H': case 'I': case 'J':
-    case 'K': case 'L': case 'M': case 'N': case 'O':
-    case 'P': case 'Q': case 'R': case 'S': case 'T':
-    case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
-    case '-': case '.': case '_': case '~':
-      return true;
-    default:
-      break;
-  }
-  return false;
+	switch(in) {
+		case '0': case '1': case '2': case '3': case '4':
+		case '5': case '6': case '7': case '8': case '9':
+		case 'a': case 'b': case 'c': case 'd': case 'e':
+		case 'f': case 'g': case 'h': case 'i': case 'j':
+		case 'k': case 'l': case 'm': case 'n': case 'o':
+		case 'p': case 'q': case 'r': case 's': case 't':
+		case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
+		case 'A': case 'B': case 'C': case 'D': case 'E':
+		case 'F': case 'G': case 'H': case 'I': case 'J':
+		case 'K': case 'L': case 'M': case 'N': case 'O':
+		case 'P': case 'Q': case 'R': case 'S': case 'T':
+		case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
+		case '-': case '.': case '_': case '~':
+			return true;
+		default:
+			break;
+	}
+	return false;
 }
 
 char *curl_easy_escape(const char *string, int inlength)
 {
-  size_t length;
+	size_t length;
 
-  if (inlength < 0)
-    return NULL;
+	if (inlength < 0)
+		return NULL;
 
-  length = (inlength ? (size_t)inlength : strlen(string));
-  if (!length)
-    return strdup("");
+	length = (inlength ? (size_t)inlength : strlen(string));
+	if (!length)
+		return strdup("");
 
 	char * out = malloc((length * 3) + 1);
 
@@ -197,8 +175,8 @@ char *curl_easy_escape(const char *string, int inlength)
 	// this isn't pretending like we're complying to any spec other than urlencode, thx
 	int slashes = 0;
 
-  while (length--) {
-    unsigned char in = *string; /* we need to treat the characters unsigned */
+	while (length--) {
+		unsigned char in = *string; /* we need to treat the characters unsigned */
 
 		if (slashes == 3) {
 			if (Curl_isunreserved(in)) {
@@ -223,12 +201,12 @@ char *curl_easy_escape(const char *string, int inlength)
 			}
 		}
 
-    string++;
-  }
+		string++;
+	}
 
 	out[offset] = '\0';
 
-  return out;
+	return out;
 }
 
 int get_url(const char *user_url, void (*read_cb)(struct uclient *cl), void (*eof2_cb)(struct uclient *cl), void *cb_data, ssize_t len) {

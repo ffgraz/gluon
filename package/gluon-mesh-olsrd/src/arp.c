@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2021-2023 Maciej Krüger <maciej@xeredo.it> */
+/* SPDX-License-Identifier: BSD-2-Clause */
+
 // adapted from https://codereview.stackexchange.com/a/58107/130114
 
 #include "arp.h"
@@ -16,8 +19,8 @@
 
 /* Format for fscanf() to read the 1st, 4th, and 6th space-delimited fields */
 #define ARP_LINE_FORMAT "%" xstr(ARP_STRING_LEN) "s %*s %*s " \
-                        "%" xstr(ARP_STRING_LEN) "s %*s " \
-                        "%" xstr(ARP_STRING_LEN) "s"
+			"%" xstr(ARP_STRING_LEN) "s %*s " \
+			"%" xstr(ARP_STRING_LEN) "s"
 
 void cleanup_arp_cache (struct arp_cache * cache) {
 	struct arp_cache * del;
@@ -90,7 +93,7 @@ cleanup:
 #include <linux/if_packet.h>
 #include <linux/if_ether.h>
 #include <linux/if_arp.h>
-#include <arpa/inet.h>  //htons etc
+#include <arpa/inet.h> // htons etc
 
 #define PROTO_ARP 0x0806
 #define ETH2_HEADER_LEN 14
@@ -102,22 +105,22 @@ cleanup:
 #define BUF_SIZE 60
 
 void vfnc() {
-  return;
+	return;
 }
 
 #define debug(x...) vfnc(); // printf(x);printf("\n");
 #define err(x...) printf(x);printf("\n");
 
 struct arp_header {
-    unsigned short hardware_type;
-    unsigned short protocol_type;
-    unsigned char hardware_len;
-    unsigned char protocol_len;
-    unsigned short opcode;
-    unsigned char sender_mac[MAC_LENGTH];
-    unsigned char sender_ip[IPV4_LENGTH];
-    unsigned char target_mac[MAC_LENGTH];
-    unsigned char target_ip[IPV4_LENGTH];
+	unsigned short hardware_type;
+	unsigned short protocol_type;
+	unsigned char hardware_len;
+	unsigned char protocol_len;
+	unsigned short opcode;
+	unsigned char sender_mac[MAC_LENGTH];
+	unsigned char sender_ip[IPV4_LENGTH];
+	unsigned char target_mac[MAC_LENGTH];
+	unsigned char target_ip[IPV4_LENGTH];
 };
 
 /*
@@ -126,14 +129,14 @@ struct arp_header {
  */
 int int_ip4(struct sockaddr *addr, uint32_t *ip)
 {
-    if (addr->sa_family == AF_INET) {
-        struct sockaddr_in *i = (struct sockaddr_in *) addr;
-        *ip = i->sin_addr.s_addr;
-        return 0;
-    } else {
-        err("Not AF_INET");
-        return 1;
-    }
+	if (addr->sa_family == AF_INET) {
+		struct sockaddr_in *i = (struct sockaddr_in *) addr;
+		*ip = i->sin_addr.s_addr;
+		return 0;
+	} else {
+		err("Not AF_INET");
+		return 1;
+	}
 }
 
 /*
@@ -142,18 +145,18 @@ int int_ip4(struct sockaddr *addr, uint32_t *ip)
  */
 int format_ip4(struct sockaddr *addr, char *out)
 {
-    if (addr->sa_family == AF_INET) {
-        struct sockaddr_in *i = (struct sockaddr_in *) addr;
-        const char *ip = inet_ntoa(i->sin_addr);
-        if (!ip) {
-            return -2;
-        } else {
-            strcpy(out, ip);
-            return 0;
-        }
-    } else {
-        return -1;
-    }
+	if (addr->sa_family == AF_INET) {
+		struct sockaddr_in *i = (struct sockaddr_in *) addr;
+		const char *ip = inet_ntoa(i->sin_addr);
+		if (!ip) {
+			return -2;
+		} else {
+			strcpy(out, ip);
+			return 0;
+		}
+	} else {
+		return -1;
+	}
 }
 
 /*
@@ -161,26 +164,27 @@ int format_ip4(struct sockaddr *addr, char *out)
  * Returns 0 on success.
  */
 int get_if_ip4(int fd, const char *ifname, uint32_t *ip) {
-    int err = -1;
-    struct ifreq ifr;
-    memset(&ifr, 0, sizeof(struct ifreq));
-    if (strlen(ifname) > (IFNAMSIZ - 1)) {
-        err("Too long interface name");
-        goto out;
-    }
+	int err = -1;
+	struct ifreq ifr;
+	memset(&ifr, 0, sizeof(struct ifreq));
+	if (strlen(ifname) > (IFNAMSIZ - 1)) {
+		err("Too long interface name");
+		goto out;
+	}
 
-    strcpy(ifr.ifr_name, ifname);
-    if (ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
-        perror("SIOCGIFADDR");
-        goto out;
-    }
+	strcpy(ifr.ifr_name, ifname);
+	if (ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
+		perror("SIOCGIFADDR");
+		goto out;
+	}
 
-    if (int_ip4(&ifr.ifr_addr, ip)) {
-        goto out;
-    }
-    err = 0;
+	if (int_ip4(&ifr.ifr_addr, ip)) {
+		goto out;
+	}
+	err = 0;
+
 out:
-    return err;
+	return err;
 }
 
 /*
@@ -189,58 +193,58 @@ out:
  */
 int send_arp(int fd, int ifindex, const unsigned char *src_mac, uint32_t src_ip, uint32_t dst_ip)
 {
-    int err = -1;
-    unsigned char buffer[BUF_SIZE];
-    memset(buffer, 0, sizeof(buffer));
+	int err = -1;
+	unsigned char buffer[BUF_SIZE];
+	memset(buffer, 0, sizeof(buffer));
 
-    struct sockaddr_ll socket_address;
-    socket_address.sll_family = AF_PACKET;
-    socket_address.sll_protocol = htons(ETH_P_ARP);
-    socket_address.sll_ifindex = ifindex;
-    socket_address.sll_hatype = htons(ARPHRD_ETHER);
-    socket_address.sll_pkttype = (PACKET_BROADCAST);
-    socket_address.sll_halen = MAC_LENGTH;
-    socket_address.sll_addr[6] = 0x00;
-    socket_address.sll_addr[7] = 0x00;
+	struct sockaddr_ll socket_address;
+	socket_address.sll_family = AF_PACKET;
+	socket_address.sll_protocol = htons(ETH_P_ARP);
+	socket_address.sll_ifindex = ifindex;
+	socket_address.sll_hatype = htons(ARPHRD_ETHER);
+	socket_address.sll_pkttype = (PACKET_BROADCAST);
+	socket_address.sll_halen = MAC_LENGTH;
+	socket_address.sll_addr[6] = 0x00;
+	socket_address.sll_addr[7] = 0x00;
 
-    struct ethhdr *send_req = (struct ethhdr *) buffer;
-    struct arp_header *arp_req = (struct arp_header *) (buffer + ETH2_HEADER_LEN);
-    int index;
-    ssize_t ret, length = 0;
+	struct ethhdr *send_req = (struct ethhdr *) buffer;
+	struct arp_header *arp_req = (struct arp_header *) (buffer + ETH2_HEADER_LEN);
+	int index;
+	ssize_t ret, length = 0;
 
-    //Broadcast
-    memset(send_req->h_dest, 0xff, MAC_LENGTH);
+	/* Broadcast */
+	memset(send_req->h_dest, 0xff, MAC_LENGTH);
 
-    //Target MAC zero
-    memset(arp_req->target_mac, 0x00, MAC_LENGTH);
+	/* Target MAC zero */
+	memset(arp_req->target_mac, 0x00, MAC_LENGTH);
 
-    //Set source mac to our MAC address
-    memcpy(send_req->h_source, src_mac, MAC_LENGTH);
-    memcpy(arp_req->sender_mac, src_mac, MAC_LENGTH);
-    memcpy(socket_address.sll_addr, src_mac, MAC_LENGTH);
+	/* Set source mac to our MAC address */
+	memcpy(send_req->h_source, src_mac, MAC_LENGTH);
+	memcpy(arp_req->sender_mac, src_mac, MAC_LENGTH);
+	memcpy(socket_address.sll_addr, src_mac, MAC_LENGTH);
 
-    /* Setting protocol of the packet */
-    send_req->h_proto = htons(ETH_P_ARP);
+	/* Setting protocol of the packet */
+	send_req->h_proto = htons(ETH_P_ARP);
 
-    /* Creating ARP request */
-    arp_req->hardware_type = htons(HW_TYPE);
-    arp_req->protocol_type = htons(ETH_P_IP);
-    arp_req->hardware_len = MAC_LENGTH;
-    arp_req->protocol_len = IPV4_LENGTH;
-    arp_req->opcode = htons(ARP_REQUEST);
+	/* Creating ARP request */
+	arp_req->hardware_type = htons(HW_TYPE);
+	arp_req->protocol_type = htons(ETH_P_IP);
+	arp_req->hardware_len = MAC_LENGTH;
+	arp_req->protocol_len = IPV4_LENGTH;
+	arp_req->opcode = htons(ARP_REQUEST);
 
-    debug("Copy IP address to arp_req");
-    memcpy(arp_req->sender_ip, &src_ip, sizeof(uint32_t));
-    memcpy(arp_req->target_ip, &dst_ip, sizeof(uint32_t));
+	debug("Copy IP address to arp_req");
+	memcpy(arp_req->sender_ip, &src_ip, sizeof(uint32_t));
+	memcpy(arp_req->target_ip, &dst_ip, sizeof(uint32_t));
 
-    ret = sendto(fd, buffer, 42, 0, (struct sockaddr *) &socket_address, sizeof(socket_address));
-    if (ret == -1) {
-        perror("sendto():");
-        goto out;
-    }
-    err = 0;
+	ret = sendto(fd, buffer, 42, 0, (struct sockaddr *) &socket_address, sizeof(socket_address));
+	if (ret == -1) {
+		perror("sendto():");
+		goto out;
+	}
+	err = 0;
 out:
-    return err;
+	return err;
 }
 
 /*
@@ -251,50 +255,52 @@ out:
  */
 int get_if_info(const char *ifname, uint32_t *ip, char *mac, int *ifindex)
 {
-    debug("get_if_info for %s", ifname);
-    int err = -1;
-    struct ifreq ifr;
-    int sd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
-    if (sd <= 0) {
-        perror("socket()");
-        goto out;
-    }
-    if (strlen(ifname) > (IFNAMSIZ - 1)) {
-        err("Too long interface name, MAX=%i\n", IFNAMSIZ - 1);
-        goto out;
-    }
+	debug("get_if_info for %s", ifname);
+	int err = -1;
+	struct ifreq ifr;
 
-    strcpy(ifr.ifr_name, ifname);
+	int sd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+	if (sd <= 0) {
+		perror("socket()");
+		goto out;
+	}
 
-    //Get interface index using name
-    if (ioctl(sd, SIOCGIFINDEX, &ifr) == -1) {
-        perror("SIOCGIFINDEX");
-        goto out;
-    }
-    *ifindex = ifr.ifr_ifindex;
-    debug("interface index is %d\n", *ifindex);
+	if (strlen(ifname) > (IFNAMSIZ - 1)) {
+		err("Too long interface name, MAX=%i\n", IFNAMSIZ - 1);
+		goto out;
+	}
 
-    //Get MAC address of the interface
-    if (ioctl(sd, SIOCGIFHWADDR, &ifr) == -1) {
-        perror("SIOCGIFINDEX");
-        goto out;
-    }
+	strcpy(ifr.ifr_name, ifname);
 
-    //Copy mac address to output
-    memcpy(mac, ifr.ifr_hwaddr.sa_data, MAC_LENGTH);
+	// Get interface index using name
+	if (ioctl(sd, SIOCGIFINDEX, &ifr) == -1) {
+		perror("SIOCGIFINDEX");
+		goto out;
+	}
+	*ifindex = ifr.ifr_ifindex;
+	debug("interface index is %d\n", *ifindex);
 
-    if (get_if_ip4(sd, ifname, ip)) {
-        goto out;
-    }
-    debug("get_if_info OK");
+	// Get MAC address of the interface
+	if (ioctl(sd, SIOCGIFHWADDR, &ifr) == -1) {
+		perror("SIOCGIFINDEX");
+		goto out;
+	}
 
-    err = 0;
+	// Copy mac address to output
+	memcpy(mac, ifr.ifr_hwaddr.sa_data, MAC_LENGTH);
+
+	if (get_if_ip4(sd, ifname, ip)) {
+		goto out;
+	}
+	debug("get_if_info OK");
+
+	err = 0;
 out:
-    if (sd > 0) {
-        debug("Clean up temporary socket");
-        close(sd);
-    }
-    return err;
+	if (sd > 0) {
+		debug("Clean up temporary socket");
+		close(sd);
+	}
+	return err;
 }
 
 /*
@@ -304,33 +310,33 @@ out:
  */
 int bind_arp(int ifindex, int *fd)
 {
-    debug("bind_arp: ifindex=%i", ifindex);
-    int ret = -1;
+	debug("bind_arp: ifindex=%i", ifindex);
+	int ret = -1;
 
-    // Submit request for a raw socket descriptor.
-    *fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
-    if (*fd < 1) {
-        perror("socket()");
-        goto out;
-    }
+	// Submit request for a raw socket descriptor.
+	*fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+	if (*fd < 1) {
+		perror("socket()");
+		goto out;
+	}
 
-    debug("Binding to ifindex %i", ifindex);
-    struct sockaddr_ll sll;
-    memset(&sll, 0, sizeof(struct sockaddr_ll));
-    sll.sll_family = AF_PACKET;
-    sll.sll_ifindex = ifindex;
-    if (bind(*fd, (struct sockaddr*) &sll, sizeof(struct sockaddr_ll)) < 0) {
-        perror("bind");
-        goto out;
-    }
+	debug("Binding to ifindex %i", ifindex);
+	struct sockaddr_ll sll;
+	memset(&sll, 0, sizeof(struct sockaddr_ll));
+	sll.sll_family = AF_PACKET;
+	sll.sll_ifindex = ifindex;
+	if (bind(*fd, (struct sockaddr*) &sll, sizeof(struct sockaddr_ll)) < 0) {
+		perror("bind");
+		goto out;
+	}
 
-    ret = 0;
+	ret = 0;
 out:
-    if (ret && *fd > 0) {
-        debug("Cleanup socket");
-        close(*fd);
-    }
-    return ret;
+	if (ret && *fd > 0) {
+		debug("Cleanup socket");
+		close(*fd);
+	}
+	return ret;
 }
 
 /*
@@ -339,53 +345,53 @@ out:
  */
 char * read_arp(int fd, struct arp_cache * res)
 {
-    debug("read_arp");
-    int ret = -1;
-    unsigned char buffer[BUF_SIZE];
-    ssize_t length = recvfrom(fd, buffer, BUF_SIZE, 0, NULL, NULL);
-    int index;
-    if (length == -1) {
-        perror("recvfrom()");
-        goto out;
-    }
-    struct ethhdr *rcv_resp = (struct ethhdr *) buffer;
-    struct arp_header *arp_resp = (struct arp_header *) (buffer + ETH2_HEADER_LEN);
-    if (ntohs(rcv_resp->h_proto) != PROTO_ARP) {
-        debug("Not an ARP packet");
-        goto out;
-    }
-    if (ntohs(arp_resp->opcode) != ARP_REPLY) {
-        debug("Not an ARP reply");
-        goto out;
-    }
-    debug("received ARP len=%ld", length);
-    struct in_addr sender_a;
-    memset(&sender_a, 0, sizeof(struct in_addr));
-    memcpy(&sender_a.s_addr, arp_resp->sender_ip, sizeof(uint32_t));
-    debug("Sender IP: %s", inet_ntoa(sender_a));
+	debug("read_arp");
+	int ret = -1;
+	unsigned char buffer[BUF_SIZE];
+	ssize_t length = recvfrom(fd, buffer, BUF_SIZE, 0, NULL, NULL);
+	int index;
+	if (length == -1) {
+		perror("recvfrom()");
+		goto out;
+	}
+	struct ethhdr *rcv_resp = (struct ethhdr *) buffer;
+	struct arp_header *arp_resp = (struct arp_header *) (buffer + ETH2_HEADER_LEN);
+	if (ntohs(rcv_resp->h_proto) != PROTO_ARP) {
+		debug("Not an ARP packet");
+		goto out;
+	}
+	if (ntohs(arp_resp->opcode) != ARP_REPLY) {
+		debug("Not an ARP reply");
+		goto out;
+	}
+	debug("received ARP len=%ld", length);
+	struct in_addr sender_a;
+	memset(&sender_a, 0, sizeof(struct in_addr));
+	memcpy(&sender_a.s_addr, arp_resp->sender_ip, sizeof(uint32_t));
+	debug("Sender IP: %s", inet_ntoa(sender_a));
 
-    debug("Sender MAC: %02X:%02X:%02X:%02X:%02X:%02X",
-          arp_resp->sender_mac[0],
-          arp_resp->sender_mac[1],
-          arp_resp->sender_mac[2],
-          arp_resp->sender_mac[3],
-          arp_resp->sender_mac[4],
-          arp_resp->sender_mac[5]);
+	debug("Sender MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+		arp_resp->sender_mac[0],
+		arp_resp->sender_mac[1],
+		arp_resp->sender_mac[2],
+		arp_resp->sender_mac[3],
+		arp_resp->sender_mac[4],
+		arp_resp->sender_mac[5]);
 
-    sprintf(res->hwAddr, "%02x:%02x:%02x:%02x:%02x:%02x",
-          arp_resp->sender_mac[0],
-          arp_resp->sender_mac[1],
-          arp_resp->sender_mac[2],
-          arp_resp->sender_mac[3],
-          arp_resp->sender_mac[4],
-          arp_resp->sender_mac[5]);
+	sprintf(res->hwAddr, "%02x:%02x:%02x:%02x:%02x:%02x",
+		arp_resp->sender_mac[0],
+		arp_resp->sender_mac[1],
+		arp_resp->sender_mac[2],
+		arp_resp->sender_mac[3],
+		arp_resp->sender_mac[4],
+		arp_resp->sender_mac[5]);
 
-    sprintf(res->ipAddr, "%s", inet_ntoa(sender_a));
+	sprintf(res->ipAddr, "%s", inet_ntoa(sender_a));
 
-    ret = 0;
+	ret = 0;
 
 out:
-    return ret;
+	return ret;
 }
 
 /*
@@ -395,53 +401,53 @@ out:
  * Returns 0 on success.
  */
 struct arp_cache * test_arping(const char *ifname, const char *ip) {
-    struct arp_cache * res = malloc(sizeof(struct arp_cache));
+	struct arp_cache * res = malloc(sizeof(struct arp_cache));
 
-    strcpy(res->device, ifname);
-    res->next = NULL;
+	strcpy(res->device, ifname);
+	res->next = NULL;
 
-    int ret = -1;
-    uint32_t dst = inet_addr(ip);
-    if (dst == 0 || dst == 0xffffffff) {
-        err("Invalid source IP\n");
-        return 1;
-    }
+	int ret = -1;
+	uint32_t dst = inet_addr(ip);
+	if (dst == 0 || dst == 0xffffffff) {
+		err("Invalid source IP\n");
+		return 1;
+	}
 
-    int src;
-    int ifindex;
-    char mac[MAC_LENGTH];
-    if (get_if_info(ifname, &src, mac, &ifindex)) {
-        err("get_if_info failed, interface %s not found or no IP set?", ifname);
-        goto out;
-    }
-    int arp_fd;
-    if (bind_arp(ifindex, &arp_fd)) {
-        err("Failed to bind_arp()");
-        goto out;
-    }
+	int src;
+	int ifindex;
+	char mac[MAC_LENGTH];
+	if (get_if_info(ifname, &src, mac, &ifindex)) {
+		err("get_if_info failed, interface %s not found or no IP set?", ifname);
+		goto out;
+	}
+	int arp_fd;
+	if (bind_arp(ifindex, &arp_fd)) {
+		err("Failed to bind_arp()");
+		goto out;
+	}
 
-    if (send_arp(arp_fd, ifindex, mac, src, dst)) {
-        err("Failed to send_arp");
-        goto out;
-    }
+	if (send_arp(arp_fd, ifindex, mac, src, dst)) {
+		err("Failed to send_arp");
+		goto out;
+	}
 
-    while(1) {
-        int r = read_arp(arp_fd, res);
-        if (r == 0) {
-            break;
-        }
-    }
+	while(1) {
+		int r = read_arp(arp_fd, res);
+		if (r == 0) {
+			break;
+		}
+	}
 
-    ret = 0;
+	ret = 0;
 out:
-    if (arp_fd) {
-        close(arp_fd);
-        arp_fd = 0;
-    }
+	if (arp_fd) {
+		close(arp_fd);
+		arp_fd = 0;
+	}
 
-    if (!ret) return res;
-    free(res);
-    return NULL;
+	if (!ret) return res;
+	free(res);
+	return NULL;
 }
 
 char * resolve_mac(struct arp_cache * cache, const char * intf, const char * ip, bool active_resolve)
@@ -457,10 +463,10 @@ char * resolve_mac(struct arp_cache * cache, const char * intf, const char * ip,
 			return out;
 		}
 
-    if (!cache->next && active_resolve) {
-      cache->next = test_arping(intf, ip);
-      active_resolve = false;
-    }
+		if (!cache->next && active_resolve) {
+			cache->next = test_arping(intf, ip);
+			active_resolve = false;
+		}
 
 		cache = cache->next;
 	}

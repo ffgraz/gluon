@@ -1,27 +1,5 @@
-/*
-  Copyright (c) 2021, Maciej Krüger <maciej@xeredo.it>
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-    1. Redistributions of source code must retain the above copyright notice,
-       this list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice,
-       this list of conditions and the following disclaimer in the documentation
-       and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/* SPDX-FileCopyrightText: 2021-2023 Maciej Krüger <maciej@xeredo.it> */
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "libolsrdhelper.h"
 #include <stdio.h>
@@ -36,7 +14,7 @@ void merge_neighs(json_object * out, json_object * neighs, char * version) {
 			json_object_object_add(out, mac, neighbour);
 		}
 
-    json_object_object_foreach(neighbour_original, key, new) {
+		json_object_object_foreach(neighbour_original, key, new) {
 			json_object * cur = json_object_object_get(neighbour, key);
 
 			if (!strcmp(key, "tq")) {
@@ -91,7 +69,7 @@ struct json_object * olsr1_get_neigh(void) {
 	// but since it's IP we can just do ARP
 
 	// note that we run on the assumption that we've already commounicated with this ip,
-  // otherwise we just ping it
+	// otherwise we just ping it
 
 	struct arp_cache * cache = read_arp_cache();
 	if (!cache) {
@@ -104,35 +82,35 @@ struct json_object * olsr1_get_neigh(void) {
 		return NULL;
 	}
 
-  /*
+	/*
 
-  links
+	links
 
-  localIP	"10.12.11.43"
-  remoteIP	"10.12.11.1"
-  olsrInterface	"mesh-vpn"
-  ifName	"mesh-vpn"
-  validityTime	141239
-  symmetryTime	123095
-  asymmetryTime	25552910
-  vtime	124000
-  currentLinkStatus	"SYMMETRIC"
-  previousLinkStatus	"SYMMETRIC"
-  hysteresis	0
-  pending	false
-  lostLinkTime	0
-  helloTime	0
-  lastHelloTime	0
-  seqnoValid	false
-  seqno	0
-  lossHelloInterval	3000
-  lossTime	3595
-  lossMultiplier	65536
-  linkCost	1.084961
-  linkQuality	1
-  neighborLinkQuality	0.921
+	localIP	"10.12.11.43"
+	remoteIP	"10.12.11.1"
+	olsrInterface	"mesh-vpn"
+	ifName	"mesh-vpn"
+	validityTime	141239
+	symmetryTime	123095
+	asymmetryTime	25552910
+	vtime	124000
+	currentLinkStatus	"SYMMETRIC"
+	previousLinkStatus	"SYMMETRIC"
+	hysteresis	0
+	pending	false
+	lostLinkTime	0
+	helloTime	0
+	lastHelloTime	0
+	seqnoValid	false
+	seqno	0
+	lossHelloInterval	3000
+	lossTime	3595
+	lossMultiplier	65536
+	linkCost	1.084961
+	linkQuality	1
+	neighborLinkQuality	0.921
 
-  */
+	*/
 
 	json_object *links = json_object_object_get(resp, "links");
 	if (!links)
@@ -156,8 +134,8 @@ struct json_object * olsr1_get_neigh(void) {
 		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
 
-    const double linkQuality = json_object_get_double(json_object_object_get(link, "linkQuality"));
-    const double neighborLinkQuality = json_object_get_double(json_object_object_get(link, "neighborLinkQuality"));
+		const double linkQuality = json_object_get_double(json_object_object_get(link, "linkQuality"));
+		const double neighborLinkQuality = json_object_get_double(json_object_object_get(link, "neighborLinkQuality"));
 
 		json_object_object_add(neigh, "etx", json_object_new_double(1 / (linkQuality * neighborLinkQuality)));
 		json_object_object_add(neigh, "ip", json_object_object_get(link, "remoteIP"));
@@ -168,11 +146,11 @@ struct json_object * olsr1_get_neigh(void) {
 			cache,
 			json_object_get_string(json_object_object_get(link, "ifName")),
 			json_object_get_string(json_object_object_get(link, "remoteIP")),
-      true
+			true
 		);
 
 		if (!mac) {
-      continue;
+			continue;
 		}
 
 		json_object_object_add(out, mac, neigh);
@@ -204,9 +182,9 @@ struct json_object * olsr2_get_neigh(void) {
 		return NULL;
 	}
 
-  /*
+	/*
 
-  links
+	links
 
 	"if":"olsr12",
 	"link_bindto":"fe80::ec67:efff:fed3:d856",
@@ -230,7 +208,7 @@ struct json_object * olsr2_get_neigh(void) {
 	"domain_metric_out":"1.02kbit/s",
 	"domain_metric_out_raw":2105088,
 
-  */
+	*/
 
 	json_object *links = json_object_object_get(resp, "link");
 	if (!links) {

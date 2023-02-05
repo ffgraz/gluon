@@ -1,27 +1,5 @@
-/*
-  Copyright (c) 2021, Maciej Krüger <maciej@xeredo.it>
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-    1. Redistributions of source code must retain the above copyright notice,
-       this list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice,
-       this list of conditions and the following disclaimer in the documentation
-       and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/* SPDX-FileCopyrightText: 2021-2023 Maciej Krüger <maciej@xeredo.it> */
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "libolsrdhelper.h"
 #include "uclient.h"
@@ -240,27 +218,27 @@ bool success_exit(char *cmd, ...) {
 
 	if (pid == 0) {
 		va_list val;
-    char **args = NULL;
-    int argc;
+		char **args = NULL;
+		int argc;
 
-    // Determine number of variadic arguments
-    va_start(val, cmd);
-    argc = 2; // leading command + trailing NULL
-    while (va_arg(val, char *) != NULL)
-      argc++;
-    va_end(val);
+		// Determine number of variadic arguments
+		va_start(val, cmd);
+		argc = 2; // leading command + trailing NULL
+		while (va_arg(val, char *) != NULL)
+			argc++;
+		va_end(val);
 
-    // Allocate args, put references to command / variadic arguments + NULL in args
-    args = (char **) malloc(argc * sizeof(char*));
-    args[0] = cmd;
-    va_start(val, cmd);
-    int i = 0;
-    do {
-      i++;
-      args[i] = va_arg(val, char *);
+		// Allocate args, put references to command / variadic arguments + NULL in args
+		args = (char **) malloc(argc * sizeof(char*));
+		args[0] = cmd;
+		va_start(val, cmd);
+		int i = 0;
+		do {
+			i++;
+			args[i] = va_arg(val, char *);
 			// since this triggers AFTERWARDS, the trailing null still gets pushed
-    } while (args[i] != NULL);
-    va_end(val);
+		} while (args[i] != NULL);
+		va_end(val);
 
 		execv(cmd, args);
 		exit(1);
@@ -339,11 +317,11 @@ fail:
 }
 
 int olsr1_get_nodeinfo(const char *path, json_object **out) {
-  char url[BASE_URL_1_LEN + strlen(path) + 2];
+	char url[BASE_URL_1_LEN + strlen(path) + 2];
 	sprintf(url, "%s/%s", BASE_URL_1, path);
 
 	uloop_init();
-  struct recv_json_ctx json_ctx = { };
+	struct recv_json_ctx json_ctx = { };
 	json_ctx.get_data = get_all_data_init();
 	if (!json_ctx.get_data)
 		return 1;
@@ -351,9 +329,9 @@ int olsr1_get_nodeinfo(const char *path, json_object **out) {
 	int err_code = get_url(url, &recv_json_cb, &recv_json_eof_cb, &json_ctx, -1);
 	uloop_done();
 
-  if (err_code) {
-    return err_code;
-  }
+	if (err_code) {
+		return err_code;
+	}
 
 	if (json_ctx.error) {
 		return json_ctx.error;
@@ -361,7 +339,7 @@ int olsr1_get_nodeinfo(const char *path, json_object **out) {
 
 	*out = json_ctx.parsed;
 
-  return 0;
+	return 0;
 }
 
 int olsr2_get_nodeinfo(const char *cmd, json_object **out) {
@@ -369,16 +347,16 @@ int olsr2_get_nodeinfo(const char *cmd, json_object **out) {
 	sprintf(url, "%s/%s", BASE_URL_2, cmd);
 
 	uloop_init();
-  struct recv_json_ctx json_ctx = { };
+	struct recv_json_ctx json_ctx = { };
 	json_ctx.get_data = get_all_data_init();
 	if (!json_ctx.get_data)
 		return 1;
 	int err_code = get_url(url, &recv_json_cb, &recv_json_eof_cb, &json_ctx, -1);
 	uloop_done();
 
-  if (err_code) {
-    return err_code;
-  }
+	if (err_code) {
+		return err_code;
+	}
 
 	if (json_ctx.error) {
 		return json_ctx.error;
@@ -386,7 +364,7 @@ int olsr2_get_nodeinfo(const char *cmd, json_object **out) {
 
 	*out = json_ctx.parsed;
 
-  return 0;
+	return 0;
 }
 
 int olsr2_get_nodeinfo_raw(const char *cmd, char **out) {
@@ -394,16 +372,16 @@ int olsr2_get_nodeinfo_raw(const char *cmd, char **out) {
 	sprintf(url, "%s/%s", BASE_URL_2, cmd);
 
 	uloop_init();
-  struct recv_txt_ctx txt_ctx = { };
+	struct recv_txt_ctx txt_ctx = { };
 	txt_ctx.get_data = get_all_data_init();
 	if (!txt_ctx.get_data)
 		return 1;
 	int err_code = get_url(url, &recv_txt_cb, &recv_txt_eof_cb, &txt_ctx, -1);
 	uloop_done();
 
-  if (err_code) {
-    return err_code;
-  }
+	if (err_code) {
+		return err_code;
+	}
 
 	if (txt_ctx.error) {
 		return txt_ctx.error;
@@ -411,5 +389,5 @@ int olsr2_get_nodeinfo_raw(const char *cmd, char **out) {
 
 	*out = txt_ctx.data;
 
-  return 0;
+	return 0;
 }
