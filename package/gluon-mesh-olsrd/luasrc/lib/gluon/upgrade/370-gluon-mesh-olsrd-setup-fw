@@ -52,7 +52,7 @@ uci:section('firewall', 'rule', 'allow_mesh_icmpv6_input', {
 		'router-advertisement',
 		'neighbour-advertisement'
 	},
- 	limit = '1000/sec',
+	limit = '1000/sec',
 	family = 'ipv6',
 	target = 'ACCEPT',
 })
@@ -71,7 +71,7 @@ uci:section('firewall', 'rule', 'allow_mesh_icmpv6_forward', {
 		'bad-header',
 		'unknown-header-type'
 	},
- 	limit = '1000/sec',
+	limit = '1000/sec',
 	family = 'ipv6',
 	target = 'ACCEPT',
 })

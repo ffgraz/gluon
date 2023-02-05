@@ -18,27 +18,27 @@ end
 -- `indent` sets the initial level of indentation.
 -- src https://gist.github.com/xytis/5361405
 function tprint (tbl, indent)
-  if not indent then indent = 0 end
-  for k, v in pairs(tbl) do
-    formatting = string.rep('  ', indent) .. k .. ': '
-    if type(v) == 'table' then
-      print(formatting)
-      tprint(v, indent + 1)
-    else
-      print(formatting .. tostring(v))
-    end
-  end
+	if not indent then indent = 0 end
+	for k, v in pairs(tbl) do
+		formatting = string.rep('  ', indent) .. k .. ': '
+		if type(v) == 'table' then
+			print(formatting)
+			tprint(v, indent + 1)
+		else
+			print(formatting .. tostring(v))
+		end
+	end
 end
 
 -- src https://stackoverflow.com/a/24823383/3990041
 function table.slice(tbl, first, last, step)
-  local sliced = {}
+	local sliced = {}
 
-  for i = first or 1, last or #tbl, step or 1 do
-    sliced[#sliced+1] = tbl[i]
-  end
+	for i = first or 1, last or #tbl, step or 1 do
+		sliced[#sliced+1] = tbl[i]
+	end
 
-  return sliced
+	return sliced
 end
 
 -- CLI lib
