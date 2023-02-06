@@ -1,4 +1,5 @@
 /* SPDX-FileCopyrightText: 2021-2023 Maciej Krüger <maciej@xeredo.it> */
+/* SPDX-FileCopyrightText: 2016-2019, Matthias Schiffer <mschiffer@universe-factory.net> */
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "respondd-common.h"
@@ -9,6 +10,7 @@
 
 #include <libolsrdhelper.h>
 
+#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -300,13 +302,79 @@ struct json_object * olsr2_get_interfaces (void) {
 	return out;
 }
 
-/* static struct json_object * get_mesh(void) {
+static void add_if_not_empty(struct json_object *obj, const char *key, struct json_object *val) {
+	if (json_object_array_length(val))
+		json_object_object_add(obj, key, val);
+	else
+		json_object_put(val);
+}
+
+static void mesh_add_subif(const char *ifname, struct json_object *wireless, struct json_object *wired,
+		struct json_object *tunnel, struct json_object *other) {
+	struct json_object *address = gluonutil_wrap_and_free_string(gluonutil_get_interface_address(ifname));
+
+	/* In case of VLAN and bridge interfaces, we want the lower interface
+	 * to determine the interface type (but not for the interface address) */
+	char lowername[IF_NAMESIZE];
+	gluonutil_get_interface_lower(lowername, ifname);
+
+	switch(gluonutil_get_interface_type(lowername)) {
+	case GLUONUTIL_INTERFACE_TYPE_WIRELESS:
+		json_object_array_add(wireless, address);
+		break;
+
+	case GLUONUTIL_INTERFACE_TYPE_WIRED:
+		json_object_array_add(wired, address);
+		break;
+
+	case GLUONUTIL_INTERFACE_TYPE_TUNNEL:
+		json_object_array_add(tunnel, address);
+		break;
+
+	default:
+		json_object_array_add(other, address);
+	}
+}
+
+static struct json_object * get_mesh_subifs(const char *ifname) {
+	struct json_object *wireless = json_object_new_array();
+	struct json_object *wired = json_object_new_array();
+	struct json_object *tunnel = json_object_new_array();
+	struct json_object *other = json_object_new_array();
+
+	const char *format = "/sys/class/net/%s/lower_*";
+	char pattern[strlen(format) + strlen(ifname) - 1];
+	snprintf(pattern, sizeof(pattern), format, ifname);
+
+	size_t pattern_len = strlen(pattern);
+
+	glob_t lower;
+	int globreturn;
+	if (!(globreturn = glob(pattern, GLOB_NOSORT, NULL, &lower))) {
+		size_t i;
+		for (i = 0; i < lower.gl_pathc; i++) {
+			mesh_add_subif(lower.gl_pathv[i] + pattern_len - 1,
+					wireless, wired, tunnel, other);
+		}
+
+		globfree(&lower);
+
+		// TODO: add the device's own mac aswell
+		// not sure if we're handling this correctly and if it may make more sense
+		// to just query this
+		mesh_add_subif(ifname, wireless, wired, tunnel, other);
+	} else if (globreturn == GLOB_NOMATCH) {
+		// this is already a lower interface, add directly
+		mesh_add_subif(ifname, wireless, wired, tunnel, other);
+	}
+
 	struct json_object *ret = json_object_new_object();
-	struct json_object *bat0_interfaces = json_object_new_object();
-	json_object_object_add(bat0_interfaces, "interfaces", get_mesh_subifs("bat0"));
-	json_object_object_add(ret, "bat0", bat0_interfaces);
+	add_if_not_empty(ret, "wireless", wireless);
+	add_if_not_empty(ret, "wired", wired);
+	add_if_not_empty(ret, "tunnel", tunnel);
+	add_if_not_empty(ret, "other", other);
 	return ret;
-} */
+}
 
 struct json_object * real_respondd_provider_nodeinfo() {
 	struct olsr_info *info;
@@ -351,9 +419,15 @@ struct json_object * real_respondd_provider_nodeinfo() {
 
 	json_object_object_add(network, "interfaces", n_interfaces);
 
+	struct json_object *n_mesh = json_object_new_object();
+
+	json_object_object_add(network, "mesh", n_mesh);
+
 	json_object_object_add(ret, "network", network);
 
 	struct json_object *software = json_object_new_object();
+
+	json_object_object_add(ret, "software", software);
 
 	if (info->olsr1.enabled) {
 		struct json_object *software_olsr1 = json_object_new_object();
@@ -381,21 +455,15 @@ struct json_object * real_respondd_provider_nodeinfo() {
 			if (interfaces) {
 				json_object_object_add(software_olsr1, "interfaces", interfaces);
 
-				struct json_object_iterator it = json_object_iter_begin(interfaces);
-				struct json_object_iterator itEnd = json_object_iter_end(interfaces);
+				json_object_object_foreach(interfaces, name, interface) {
+					json_object *merged_interface = json_object_object_get(n_interfaces, name);
 
-				while (!json_object_iter_equal(&it, &itEnd)) {
-					const char * name = json_object_iter_peek_name(&it);
-					json_object *append_key = json_object_object_get(n_interfaces, name);
-
-					if (!append_key) {
-						append_key = json_object_new_object();
-						json_object_object_add(n_interfaces, name, append_key);
+					if (!merged_interface) {
+						merged_interface = json_object_new_object();
+						json_object_object_add(n_interfaces, name, merged_interface);
 					}
 
-					json_object_object_add(append_key, "olsr1",
-						json_object_object_get(interfaces, name));
-					json_object_iter_next(&it);
+					json_object_object_add(merged_interface, "olsr1", interface);
 				}
 			}
 		}
@@ -425,21 +493,15 @@ struct json_object * real_respondd_provider_nodeinfo() {
 			if (interfaces) {
 				json_object_object_add(software_olsr2, "interfaces", interfaces);
 
-				struct json_object_iterator it = json_object_iter_begin(interfaces);
-				struct json_object_iterator itEnd = json_object_iter_end(interfaces);
+				json_object_object_foreach(interfaces, name, interface) {
+					json_object *merged_interface = json_object_object_get(n_interfaces, name);
 
-				while (!json_object_iter_equal(&it, &itEnd)) {
-					const char * name = json_object_iter_peek_name(&it);
-					json_object *append_key = json_object_object_get(n_interfaces, name);
-
-					if (!append_key) {
-						append_key = json_object_new_object();
-						json_object_object_add(n_interfaces, name, append_key);
+					if (!merged_interface) {
+						merged_interface = json_object_new_object();
+						json_object_object_add(n_interfaces, name, merged_interface);
 					}
 
-					json_object_object_add(append_key, "olsr2",
-						json_object_object_get(interfaces, name));
-					json_object_iter_next(&it);
+					json_object_object_add(merged_interface, "olsr2", interface);
 				}
 			}
 		}
@@ -447,7 +509,13 @@ struct json_object * real_respondd_provider_nodeinfo() {
 		json_object_object_add(software, "olsr2", software_olsr2);
 	}
 
-	json_object_object_add(ret, "software", software);
+	json_object_object_foreach(n_interfaces, name, value) {
+		if (strcmp(name, "lo")) { // everything that ISN'T loopback
+			struct json_object * intf = json_object_new_object();
+			json_object_object_add(intf, "interfaces", get_mesh_subifs(name));
+			json_object_object_add(n_mesh, name, intf);
+		}
+	}
 
 	return ret;
 }
