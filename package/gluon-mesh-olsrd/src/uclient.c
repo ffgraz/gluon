@@ -10,10 +10,9 @@
 #include <limits.h>
 #include <stdio.h>
 
-
 #define TIMEOUT_MSEC 300000
 
-static const char *const user_agent = "OLSRDHelper.so (using libuclient)";
+static const char *const user_agent = "olsrdhelper (libuclient)";
 
 
 const char *uclient_get_errmsg(int code) {

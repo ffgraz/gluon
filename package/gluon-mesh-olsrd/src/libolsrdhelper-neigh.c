@@ -131,7 +131,7 @@ struct json_object * olsr1_get_neigh(void) {
 
 
 		json_object_object_add(neigh, "ifname", json_object_object_get(link, "ifName"));
-		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
+		// set this if we detect peer in hna is doing gw
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
 
 		const double linkQuality = json_object_get_double(json_object_object_get(link, "linkQuality"));
@@ -229,7 +229,7 @@ struct json_object * olsr2_get_neigh(void) {
 		}
 
 		json_object_object_add(neigh, "ifname", json_object_object_get(link, "if"));
-		// TODO: do we need this? should we set this? (we could pick the one peer that we currently route 0.0.0.0 over...)
+		// set this is nhdpinfo returns this peer as being used for :: or 0.0.0.0
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
 		json_object_object_add(neigh, "etx", json_object_object_get(link, "link_vtime"));
 		json_object_object_add(neigh, "ip", json_object_object_get(link, "neighbor_originator"));

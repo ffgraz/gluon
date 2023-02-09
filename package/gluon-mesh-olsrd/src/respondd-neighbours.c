@@ -4,13 +4,8 @@
 #include "respondd-common.h"
 
 #include <libgluonutil.h>
-
 #include <json-c/json.h>
-
 #include <libolsrdhelper.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 struct json_object * real_respondd_provider_neighbours() {

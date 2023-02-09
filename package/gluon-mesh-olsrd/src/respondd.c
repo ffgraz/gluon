@@ -2,13 +2,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "respondd-common.h"
-
 #include <respondd.h>
-
 #include <json-c/json.h>
-
 #include <stdio.h>
-#include <stdlib.h>
 
 struct json_object * make_safe(const char * name) {
 	FILE *fp;
@@ -31,6 +27,7 @@ struct json_object * make_safe(const char * name) {
 __attribute__ ((visibility ("default")))
 const struct respondd_provider_info respondd_providers[] = {
 	{"nodeinfo", respondd_provider_nodeinfo},
+	{"statistics", respondd_provider_statistics},
 	{"neighbours", respondd_provider_neighbours},
 	{}
 };

@@ -14,13 +14,14 @@ int run (json_object * resp) {
 }
 
 int main (int argc, char *argv[]) {
-	json_object *resp;
-
 	if (argc < 2) {
 		goto help;
 	}
 
 	switch(argv[1][0]) {
+		case 115: { // s
+			return run(real_respondd_provider_statistics());
+		}
 		case 110: { // n
 			return run(real_respondd_provider_neighbours());
 		}
@@ -33,6 +34,6 @@ int main (int argc, char *argv[]) {
 	}
 
 help:
-	printf("i = nodeinfo, n = neighbours");
+	printf("i = nodeinfo, n = neighbours, s = statistics\n");
 	return 2;
 }

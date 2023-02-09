@@ -10,7 +10,10 @@ struct json_object * name (void) { \
 
 struct json_object * make_safe(const char * name);
 
-struct json_object * respondd_provider_nodeinfo();
 struct json_object * respondd_provider_neighbours();
-struct json_object * real_respondd_provider_nodeinfo();
+struct json_object * respondd_provider_nodeinfo();
+struct json_object * respondd_provider_statistics();
 struct json_object * real_respondd_provider_neighbours();
+struct json_object * real_respondd_provider_nodeinfo();
+struct json_object * real_respondd_provider_statistics();
+struct json_object * get_traffic(void);

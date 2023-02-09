@@ -15,7 +15,7 @@ LDFLAGS += $(shell pkg-config --libs json-c)
 SOURCES_HELPER = libolsrdhelper.c libolsrdhelper-neigh.c uclient.c arp.c
 FILES_HELPER = $(SOURCES_HELPER) libolsrdhelper.h uclient.h arp.h
 
-SOURCES_RESPONDD = respondd.c respondd-nodeinfo.c respondd-neighbours.c
+SOURCES_RESPONDD = respondd.c respondd-neighbours.c respondd-nodeinfo.c respondd-statistics.c
 FILES_RESPONDD = $(SOURCES_RESPONDD) respondd-common.h
 
 SOURCES_DEBUG = olsrd-debug.c $(SOURCES_RESPONDD)
@@ -26,6 +26,8 @@ FILES_OLSR_RESPONDD = $(SOURCES_OLSR_RESPONDD)
 
 SOURCES_LUA = olsrd.c
 FILES_LUA = $(SOURCES_LUA)
+
+all: olsrd-debug olsrd.so libolsrdhelper.so olsr-respondd respondd.so
 
 respondd.so: libolsrdhelper.so $(FILES_RESPONDD)
 	$(CC) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -fvisibility=hidden -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper -luci
@@ -41,3 +43,6 @@ olsrd.so: libolsrdhelper.so $(FILES_LUA)
 
 olsrd-debug: libolsrdhelper.so $(FILES_DEBUG)
 	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -fPIE -I. -L. -o $@ $(SOURCES_DEBUG) $(LDLIBS) -lgluonutil -lolsrdhelper -luci -llua-jsonc -llua
+
+clean:
+	rm -f *.so *.o olsrd-debug olsr-respondd

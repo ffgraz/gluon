@@ -7,14 +7,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <net/if.h>
 #include <stdbool.h>
 #include <sys/wait.h>
-
-#include <libubox/blobmsg.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/epoll.h>
+#include <errno.h>
+#include <stdlib.h>
 #include <libubox/uloop.h>
-
-#define USER_AGENT "olsrdhelper (libuclient)"
 
 #define BASE_URL_1 "http://127.0.0.1:9090"
 #define BASE_URL_1_LEN sizeof(BASE_URL_1)
@@ -53,6 +53,8 @@ struct recv_txt_ctx {
 
 	struct get_data_ctx *get_data;
 };
+
+// get_all_data is flaky and perhaps it's written a bit gruesomely
 
 /** Recieves all the data */
 struct get_data_ctx * get_all_data_init() {
@@ -390,4 +392,109 @@ int olsr2_get_nodeinfo_raw(const char *cmd, char **out) {
 	*out = txt_ctx.data;
 
 	return 0;
+}
+
+/*
+	out is an optional parameter. If not set the raw fd will be returned.
+	Example:
+		int fd = socket_request("/var/run/mmfd.sock", "get_neighbours", NULL);
+		if (fd < 0) return NULL;
+		struct json_object * response = json_object_from_fd(fd);
+*/
+int socket_request(const char *path, const char *cmd, char **out) {
+	int fd;
+	int ok = 0;
+
+	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		goto end;
+	}
+
+	struct sockaddr_un addr = {};
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, path);
+	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+		goto end;
+	}
+
+	if (send(fd, cmd, strlen(cmd), 0) == -1) {
+		goto close_end;
+	}
+
+	if (shutdown(fd, SHUT_WR)) {
+		goto close_end;
+	}
+
+	if (out == NULL) {
+		return fd;
+	}
+
+	size_t chunk_size = 4096;
+	char * chunk = malloc(chunk_size);
+	size_t current = 0;
+	size_t size_recv;
+
+	if (!chunk) {
+		errno = ENOMEM;
+		goto close_end;
+	}
+
+	// TODO: use uloop
+	if ((size_recv = recv(fd, chunk + current, chunk_size - current, MSG_PEEK | MSG_TRUNC)) < 0) {
+		if (size_recv + current > chunk_size) {
+			// chunk to small, adjust
+			char * newchunk = malloc(chunk_size + 4096);
+			if (!newchunk) {
+				errno = ENOMEM;
+				goto free_end;
+			}
+
+			memcpy(newchunk, chunk, current);
+			free(chunk);
+			chunk = newchunk;
+			chunk_size += 4096;
+		}
+
+		if ((size_recv = recv(fd, chunk + current, chunk_size - current, 0)) < 0) {
+			current += size_recv;
+		} else if (size_recv < 0) {
+			goto free_end;
+		}
+	} else if (size_recv < 0) {
+		goto free_end;
+	}
+
+	chunk[current] = '\0';
+
+	*out = chunk;
+
+	errno = 0;
+	ok = 1;
+
+free_end:
+	free(chunk);
+close_end:
+	close(fd);
+end:
+	if (!ok) {
+		return -errno;
+	}
+
+	return 0;
+}
+
+json_object * socket_request_json(const char *path, const char *cmd) {
+	json_object * ret = NULL;
+
+	int fd = socket_request(path, cmd, NULL);
+	if (fd < 0) {
+		goto end;
+	}
+
+	ret = json_object_from_fd(fd);
+
+close_end:
+	close(fd);
+end:
+	return ret;
 }

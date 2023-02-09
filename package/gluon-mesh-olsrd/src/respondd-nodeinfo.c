@@ -12,7 +12,6 @@
 
 #include <glob.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 static json_object * olsr1_get_plugins(void) {
