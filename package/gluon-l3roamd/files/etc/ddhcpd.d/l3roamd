@@ -1,5 +1,23 @@
 #!/bin/sh
-if [ "$1" = "lease"  ]
-then
-	echo add_address "$2" "$3" | uc /var/run/l3roamd.sock
-fi
+
+# NOTE: we need to prefix with ::ffff: in del_address because of a bug in l3roamd
+# add_address is modified for consistency
+
+case "$1" in
+	lease)
+		echo add_address "::ffff:$2" "$3" | uc /var/run/l3roamd.sock
+		;;
+
+	release)
+		echo del_address "::ffff:$2" "$3" | uc /var/run/l3roamd.sock
+		;;
+
+
+	claim)
+		ip route add "$2" dev local-node proto 158
+		;;
+
+	claimrelease)
+		ip route del "$2" dev local-node proto 158
+		;;
+esac
