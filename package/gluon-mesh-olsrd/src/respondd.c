@@ -85,7 +85,7 @@ struct json_object * make_safe(const char * name) {
 	}
 
 	// use cached, update in background
-	if (fork()) {
+	if (!fork()) {
 		run_safe(filename, name, false);
 		exit(EXIT_SUCCESS);
 	}
