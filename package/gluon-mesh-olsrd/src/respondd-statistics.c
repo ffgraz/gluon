@@ -19,7 +19,7 @@ static void add_gateway(struct json_object *obj) {
 	// TODO: get gateway (like in state-check scripts)
 	// note: we can only specify ONE gateway so we'll have trouble with
 	// ipv4+ipv6 having different gateways
-    // { gateway: mac, gateway_tq: tq, gateway_nexthop: best_node_mac }
+	// { gateway: mac, gateway_tq: tq, gateway_nexthop: best_node_mac }
 }
 
 int rtnl_get_link(struct rtnl_link_stats64 ** out) {
@@ -113,12 +113,12 @@ end:
 		json_object_new_int64(rtnl->jsonc ## _ ## field));
 
 struct json_object * get_traffic(void) {
-    struct json_object *out = NULL;
+	struct json_object *out = NULL;
 
-    struct rtnl_link_stats64 * rtnl;
+	struct rtnl_link_stats64 * rtnl;
 
-    if (rtnl_get_link(&rtnl))
-        goto end;
+	if (rtnl_get_link(&rtnl))
+		goto end;
 
 	struct json_object *rx = json_object_new_object();
 	SET_STAT(rx, bytes);
@@ -127,16 +127,16 @@ struct json_object * get_traffic(void) {
 	SET_STAT(rx, errors);
 
 	struct json_object *tx = json_object_new_object();
-    SET_STAT(tx, bytes);
-    SET_STAT(tx, packets);
-    SET_STAT(tx, dropped);
-    SET_STAT(tx, errors);
+	SET_STAT(tx, bytes);
+	SET_STAT(tx, packets);
+	SET_STAT(tx, dropped);
+	SET_STAT(tx, errors);
 
 	out = json_object_new_object();
 	json_object_object_add(out, "rx", rx);
 	json_object_object_add(out, "tx", tx);
 
-    free(rtnl);
+	free(rtnl);
 
 end:
 	return out;
@@ -149,8 +149,8 @@ static struct json_object * get_clients(void) {
 
 	struct json_object *ret = json_object_new_object();
 
-	json_object_object_add(ret, "total", json_object_object_get(response, "clients"));
-	json_object_object_add(ret, "list", json_object_object_get(response, "clientlist") ? json_object_object_get(response, "clientlist") : json_object_new_object());
+	J_OCPY2(ret, response, "total", "clients");
+	json_object_object_add(ret, "list", json_object_object_get(response, "clientlist") ? J_OGET(response, "clientlist") : json_object_new_object());
 
 	json_object_put(response);
 

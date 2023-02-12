@@ -10,6 +10,8 @@ int run (json_object * resp) {
 
 	printf("%s", json_object_to_json_string_ext(resp, JSON_C_TO_STRING_PLAIN));
 
+	json_object_put(resp);
+
 	return 0;
 }
 

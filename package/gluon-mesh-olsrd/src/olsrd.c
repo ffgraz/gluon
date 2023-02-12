@@ -96,7 +96,7 @@ static int lua_olsr2_get_neigh (lua_State *L) {
 }
 
 static int lua_oi (lua_State *L) {
-	struct olsr_info *info;
+	struct olsr_info info;
 
 	if (oi(&info))
 		return luaL_error(L, "olsr_info() call failed");
@@ -106,10 +106,10 @@ static int lua_oi (lua_State *L) {
 
 	lua_newtable(L); // olsr1
 
-	lua_pushboolean(L, info->olsr1.enabled);
+	lua_pushboolean(L, info.olsr1.enabled);
 	lua_setfield(L, -2, "enabled");
 
-	lua_pushboolean(L, info->olsr1.running);
+	lua_pushboolean(L, info.olsr1.running);
 	lua_setfield(L, -2, "running");
 
 	lua_setfield(L, -2, "olsr1");
@@ -117,10 +117,10 @@ static int lua_oi (lua_State *L) {
 
 	lua_newtable(L); // olsr2
 
-	lua_pushboolean(L, info->olsr2.enabled);
+	lua_pushboolean(L, info.olsr2.enabled);
 	lua_setfield(L, -2, "enabled");
 
-	lua_pushboolean(L, info->olsr2.running);
+	lua_pushboolean(L, info.olsr2.running);
 	lua_setfield(L, -2, "running");
 
 	lua_setfield(L, -2, "olsr2");

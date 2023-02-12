@@ -20,7 +20,7 @@ static json_object * olsr1_get_plugins(void) {
 	if (olsr1_get_nodeinfo("plugins", &resp))
 		return NULL;
 
-	return json_object_object_get(resp, "plugins");
+	J_OUT(json_object_object_get(resp, "plugins"));
 }
 
 static json_object * olsr1_get_version (void) {
@@ -29,7 +29,7 @@ static json_object * olsr1_get_version (void) {
 	if (olsr1_get_nodeinfo("version", &resp))
 		return NULL;
 
-	return json_object_object_get(json_object_object_get(resp, "version"), "version");
+	J_OUT(json_object_object_get(json_object_object_get(resp, "version"), "version"));
 }
 
 static json_object * olsr2_get_version (void) {
@@ -38,7 +38,7 @@ static json_object * olsr2_get_version (void) {
 	if (olsr2_get_nodeinfo("systeminfo jsonraw version", &resp))
 		return NULL;
 
-	return json_object_object_get(json_object_array_get_idx(json_object_object_get(resp, "version"), 0), "version_text");
+	J_OUT(json_object_object_get(json_object_array_get_idx(json_object_object_get(resp, "version"), 0), "version_text"));
 }
 
 static json_object * olsr1_get_addresses (void) {
@@ -77,7 +77,7 @@ static json_object * olsr1_get_addresses (void) {
 	for (int i = 0; i < json_object_array_length(intfs); i++) {
 		struct json_object *el = json_object_array_get_idx(intfs, i);
 		struct json_object *olsr = json_object_object_get(el, "olsrInterface");
-		struct json_object *ip = json_object_object_get(olsr, "ipAddress"); // might be null (up=false)
+		struct json_object *ip = J_OGET(olsr, "ipAddress"); // might be null (up=false)
 		if (ip) {
 			json_object_array_add(out, ip);
 		}
@@ -109,11 +109,13 @@ static json_object * olsr2_get_addresses (void) {
 
 	for (int i = 0; i < json_object_array_length(origs); i++) {
 		json_object *el = json_object_array_get_idx(origs, i);
-		json_object *orig = json_object_object_get(el, "originator");
+		json_object *orig = J_OGET(el, "originator");
 		if (json_object_get_string(orig)[0] != "-"[0]) {
 			json_object_array_add(out, orig);
 		}
 	}
+
+	json_object_put(resp);
 
 	return out;
 }
@@ -161,10 +163,10 @@ struct json_object * olsr1_get_interfaces (void) {
 			intf
 		);
 
-		json_object_object_add(intf, "configured", json_object_object_get(el, "configured"));
-		json_object_object_add(intf, "up", json_object_object_get(olsr, "up"));
-		json_object_object_add(intf, "ipAddress", json_object_object_get(olsr, "ipAddress"));
-		json_object_object_add(intf, "mode", json_object_object_get(olsr, "mode"));
+		J_OCPY(intf, el, "configured");
+		J_OCPY(intf, olsr, "up");
+		J_OCPY(intf, olsr, "ipAddress");
+		J_OCPY(intf, olsr, "mode");
 	}
 
 	return out;
@@ -283,16 +285,16 @@ struct json_object * olsr2_get_interfaces (void) {
 			intf
 		);
 
-		json_object_object_add(intf, "mac", json_object_object_get(el, "if_mac"));
+		J_OCPY2(intf, el, "mac", "if_mac");
 
 		if (json_object_get_string(json_object_object_get(el, "if_bindto_v4"))[0] != "-"[0]) {
-			json_object_object_add(intf, "v4", json_object_object_get(el, "if_bindto_v4"));
+			J_OCPY2(intf, el, "if_bindto_v4", "v4");
 		} else {
 			json_object_object_add(intf, "v4", json_object_new_null());
 		}
 
 		if (json_object_get_string(json_object_object_get(el, "if_bindto_v6"))[0] != "-"[0]) {
-			json_object_object_add(intf, "v6", json_object_object_get(el, "if_bindto_v6"));
+			J_OCPY2(intf, el, "if_bindto_v6", "v6");
 		} else {
 			json_object_object_add(intf, "v6", json_object_new_null());
 		}
@@ -376,37 +378,17 @@ static struct json_object * get_mesh_subifs(const char *ifname) {
 }
 
 struct json_object * real_respondd_provider_nodeinfo() {
-	struct olsr_info *info;
+	struct olsr_info info;
 
-	struct json_object *ret = json_object_new_object();
+	json_object *ret = NULL;
 
 	if (oi(&info))
 		return ret;
 
-	/* struct json_object *network = json_object_new_object();
-	json_object_object_add(network, "addresses", get_addresses());
-	json_object_object_add(network, "mesh", get_mesh());
-	json_object_object_add(ret, "network", network); */
-
-	/*
-
-	TODO: get interfaces and return in following schema
-
-	{
-		interfaces: {
-			$intf_name: {
-				olsr1: {
-					configured,
-					up: intf.olsrInterface.up,
-				}
-				olsr2: {
-
-				}
-			}
-		}
+	ret = json_object_new_object();
+	if (!ret) {
+		return NULL;
 	}
-
-	*/
 
 	struct json_object *network = json_object_new_object();
 
@@ -428,12 +410,12 @@ struct json_object * real_respondd_provider_nodeinfo() {
 
 	json_object_object_add(ret, "software", software);
 
-	if (info->olsr1.enabled) {
+	if (info.olsr1.enabled) {
 		struct json_object *software_olsr1 = json_object_new_object();
 
-		json_object_object_add(software_olsr1, "running", json_object_new_boolean(info->olsr1.running));
+		json_object_object_add(software_olsr1, "running", json_object_new_boolean(info.olsr1.running));
 
-		if (info->olsr1.running) {
+		if (info.olsr1.running) {
 			struct json_object *version = olsr1_get_version();
 			if (version)
 				json_object_object_add(software_olsr1, "version", version);
@@ -447,7 +429,7 @@ struct json_object * real_respondd_provider_nodeinfo() {
 				json_object_object_add(software_olsr1, "addresses", addresses);
 
 				for (int i = 0; i < json_object_array_length(addresses); i++)
-					json_object_array_add(n_addresses, json_object_array_get_idx(addresses, i));
+					json_object_array_add(n_addresses, json_object_get(json_object_array_get_idx(addresses, i)));
 			}
 
 			struct json_object *interfaces = olsr1_get_interfaces();
@@ -462,7 +444,7 @@ struct json_object * real_respondd_provider_nodeinfo() {
 						json_object_object_add(n_interfaces, name, merged_interface);
 					}
 
-					json_object_object_add(merged_interface, "olsr1", interface);
+					json_object_object_add(merged_interface, "olsr1", json_object_get(interface));
 				}
 			}
 		}
@@ -470,12 +452,12 @@ struct json_object * real_respondd_provider_nodeinfo() {
 		json_object_object_add(software, "olsr1", software_olsr1);
 	}
 
-	if (info->olsr2.enabled) {
+	if (info.olsr2.enabled) {
 		struct json_object *software_olsr2 = json_object_new_object();
 
-		json_object_object_add(software_olsr2, "running", json_object_new_boolean(info->olsr2.running));
+		json_object_object_add(software_olsr2, "running", json_object_new_boolean(info.olsr2.running));
 
-		if (info->olsr2.running) {
+		if (info.olsr2.running) {
 			struct json_object *version = olsr2_get_version();
 			if (version)
 				json_object_object_add(software_olsr2, "version", version);
@@ -485,7 +467,7 @@ struct json_object * real_respondd_provider_nodeinfo() {
 				json_object_object_add(software_olsr2, "addresses", addresses);
 
 				for (int i = 0; i < json_object_array_length(addresses); i++)
-					json_object_array_add(n_addresses, json_object_array_get_idx(addresses, i));
+					json_object_array_add(n_addresses, json_object_get(json_object_array_get_idx(addresses, i)));
 			}
 
 			struct json_object *interfaces = olsr2_get_interfaces();
@@ -500,7 +482,7 @@ struct json_object * real_respondd_provider_nodeinfo() {
 						json_object_object_add(n_interfaces, name, merged_interface);
 					}
 
-					json_object_object_add(merged_interface, "olsr2", interface);
+					json_object_object_add(merged_interface, "olsr2", json_object_get(interface));
 				}
 			}
 		}

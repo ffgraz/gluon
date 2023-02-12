@@ -20,23 +20,32 @@ void merge_neighs(json_object * out, json_object * neighs, char * version) {
 			if (!strcmp(key, "tq")) {
 				if (cur) {
 					json_object_object_add(
-						neighbour,
-						"tq",
-						json_object_new_double(
-							(json_object_get_double(cur) + json_object_get_double(new)) / 2
-						)
+							neighbour,
+							"tq",
+							json_object_new_double(
+									(json_object_get_double(cur) + json_object_get_double(new)) / 2
+							)
 					);
 				} else {
-					json_object_object_add(neighbour, "tq", new);
+					json_object_object_add(neighbour, "tq", json_object_get(new));
+				}
+			} else if (!strcmp(key, "etx")) {
+				if (cur) {
+					json_object_object_add(
+							neighbour,
+							"etx",
+							json_object_new_double(
+									(json_object_get_double(cur) + json_object_get_double(new)) / 2
+							)
+					);
+				} else {
+					json_object_object_add(neighbour, "etx", json_object_get(new));
 				}
 			} else if (!strcmp(key, "ip")) {
-				char * str = malloc(10);
-				if (!str) {
-					return;
-				}
+				char str[10];
 				sprintf(str, "%s_%s", version, key);
 
-				json_object_object_add(neighbour, str, new);
+				json_object_object_add(neighbour, str, json_object_get(new));
 			} else if (!strcmp(key, "best")) {
 				if (cur) {
 					json_object_object_add(
@@ -47,21 +56,65 @@ void merge_neighs(json_object * out, json_object * neighs, char * version) {
 						)
 					);
 				} else {
-					json_object_object_add(neighbour, "best", new);
+					json_object_object_add(neighbour, "best", json_object_get(new));
 				}
 			} else {
-				json_object_object_add(neighbour, key, new);
+				json_object_object_add(neighbour, key, json_object_get(new));
 			}
 		}
 	}
 }
 
-struct json_object * olsr1_get_neigh(void) {
-	json_object *resp;
-	int error = olsr1_get_nodeinfo("links", &resp);
+json_object * get_merged_neighs() {
+	struct olsr_info info;
 
-	if (error) {
-		return NULL;
+	if (oi(&info))
+		goto end;
+
+	json_object *out = json_object_new_object();
+	if (!out) {
+		goto end;
+	}
+
+	if (info.olsr2.running) {
+		json_object *olsr2_neigh;
+
+		olsr2_neigh = olsr2_get_neigh();
+		if (!olsr2_neigh) {
+			goto fail;
+		}
+
+		merge_neighs(out, olsr2_neigh, "olsr2");
+		json_object_put(olsr2_neigh);
+	}
+
+	if (info.olsr1.running) {
+		json_object *olsr1_neigh;
+
+		olsr1_neigh = olsr1_get_neigh();
+		if (!olsr1_neigh) {
+			goto fail;
+		}
+
+		merge_neighs(out, olsr1_neigh, "olsr1");
+		json_object_put(olsr1_neigh);
+	}
+
+	goto end;
+
+fail:
+	json_object_put(out);
+	out = NULL;
+end:
+	return out;
+}
+
+struct json_object * olsr1_get_neigh(void) {
+	json_object *out = NULL;
+	json_object *resp;
+
+	if (olsr1_get_nodeinfo("links", &resp)) {
+		goto cleanup;
 	}
 
 	// olsr1 does not give us the mac that the other side uses
@@ -73,13 +126,7 @@ struct json_object * olsr1_get_neigh(void) {
 
 	struct arp_cache * cache = read_arp_cache();
 	if (!cache) {
-		return NULL;
-	}
-
-	json_object *out = json_object_new_object();
-
-	if (!out) {
-		return NULL;
+		goto cleanup;
 	}
 
 	/*
@@ -113,24 +160,30 @@ struct json_object * olsr1_get_neigh(void) {
 	*/
 
 	json_object *links = json_object_object_get(resp, "links");
-	if (!links)
-		return NULL;
+	if (!links) {
+		goto cleanup_resp;
+	}
 
-	int linkcount = json_object_array_length(links);
+	out = json_object_new_object();
 
-	for (int i = 0; i < linkcount; i++) {
+	if (!out) {
+		goto cleanup_cache;
+	}
+
+	size_t linkcount = json_object_array_length(links);
+
+	for (size_t i = 0; i < linkcount; i++) {
 		struct json_object *link = json_object_array_get_idx(links, i);
 		if (!link) {
-			goto cleanup;
+			goto fail;
 		}
 
 		struct json_object *neigh = json_object_new_object();
 		if (!neigh) {
-			goto cleanup;
+			goto fail;
 		}
 
-
-		json_object_object_add(neigh, "ifname", json_object_object_get(link, "ifName"));
+		J_OCPY2(neigh, link, "ifname", "ifName");
 		// set this if we detect peer in hna is doing gw
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
 
@@ -138,7 +191,7 @@ struct json_object * olsr1_get_neigh(void) {
 		const double neighborLinkQuality = json_object_get_double(json_object_object_get(link, "neighborLinkQuality"));
 
 		json_object_object_add(neigh, "etx", json_object_new_double(1 / (linkQuality * neighborLinkQuality)));
-		json_object_object_add(neigh, "ip", json_object_object_get(link, "remoteIP"));
+		J_OCPY2(neigh, link, "ip", "remoteIP");
 
 		json_object_object_add(neigh, "tq", json_object_new_double(255 * (linkQuality * neighborLinkQuality)));
 
@@ -158,28 +211,25 @@ struct json_object * olsr1_get_neigh(void) {
 		free(mac);
 	}
 
-	return out;
+	goto cleanup_resp;
 
+fail:
+	json_object_put(out);
+	out = NULL;
+cleanup_resp:
+	json_object_put(resp);
+cleanup_cache:
+	cleanup_arp_cache(cache);
 cleanup:
-	if (cache) {
-		cleanup_arp_cache(cache);
-	}
-
-	return NULL;
+	return out;
 }
 
 struct json_object * olsr2_get_neigh(void) {
+	json_object *out = NULL;
 	json_object *resp;
-	int error = olsr2_get_nodeinfo("nhdpinfo jsonraw link", &resp);
 
-	if (error) {
-		return NULL;
-	}
-
-	json_object *out = json_object_new_object();
-
-	if (!out) {
-		return NULL;
+	if (olsr2_get_nodeinfo("nhdpinfo jsonraw link", &resp)) {
+		goto cleanup;
 	}
 
 	/*
@@ -212,30 +262,44 @@ struct json_object * olsr2_get_neigh(void) {
 
 	json_object *links = json_object_object_get(resp, "link");
 	if (!links) {
-		return NULL;
+		goto cleanup_resp;
 	}
 
-	int linkcount = json_object_array_length(links);
+	size_t linkcount = json_object_array_length(links);
 
-	for (int i = 0; i < linkcount; i++) {
+	out = json_object_new_object();
+
+	if (!out) {
+		goto cleanup_resp;
+	}
+
+	for (size_t i = 0; i < linkcount; i++) {
 		struct json_object *link = json_object_array_get_idx(links, i);
 		if (!link) {
-			return NULL;
+			goto fail;
 		}
 
 		struct json_object *neigh = json_object_new_object();
 		if (!neigh) {
-			return NULL;
+			goto fail;
 		}
 
-		json_object_object_add(neigh, "ifname", json_object_object_get(link, "if"));
-		// set this is nhdpinfo returns this peer as being used for :: or 0.0.0.0
+		J_OCPY2(neigh, link, "ifname", "if");
+		// set this if nhdpinfo returns this peer as being used for :: or 0.0.0.0
 		json_object_object_add(neigh, "best", json_object_new_boolean(0));
-		json_object_object_add(neigh, "etx", json_object_object_get(link, "link_vtime"));
-		json_object_object_add(neigh, "ip", json_object_object_get(link, "neighbor_originator"));
+		J_OCPY2(neigh, link, "etx", "link_vtime");
+		J_OCPY2(neigh, link, "ip", "neighbor_originator");
 
 		json_object_object_add(out, json_object_get_string(json_object_object_get(link, "link_mac")), neigh);
 	}
 
+	goto cleanup_resp;
+
+fail:
+	json_object_put(out);
+	out = NULL;
+cleanup_resp:
+	json_object_put(resp);
+cleanup:
 	return out;
 }

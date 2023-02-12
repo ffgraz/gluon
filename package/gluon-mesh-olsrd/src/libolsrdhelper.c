@@ -261,27 +261,25 @@ bool success_exit(char *cmd, ...) {
 }
 
 // get enabled from site.conf mesh.olsrX.enabled, get running from service X status
-int oi(struct olsr_info **out) {
-	int ex = 0;
+int oi(struct olsr_info *out) {
+	int ex = 1;
 
 	json_object *site = gluonutil_load_site_config();
 	if (!site)
-		goto fail;
+		goto end;
 
 	json_object *mesh = json_object_object_get(site, "mesh");
 	if (!mesh)
-		goto fail;
+		goto cleanup_site;
 
 	json_object *olsrd = json_object_object_get(mesh, "olsrd");
 	if (!olsrd)
-		goto fail;
+		goto cleanup_site;
 
 	json_object *v1 = json_object_object_get(olsrd, "v1_4");
 	json_object *v2 = json_object_object_get(olsrd, "v2");
 
-	struct olsr_info *info = (struct olsr_info *) malloc(sizeof(struct olsr_info));
-
-	*info = (struct olsr_info){
+	*out = (struct olsr_info){
 		.olsr1 = {
 			.enabled = false,
 			.running = false,
@@ -293,29 +291,27 @@ int oi(struct olsr_info **out) {
 	};
 
 	if (v1 && json_object_get_boolean(json_object_object_get(v1, "enable"))) {
-		info->olsr1.enabled = true;
+		out->olsr1.enabled = true;
 
 		if (success_exit("/etc/init.d/olsrd", "running", NULL)) {
-			info->olsr1.running = true;
+			out->olsr1.running = true;
 		}
 	}
 
 	if (v2 && json_object_get_boolean(json_object_object_get(v2, "enable"))) {
-		info->olsr2.enabled = true;
+		out->olsr2.enabled = true;
 
 		if (success_exit("/etc/init.d/olsrd2", "running", NULL)) {
-			info->olsr2.running = true;
+			out->olsr2.running = true;
 		}
 	}
 
-	*out = info;
+	ex = 0;
 
+cleanup_site:
+	json_object_put(site);
 end:
 	return ex;
-
-fail:
-	ex = 1;
-	goto end;
 }
 
 int olsr1_get_nodeinfo(const char *path, json_object **out) {
@@ -493,7 +489,6 @@ json_object * socket_request_json(const char *path, const char *cmd) {
 
 	ret = json_object_from_fd(fd);
 
-close_end:
 	close(fd);
 end:
 	return ret;

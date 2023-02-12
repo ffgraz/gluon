@@ -9,26 +9,22 @@
 #include <string.h>
 
 struct json_object * real_respondd_provider_neighbours() {
-	struct olsr_info *info;
-
-	struct json_object *ret = json_object_new_object();
-	struct json_object *out = json_object_new_object();
-
-	if (oi(&info))
-		return ret;
-
-	struct json_object *neighs = json_object_new_object();
-
-	if (info->olsr1.enabled && info->olsr1.running) {
-		struct json_object *neigh1 = olsr1_get_neigh();
-		if (neigh1)
-			merge_neighs(neighs, neigh1, "olsr1");
+	json_object * ret = json_object_new_object();
+	if (!ret) {
+		return NULL;
 	}
 
-	if (info->olsr2.enabled && info->olsr2.running) {
-		struct json_object *neigh2 = olsr2_get_neigh();
-		if (neigh2)
-			merge_neighs(neighs, neigh2, "olsr2");
+	json_object * out = json_object_new_object();
+	if (!out) {
+		goto fail;
+	}
+
+	json_object_object_add(ret, "batadv", out);
+
+	json_object * neighs = get_merged_neighs();
+
+	if (!neighs) {
+		goto fail;
 	}
 
 	json_object_object_foreach(neighs, mac, neigh) {
@@ -55,12 +51,18 @@ struct json_object * real_respondd_provider_neighbours() {
 			json_object_object_add(intf, "neighbours", ifneigh);
 		}
 
-		json_object_object_add(ifneigh, mac, neigh);
+		json_object_object_add(ifneigh, mac, json_object_get(neigh));
 	}
 
-	json_object_object_add(ret, "batadv", out);
+	json_object_put(neighs);
 
+end:
 	return ret;
+
+fail:
+	json_object_put(ret);
+	ret = NULL;
+	goto end;
 }
 
 make_safe_fnc(respondd_provider_neighbours, "n")

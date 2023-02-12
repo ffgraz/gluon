@@ -5,20 +5,26 @@
 #include "respondd-common.h"
 #include <stdio.h>
 #include <json-c/json.h>
+#include <assert.h>
 
 void d(const char * fnc, json_object * res) {
 	if (!res) {
 		printf("%s: failed\n\n", fnc);
 	} else {
-		printf("%s: %s\n\n", fnc, json_object_to_json_string_ext(res, JSON_C_TO_STRING_PLAIN));
+		const char * str = json_object_to_json_string_ext(res, JSON_C_TO_STRING_PLAIN);
+		printf("%s: %s\n\n", fnc, str);
+		json_object_put(res);
 	}
 }
 
 void d2(const char * fnc, json_object * res, int code) {
 	if (code) {
 		printf("%s: failed %i\n\n", fnc, code);
+		assert(!res);
 	} else {
-		printf("%s: %s\n\n", fnc, json_object_to_json_string_ext(res, JSON_C_TO_STRING_PLAIN));
+		const char * str = json_object_to_json_string_ext(res, JSON_C_TO_STRING_PLAIN);
+		printf("%s: %s\n\n", fnc, str);
+		json_object_put(res);
 	}
 }
 
