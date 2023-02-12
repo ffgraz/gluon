@@ -74,14 +74,13 @@ struct json_object * make_safe(const char * name) {
 	sprintf(filename, "/tmp/olsrd-respondd-%s.json", name);
 
 	struct stat filestat;
-	if (!stat(filename, &filestat)) {
+	if (stat(filename, &filestat)) {
 		// no file, do sync
 		return run_safe(filename, name, true);
 	}
 
-	double diff = difftime(time(NULL), filestat.st_atime);
-	fprintf(stderr, "diff: %f\n", diff);
-	if (diff > 1000 * 60 * 10) { // if older than 10 minutes, ignore
+	double diff = difftime(time(NULL), filestat.st_ctime);
+	if (diff > 60 * 10) { // if older than 10 minutes, ignore
 		return run_safe(filename, name, true);
 	}
 
@@ -91,7 +90,12 @@ struct json_object * make_safe(const char * name) {
 		exit(EXIT_SUCCESS);
 	}
 
-	return json_object_from_file(filename);
+	json_object * ret = json_object_from_file(filename);
+	if (!ret) { // something is messed up
+		return run_safe(filename, name, true);
+	}
+
+	return ret;
 }
 
 __attribute__ ((visibility ("default")))
