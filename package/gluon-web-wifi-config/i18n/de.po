@@ -50,6 +50,9 @@ msgstr "Knoten wird im Außenbereich betrieben"
 msgid "Outdoor Installation"
 msgstr "Outdoor-Installation"
 
+msgid "Enable point-to-point (AP/STA) mesh"
+msgstr "Punkt-zu-Punkt (AP/STA) mesh aktivieren"
+
 msgid "Transmission power"
 msgstr "Sendeleistung"
 

@@ -101,7 +101,7 @@ uci:foreach('gluon', 'wireless_band', function(band_config)
 	-- a point-to-point link can be set up on any band; the SSID and mode
 	-- of the link are per radio and live in the per-radio section below
 	vif_option(p, 'p2p', band, band_config,
-		translate('Enable point-to-point AP/STA mesh'))
+		translate('Enable point-to-point (AP/STA) mesh'))
 end)
 
 local p = f:section(Section, translate("Per radio settings"))
