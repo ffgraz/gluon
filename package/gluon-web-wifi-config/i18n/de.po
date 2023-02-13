@@ -28,6 +28,9 @@ msgstr "Mesh-Netz aktivieren (802.11s)"
 msgid "Enable mesh network (IBSS, outdated)"
 msgstr "Mesh-Netz aktivieren (IBSS, veraltet)"
 
+msgid "Enable point-to-point (AP/STA) mesh"
+msgstr "Punkt-zu-Punkt (AP/STA) mesh aktivieren"
+
 msgid "Transmission power"
 msgstr "Sendeleistung"
 
