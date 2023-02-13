@@ -294,7 +294,7 @@ struct json_object * olsr2_get_interfaces (void) {
 		}
 
 		if (json_object_get_string(json_object_object_get(el, "if_bindto_v6"))[0] != "-"[0]) {
-			J_OCPY2(intf, el, "if_bindto_v6", "v6");
+			J_OCPY2(intf, el, "v6", "if_bindto_v6");
 		} else {
 			json_object_object_add(intf, "v6", json_object_new_null());
 		}
