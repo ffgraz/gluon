@@ -114,7 +114,7 @@ uci:foreach('wireless', 'wifi-device', function(config)
 	--   that would return a bool whether to setup & show private AP, client AP, etc options
 	-- - 802.11s on 60ghz may or may not become a thing
 	--   could be handeled dynamically. a toggle to switch between p2p and mesh if driver supports it.
-	local vif = vif_option('p2p', {'p2p'}, translate('Enable point-to-point AP/STA mesh'))
+	local vif = vif_option('p2p', {'p2p'}, translate('Enable point-to-point (AP/STA) mesh'))
 	if vif then
 		vif.default = is_60gz
 
