@@ -19,6 +19,9 @@ msgstr ""
 msgid "Enable mesh network (IBSS, outdated)"
 msgstr ""
 
+msgid msgid "Enable point-to-point (AP/STA) mesh"
+msgstr ""
+
 msgid "Transmission power"
 msgstr ""
 
