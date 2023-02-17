@@ -1,16 +1,11 @@
-From 38d02d0ce5b4c7483f6df59283c9ec93a5e641b2 Mon Sep 17 00:00:00 2001
 From: Patrick Grimm <patrick@lunatiki.de>
 Date: Sun, 8 Jan 2023 18:14:36 +0100
-Subject: [PATCH 1/5] oonf-olsrd2: add missing static plugin olsrv2_lan
+Subject: oonf-olsrd2: add missing static plugin olsrv2_lan
 
 Signed-off-by: Patrick Grimm <patrick@lunatiki.de>
----
- oonf-olsrd2/Config.in | 12 ++++++++++++
- oonf-olsrd2/Makefile  |  2 ++
- 2 files changed, 14 insertions(+)
 
 diff --git a/oonf-olsrd2/Config.in b/oonf-olsrd2/Config.in
-index 1cc037a..b0d7d7c 100644
+index 1cc037aff3ebc9a2a1ea2d2c94857d62b8b28006..b0d7d7cb2767f7b12d089ccd44042e6788dcf9de 100644
 --- a/oonf-olsrd2/Config.in
 +++ b/oonf-olsrd2/Config.in
 @@ -44,4 +44,16 @@
@@ -31,7 +26,7 @@ index 1cc037a..b0d7d7c 100644
 +
  	endmenu
 diff --git a/oonf-olsrd2/Makefile b/oonf-olsrd2/Makefile
-index 6067003..f3d81fc 100644
+index 6067003a846340fb0e6221c2473959480b12fb4b..f3d81fcfe61936635280afd997ec487ed0ffa2fc 100644
 --- a/oonf-olsrd2/Makefile
 +++ b/oonf-olsrd2/Makefile
 @@ -27,6 +27,8 @@ CMAKE_OPTIONAL_PLUGINS:= $(subst $(SPACE),;,$(strip \
@@ -43,6 +38,3 @@ index 6067003..f3d81fc 100644
      ))
  
  BUILD_TYPE:= $(if $(filter y,$(CONFIG_DEBUG)),Debug,Release)
--- 
-2.38.1
-
