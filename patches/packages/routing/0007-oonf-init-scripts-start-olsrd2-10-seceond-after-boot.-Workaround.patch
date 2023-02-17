@@ -1,0 +1,33 @@
+From: Patrick Grimm <patrick@lunatiki.de>
+Date: Fri, 13 Jan 2023 20:52:36 +0100
+Subject: oonf-init-scripts: start olsrd2 10 seceond after boot. Workaround.
+
+Signed-off-by: Patrick Grimm <patrick@lunatiki.de>
+
+diff --git a/oonf-init-scripts/Makefile b/oonf-init-scripts/Makefile
+index 8bfbf6ede32c1fa02edae41aefbda30074d6bf41..7abd3b950af1d4fb17dd2a81d25c61611aae1008 100644
+--- a/oonf-init-scripts/Makefile
++++ b/oonf-init-scripts/Makefile
+@@ -3,7 +3,7 @@ include $(INCLUDE_DIR)/kernel.mk
+ 
+ PKG_NAME:=oonf-init-scripts
+ PKG_VERSION:=0.9.1-r3
+-PKG_RELEASE:=1
++PKG_RELEASE:=2
+ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+ 
+ include $(INCLUDE_DIR)/package.mk
+diff --git a/oonf-init-scripts/files/oonf_init.sh b/oonf-init-scripts/files/oonf_init.sh
+index 8ab5b3b90661fcbe01b884e191d9159af87c1b0a..509e15bdc50792ed747adbce73726050e510d12d 100755
+--- a/oonf-init-scripts/files/oonf_init.sh
++++ b/oonf-init-scripts/files/oonf_init.sh
+@@ -118,3 +118,9 @@ reload()
+   oonf_add_devices_to_configuration
+   oonf_reread_config
+ }
++
++boot() {
++  sleep 10
++  logger -t olsrd2init "boot delay"
++  start
++}
