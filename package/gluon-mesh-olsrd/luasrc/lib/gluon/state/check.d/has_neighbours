@@ -1,0 +1,21 @@
+#!/usr/bin/lua
+
+local olsrd = require 'gluon.olsrd'
+
+local oi = olsrd.oi()
+
+local links = 0
+
+if oi.olsr1.running then
+	local neigh1 = olsrd.olsr1_get_nodeinfo('links')
+	links = links + #neigh1.links
+end
+
+if oi.olsr2.running then
+	local neigh2 = olsrd.olsr2_get_nodeinfo('nhdpinfo jsonraw link')
+	links = links + #neigh2.link
+end
+
+if links == 0 then
+	os.exit(1)
+end
