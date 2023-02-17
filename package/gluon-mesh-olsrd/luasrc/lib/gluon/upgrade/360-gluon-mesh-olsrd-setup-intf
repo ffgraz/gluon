@@ -353,7 +353,7 @@ if site.mesh.olsrd.v2.enable(true) then
 	if not cfg.ip4_exclusive_mode(false) then
 		local loopback_addrs = {
 			uci:get('network', 'loopback', 'ip6addr'),
-			'default_reject'
+			'default_reject',
 		}
 
 		uci:section('olsrd2', 'interface', 'loopback', {
