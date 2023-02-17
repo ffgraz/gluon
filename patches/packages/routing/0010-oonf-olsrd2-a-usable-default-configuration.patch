@@ -1,7 +1,6 @@
-From 271868bf76c23533bf768e15ae866c0ee6f6dad6 Mon Sep 17 00:00:00 2001
 From: Patrick Grimm <patrick@lunatiki.de>
 Date: Sat, 28 Jan 2023 11:28:00 +0100
-Subject: [PATCH 5/5] oonf-olsrd2: a usable default configuration
+Subject: oonf-olsrd2: a usable default configuration
 
 Compile tested: mips_24kc, arm_cortex-a9_vfpv3-d16, i386_pentium4, x86_64, i386_pentium-mmx, mipsel_24kc
 
@@ -12,12 +11,9 @@ Description:
 - OONF_OLSRV2_MPR reduce the routing graph when the network gets bigger
 
 Signed-off-by: Patrick Grimm <patrick@lunatiki.de>
----
- oonf-olsrd2/Config.in | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/oonf-olsrd2/Config.in b/oonf-olsrd2/Config.in
-index b0d7d7c..e4621e4 100644
+index b0d7d7cb2767f7b12d089ccd44042e6788dcf9de..e4621e44e5a4ff55fbfe94ff7b4d5b9f27909034 100644
 --- a/oonf-olsrd2/Config.in
 +++ b/oonf-olsrd2/Config.in
 @@ -12,13 +12,13 @@
@@ -54,6 +50,3 @@ index b0d7d7c..e4621e4 100644
  
  	config OONF_OLSRV2_LAN
  		bool "New config option for Locally attached entries"
--- 
-2.38.1
-

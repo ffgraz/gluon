@@ -1,7 +1,6 @@
-From 624f11ffb92ed3e959423b920162b30b89255258 Mon Sep 17 00:00:00 2001
 From: Patrick Grimm <patrick@lunatiki.de>
 Date: Fri, 13 Jan 2023 14:28:28 +0100
-Subject: [PATCH 3/5] oonf-olsrd2: change to git version from 2022-08-25
+Subject: oonf-olsrd2: change to git version from 2022-08-25
 
 Compile tested: mips_24kc, arm_cortex-a9_vfpv3-d16, i386_pentium4, x86_64, i386_pentium-mmx, mipsel_24kc
 Description:
@@ -116,16 +115,9 @@ a38b6847 Fix DLEP handling of mandatory TLVs
 50e4e1b8 Add netaddr constants for MAC48 prefixes for IPv4/6 multicast
 
 Signed-off-by: Patrick Grimm <patrick@lunatiki.de>
----
- oonf-olsrd2/Makefile                 | 16 +++++------
- oonf-olsrd2/patches/010-gcc10.patch  | 40 ----------------------------
- oonf-olsrd2/patches/020-static.patch | 32 ----------------------
- 3 files changed, 6 insertions(+), 82 deletions(-)
- delete mode 100644 oonf-olsrd2/patches/010-gcc10.patch
- delete mode 100644 oonf-olsrd2/patches/020-static.patch
 
 diff --git a/oonf-olsrd2/Makefile b/oonf-olsrd2/Makefile
-index f3d81fc..fe00dd1 100644
+index f3d81fcfe61936635280afd997ec487ed0ffa2fc..fe00dd1bc7969016856d5c3a19241d7750366352 100644
 --- a/oonf-olsrd2/Makefile
 +++ b/oonf-olsrd2/Makefile
 @@ -1,16 +1,13 @@
@@ -162,7 +154,7 @@ index f3d81fc..fe00dd1 100644
                 -D INSTALL_CMAKE_DIR:Path=lib/oonf \
 diff --git a/oonf-olsrd2/patches/010-gcc10.patch b/oonf-olsrd2/patches/010-gcc10.patch
 deleted file mode 100644
-index e0b141a..0000000
+index e0b141ac8a764e5e3920d155df102560b9fadf24..0000000000000000000000000000000000000000
 --- a/oonf-olsrd2/patches/010-gcc10.patch
 +++ /dev/null
 @@ -1,40 +0,0 @@
@@ -208,7 +200,7 @@ index e0b141a..0000000
 - #endif /* OLSRV2_INTERNAL_H_ */
 diff --git a/oonf-olsrd2/patches/020-static.patch b/oonf-olsrd2/patches/020-static.patch
 deleted file mode 100644
-index 87146bf..0000000
+index 87146bf1ae325a59440100b99f4726eb36857c47..0000000000000000000000000000000000000000
 --- a/oonf-olsrd2/patches/020-static.patch
 +++ /dev/null
 @@ -1,32 +0,0 @@
@@ -244,6 +236,3 @@ index 87146bf..0000000
 - 
 - /**
 -  * Initialize additional logging sources for NHDP
--- 
-2.38.1
-
