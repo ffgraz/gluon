@@ -80,7 +80,7 @@ struct json_object * make_safe(const char * name) {
 	}
 
 	double diff = difftime(time(NULL), filestat.st_ctime);
-	if (diff > 60 * 10) { // if older than 10 minutes, ignore
+	if (diff > 60 * 10 * 1000) { // if older than 10 minutes, ignore
 		return run_safe(filename, name, true);
 	}
 
