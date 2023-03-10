@@ -11,6 +11,14 @@
 #include <errno.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/file.h>
+
+#define RUN_LOG_ERROR_DESC(f, s)																	\
+	if ((f)) {																											\
+		fprintf(stderr, "Failed to " # f ": %s\n", strerror(errno));	\
+	}
+
+#define RUN_LOG_ERROR(f) RUN_LOG_ERROR_DESC(f, #f)
 
 struct json_object * run_safe(const char * filename, const char * name, bool foreground) {
 	FILE *fp;
@@ -25,7 +33,7 @@ struct json_object * run_safe(const char * filename, const char * name, bool for
 		fprintf(stderr, "Failed to open %s: %s\n", filename, strerror(errno));
 	} else {
 		fd = fileno(fo);
-		if (lockf(fd, F_TLOCK, 0)) {
+		if (flock(fd, LOCK_EX)) {
 			if (errno != EAGAIN) {
 				fprintf(stderr, "Failed to lock %s: %s\n", filename, strerror(errno));
 			}
@@ -36,7 +44,7 @@ struct json_object * run_safe(const char * filename, const char * name, bool for
 	}
 
 fo_fail:
-	fclose(fo);
+	RUN_LOG_ERROR(fclose(fo));
 	fo = NULL;
 	if (!foreground) {
 		return NULL;
@@ -45,6 +53,9 @@ fo_fail:
 fo_continue:
 	fp = popen(exec, "r");
 	if (fp == NULL) {
+		if (fo) {
+			RUN_LOG_ERROR(fclose(fo));
+		}
 		return NULL;
 	}
 
@@ -62,10 +73,8 @@ fo_continue:
 	}
 
 fo_close:
-	fclose(fo);
-
-	pclose(fp);
-
+	RUN_LOG_ERROR(fclose(fo));
+	RUN_LOG_ERROR(pclose(fp));
 	return root;
 }
 
@@ -85,9 +94,14 @@ struct json_object * make_safe(const char * name) {
 	}
 
 	// use cached, update in background
-	if (!fork()) {
+	int child = fork();
+	if (!child) {
 		run_safe(filename, name, false);
 		exit(EXIT_SUCCESS);
+	}
+
+	if (child < 0) {
+		fprintf(stderr, "Failed to fork: %s\n", strerror(errno));
 	}
 
 	json_object * ret = json_object_from_file(filename);
