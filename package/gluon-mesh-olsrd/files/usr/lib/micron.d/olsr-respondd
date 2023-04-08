@@ -1,0 +1,3 @@
+* * * * * /usr/bin/olsr-respondd n > /tmp/olsrd-respondd-neighbours.json
+*/5 * * * * /usr/bin/olsr-respondd s > /tmp/olsrd-respondd-statistics.json
+*/5 * * * * /usr/bin/olsr-respondd i > /tmp/olsrd-respondd-nodeinfo.json

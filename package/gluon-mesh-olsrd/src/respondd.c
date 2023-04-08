@@ -82,13 +82,16 @@ struct json_object * make_safe(const char * name) {
 	char filename[40];
 	sprintf(filename, "/tmp/olsrd-respondd-%s.json", name);
 
+	// TODO: use access
 	struct stat filestat;
 	if (stat(filename, &filestat)) {
+		// no file, fail
+		return NULL;
 		// no file, do sync
-		return run_safe(filename, name, true);
+		// return run_safe(filename, name, true);
 	}
 
-	double diff = difftime(time(NULL), filestat.st_ctime);
+	/* double diff = difftime(time(NULL), filestat.st_ctime);
 	if (diff > 60 * 10 * 1000) { // if older than 10 minutes, ignore
 		return run_safe(filename, name, true);
 	}
@@ -102,11 +105,12 @@ struct json_object * make_safe(const char * name) {
 
 	if (child < 0) {
 		fprintf(stderr, "Failed to fork: %s\n", strerror(errno));
-	}
+	} */
 
 	json_object * ret = json_object_from_file(filename);
 	if (!ret) { // something is messed up
-		return run_safe(filename, name, true);
+		return NULL;
+		// return run_safe(filename, name, true);
 	}
 
 	return ret;
