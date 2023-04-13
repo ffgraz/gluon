@@ -3,6 +3,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "respondd-common.h"
+#include "respondd-real.h"
 
 #include <libgluonutil.h>
 
@@ -500,5 +501,3 @@ struct json_object * real_respondd_provider_nodeinfo() {
 
 	return ret;
 }
-
-make_safe_fnc(respondd_provider_nodeinfo, "i")
