@@ -13,6 +13,10 @@
 #include <stdbool.h>
 #include <sys/file.h>
 
+make_safe_fnc(neighbours)
+make_safe_fnc(nodeinfo)
+make_safe_fnc(statistics)
+
 #define RUN_LOG_ERROR_DESC(f, s)																	\
 	if ((f)) {																											\
 		fprintf(stderr, "Failed to " # f ": %s\n", strerror(errno));	\

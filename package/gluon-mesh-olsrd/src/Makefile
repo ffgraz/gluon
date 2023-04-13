@@ -15,13 +15,15 @@ LDFLAGS += $(shell pkg-config --libs json-c)
 SOURCES_HELPER = libolsrdhelper.c libolsrdhelper-neigh.c uclient.c arp.c
 FILES_HELPER = $(SOURCES_HELPER) libolsrdhelper.h uclient.h arp.h
 
-SOURCES_RESPONDD = respondd.c respondd-neighbours.c respondd-nodeinfo.c respondd-statistics.c
+SOURCES_RESPONDD = respondd.c
+SOURCES_RESPONDD_REAL = $(SOURCES_RESPONDD) respondd-neighbours.c respondd-nodeinfo.c respondd-statistics.c
 FILES_RESPONDD = $(SOURCES_RESPONDD) respondd-common.h
+FILES_RESPONDD_REAL = $(SOURCES_RESPONDD_REAL) respondd-common.h respondd-real.h
 
-SOURCES_DEBUG = olsrd-debug.c $(SOURCES_RESPONDD)
+SOURCES_DEBUG = olsrd-debug.c $(SOURCES_RESPONDD_REAL)
 FILES_DEBUG = $(SOURCES_DEBUG)
 
-SOURCES_OLSR_RESPONDD = olsr-respondd.c $(SOURCES_RESPONDD)
+SOURCES_OLSR_RESPONDD = olsr-respondd.c $(SOURCES_RESPONDD_REAL)
 FILES_OLSR_RESPONDD = $(SOURCES_OLSR_RESPONDD)
 
 SOURCES_LUA = olsrd.c
@@ -30,7 +32,7 @@ FILES_LUA = $(SOURCES_LUA)
 all: olsrd-debug olsrd.so libolsrdhelper.so olsr-respondd respondd.so
 
 respondd.so: libolsrdhelper.so $(FILES_RESPONDD)
-	$(CC) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -fvisibility=hidden -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper -luci
+	$(CC) $(CFLAGS) $(LDFLAGS) -I. -L. -shared -fPIC -fvisibility=hidden -o $@ $(SOURCES_RESPONDD) $(LDLIBS)
 
 olsr-respondd: respondd.so $(FILES_OLSR_RESPONDD)
 	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -fPIE -I. -L. -o $@ $(SOURCES_OLSR_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper -luci
