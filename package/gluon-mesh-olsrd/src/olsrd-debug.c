@@ -2,7 +2,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <libolsrdhelper.h>
-#include "respondd-common.h"
+#include "respondd-real.h"
 #include <stdio.h>
 #include <json-c/json.h>
 #include <assert.h>
