@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "respondd-common.h"
+#include "respondd-real.h"
 
 #include <libolsrdhelper.h>
 
@@ -167,5 +168,3 @@ struct json_object * real_respondd_provider_statistics(void) {
 
 	return ret;
 }
-
-make_safe_fnc(respondd_provider_statistics, "s")
