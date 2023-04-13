@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include "respondd-common.h"
+#include "respondd-real.h"
 
 #include <libgluonutil.h>
 #include <json-c/json.h>
@@ -64,5 +65,3 @@ fail:
 	ret = NULL;
 	goto end;
 }
-
-make_safe_fnc(respondd_provider_neighbours, "n")
