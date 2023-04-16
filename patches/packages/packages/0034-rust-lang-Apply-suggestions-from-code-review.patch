@@ -1,0 +1,289 @@
+From 478ae98333b1207e7312a9ab57f9f6097287591a Mon Sep 17 00:00:00 2001
+From: Luca Barbato <luca.barbato@gmail.com>
+Date: Thu, 9 Mar 2023 08:58:16 +0100
+Subject: [PATCH 4/5] rust-lang: Apply suggestions from code review
+
+Co-authored-by: Tianling Shen <cnsztl@gmail.com>
+Signed-off-by: Luca Barbato <luca.barbato@gmail.com>
+(cherry picked from commit 44d1d22a16e25b1e06fae86e157718069b7069f6)
+---
+ lang/rust/Makefile         | 77 ++++++++++++++++++--------------------
+ lang/rust/maturin/Makefile | 43 +++++++++++----------
+ lang/rust/rust-host.mk     |  2 +-
+ lang/rust/rust-package.mk  | 10 +++--
+ utils/ripgrep/Makefile     | 28 ++++++++------
+ 5 files changed, 84 insertions(+), 76 deletions(-)
+
+diff --git a/lang/rust/Makefile b/lang/rust/Makefile
+index 72d82026a4..97d861f58b 100644
+--- a/lang/rust/Makefile
++++ b/lang/rust/Makefile
+@@ -8,23 +8,20 @@ PKG_NAME:=rust
+ PKG_VERSION:=1.67.1
+ PKG_RELEASE:=1
+ 
+-PKG_LICENSE:=Apache-2.0 MIT
+-PKG_LICENSE_FILES:=LICENSE-APACHE LICENSE-MIT
+-
+-HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/rustc-$(PKG_VERSION)-src/
+ PKG_SOURCE:=rustc-$(PKG_VERSION)-src.tar.gz
+ PKG_SOURCE_URL:=https://static.rust-lang.org/dist/
+-PKG_SOURCE_VERSION:=$(PKG_VERSION)
+ PKG_HASH:=46483d3e5de85a3bd46f8e7a3ae1837496391067dbe713a25d3cf051b3d9ff6e
++HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/rustc-$(PKG_VERSION)-src/
++
+ PKG_MAINTAINER:=Luca Barbato <lu_zero@luminem.org>
++PKG_LICENSE:=Apache-2.0 MIT
++PKG_LICENSE_FILES:=LICENSE-APACHE LICENSE-MIT
+ 
++HOST_BUILD_DEPENDS:=python3/host
+ PKG_HOST_ONLY:=1
+ 
+-include $(INCLUDE_DIR)/host-build.mk
+ include $(INCLUDE_DIR)/package.mk
+-
+-# Requires Python3 to build
+-HOST_BUILD_DEPENDS:=python3/host
++include $(INCLUDE_DIR)/host-build.mk
+ 
+ # rust environment variables
+ include ./rust-host.mk
+@@ -40,36 +37,36 @@ RUST_UNINSTALL:=$(CARGO_HOME)/lib/rustlib/uninstall.sh
+ 
+ # Target Flags
+ TARGET_CONFIGURE_ARGS = \
+-  --set=target.$(RUSTC_TARGET_ARCH).ar=$(TARGET_AR) \
+-  --set=target.$(RUSTC_TARGET_ARCH).cc=$(TARGET_CC_NOCACHE) \
+-  --set=target.$(RUSTC_TARGET_ARCH).cxx=$(TARGET_CXX_NOCACHE) \
+-  --set=target.$(RUSTC_TARGET_ARCH).linker=$(TARGET_CC_NOCACHE) \
+-  --set=target.$(RUSTC_TARGET_ARCH).musl-root=$(TOOLCHAIN_DIR) \
+-  --set=target.$(RUSTC_TARGET_ARCH).ranlib=$(TARGET_RANLIB)
++	--set=target.$(RUSTC_TARGET_ARCH).ar=$(TARGET_AR) \
++	--set=target.$(RUSTC_TARGET_ARCH).cc=$(TARGET_CC_NOCACHE) \
++	--set=target.$(RUSTC_TARGET_ARCH).cxx=$(TARGET_CXX_NOCACHE) \
++	--set=target.$(RUSTC_TARGET_ARCH).linker=$(TARGET_CC_NOCACHE) \
++	--set=target.$(RUSTC_TARGET_ARCH).musl-root=$(TOOLCHAIN_DIR) \
++	--set=target.$(RUSTC_TARGET_ARCH).ranlib=$(TARGET_RANLIB)
+ 
+ # CARGO_HOME is an environmental
+ HOST_CONFIGURE_OPTS += CARGO_HOME="$(CARGO_HOME)"
+ 
+ # Rust Configuration Arguments
+ HOST_CONFIGURE_ARGS = \
+-  --build=$(RUSTC_HOST_ARCH) \
+-  --target=$(RUSTC_TARGET_ARCH),$(RUSTC_HOST_ARCH) \
+-  --host=$(RUSTC_HOST_ARCH) \
+-  --prefix=$(CARGO_HOME) \
+-  --bindir=$(CARGO_HOME)/bin \
+-  --libdir=$(CARGO_HOME)/lib \
+-  --sysconfdir=$(CARGO_HOME)/etc \
+-  --datadir=$(CARGO_HOME)/share \
+-  --mandir=$(CARGO_HOME)/man \
+-  --dist-compression-formats=xz \
+-  --enable-llvm-link-shared \
+-  --enable-llvm-plugins \
+-  --enable-missing-tools \
+-  --enable-ninja \
+-  --disable-sanitizers \
+-  --release-channel=stable \
+-  --enable-cargo-native-static \
+-  ${TARGET_CONFIGURE_ARGS}
++	--build=$(RUSTC_HOST_ARCH) \
++	--target=$(RUSTC_TARGET_ARCH),$(RUSTC_HOST_ARCH) \
++	--host=$(RUSTC_HOST_ARCH) \
++	--prefix=$(CARGO_HOME) \
++	--bindir=$(CARGO_HOME)/bin \
++	--libdir=$(CARGO_HOME)/lib \
++	--sysconfdir=$(CARGO_HOME)/etc \
++	--datadir=$(CARGO_HOME)/share \
++	--mandir=$(CARGO_HOME)/man \
++	--dist-compression-formats=xz \
++	--enable-llvm-link-shared \
++	--enable-llvm-plugins \
++	--enable-missing-tools \
++	--enable-ninja \
++	--disable-sanitizers \
++	--release-channel=stable \
++	--enable-cargo-native-static \
++	$(TARGET_CONFIGURE_ARGS)
+ 
+ define Host/Prepare
+ 	# Ensure rust temp directory
+@@ -112,13 +109,13 @@ endef
+ 
+ # Packages the Distribution Artifacts into HOST and TARGET bundles.
+ define Host/PackageDist
+-	cd $(HOST_BUILD_DIR)/build/dist && \
+-	  $(TAR) -cJf $(DL_DIR)/$(RUST_INSTALL_TARGET_FILENAME) \
+-	  rust-*-$(RUSTC_TARGET_ARCH).tar.xz
+-
+-	cd $(HOST_BUILD_DIR)/build/dist && \
+-	  $(TAR) -cJf $(DL_DIR)/$(RUST_INSTALL_HOST_FILENAME) \
+-	  --exclude rust-*-$(RUSTC_TARGET_ARCH).tar.xz *.xz
++	( \
++		cd $(HOST_BUILD_DIR)/build/dist ; \
++		$(TAR) -cJf $(DL_DIR)/$(RUST_INSTALL_TARGET_FILENAME) \
++			rust-*-$(RUSTC_TARGET_ARCH).tar.xz ; \
++		$(TAR) -cJf $(DL_DIR)/$(RUST_INSTALL_HOST_FILENAME) \
++			--exclude rust-*-$(RUSTC_TARGET_ARCH).tar.xz *.xz ; \
++	)
+ endef
+ 
+ define Package/rust
+diff --git a/lang/rust/maturin/Makefile b/lang/rust/maturin/Makefile
+index c19a867583..0249bf9ad7 100644
+--- a/lang/rust/maturin/Makefile
++++ b/lang/rust/maturin/Makefile
+@@ -8,40 +8,45 @@ PKG_NAME:=maturin
+ PKG_VERSION:=0.14.10
+ PKG_RELEASE:=1
+ 
+-PKG_SOURCE:=v$(PKG_VERSION).tar.gz
+-PKG_SOURCE_URL:=https://github.com/PyO3/maturin/archive/refs/tags/
++PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
++PKG_SOURCE_URL:=https://codeload.github.com/PyO3/maturin/tar.gz/v$(PKG_VERSION)?
+ PKG_HASH:=8fc9bcdcb7f1535d5e3e8bb500c348ca1bff5a6dce87b0ab7dbc5a49723da28a
+-PKG_MAINTAINER:=Luca Barbato <lu_zero@luminem.org>
+ 
+-PKG_HOST_ONLY:=1
+-PKG_BUILD_PARALLEL:=1
++PKG_MAINTAINER:=Luca Barbato <lu_zero@luminem.org>
++PKG_LICENSE:=Apache-2.0 MIT
++PKG_LICENSE_FILES:=license-apache license-mit
+ 
+ HOST_BUILD_DEPENDS:=rust/host
+ PKG_BUILD_DEPENDS:=rust/host
+ 
++PKG_BUILD_PARALLEL:=1
++PKG_HOST_ONLY:=1
++
+ include ../rust-package.mk
+ include $(INCLUDE_DIR)/host-build.mk
+ include $(INCLUDE_DIR)/package.mk
+ 
+-define Package/$(PKG_NAME)
+-    SECTION:=lang
+-    CATEGORY:=Languages
+-    SUBMENU:=Rust
+-    CATEGORY:=Languages
+-    DEPENDS:=$(RUST_ARCH_DEPENDS)
+-    TITLE:=Build and publish crates as python packages
+-    URL:=https://maturin.rs
++define Package/maturin
++  SECTION:=lang
++  CATEGORY:=Languages
++  SUBMENU:=Rust
++  TITLE:=Build and publish crates as python packages
++  DEPENDS:=$(RUST_ARCH_DEPENDS)
++  URL:=https://maturin.rs
+ endef
+ 
+ define Host/Compile
+-	cd $(HOST_BUILD_DIR) && \
+-	    export PATH="$(CARGO_HOME)/bin:$(PATH)" && \
+-	    CARGO_HOME=$(CARGO_HOME) \
+-	    cargo install --path . --root $(HOST_BUILD_DIR)
++	( \
++		cd $(HOST_BUILD_DIR) ; \
++		export PATH="$(CARGO_HOME)/bin:$(PATH)" ; \
++		CARGO_HOME=$(CARGO_HOME) \
++		cargo install --path . --root $(HOST_BUILD_DIR) ; \
++	)
+ endef
+ 
+-define Package/$(PKG_NAME)/description
+-Build and publish crates with pyo3, rust-cpython, cffi and uniffi bindings as well as rust binaries as python packages.
++define Package/maturin/description
++  Build and publish crates with pyo3, rust-cpython, cffi and uniffi
++  bindings as well as rust binaries as python packages.
+ endef
+ 
+ define Host/Install
+diff --git a/lang/rust/rust-host.mk b/lang/rust/rust-host.mk
+index ede4baea14..acc93c521d 100644
+--- a/lang/rust/rust-host.mk
++++ b/lang/rust/rust-host.mk
+@@ -3,7 +3,7 @@
+ # Copyright (C) 2023 Luca Barbato and Donald Hoskins
+ 
+ # Rust Environmental Vars
+-CONFIG_HOST_SUFFIX:=$(shell cut -d"-" -f4 <<<"$(GNU_HOST_NAME)")
++CONFIG_HOST_SUFFIX:=$(word 4, $(subst -, ,$(GNU_HOST_NAME)))
+ RUSTC_HOST_ARCH:=$(HOST_ARCH)-unknown-linux-$(CONFIG_HOST_SUFFIX)
+ CARGO_HOME:=$(STAGING_DIR_HOST)/cargo
+ 
+diff --git a/lang/rust/rust-package.mk b/lang/rust/rust-package.mk
+index 3c8b7aaa09..472417a617 100644
+--- a/lang/rust/rust-package.mk
++++ b/lang/rust/rust-package.mk
+@@ -8,8 +8,10 @@ include $(rust_mk_path)rust-host.mk
+ # $(1) path to the package
+ # $(2) additional arguments to cargo
+ define Build/Compile/Cargo
+-	cd $(PKG_BUILD_DIR) && \
+-	    export PATH="$(CARGO_HOME)/bin:$(PATH)" && \
+-	    CARGO_HOME=$(CARGO_HOME) TARGET_CFLAGS="$(TARGET_CFLAGS) $(RUST_CFLAGS)" TARGET_CC=$(TARGET_CC_NOCACHE) CC=cc \
+-	    cargo install -v --profile stripped --target $(RUSTC_TARGET_ARCH) --root $(PKG_INSTALL_DIR) --path "$(if $(strip $(1)),$(strip $(1)),.)" $(2)
++	( \
++		cd $(PKG_BUILD_DIR) ; \
++		export PATH="$(CARGO_HOME)/bin:$(PATH)" ; \
++		CARGO_HOME=$(CARGO_HOME) TARGET_CFLAGS="$(TARGET_CFLAGS) $(RUST_CFLAGS)" TARGET_CC=$(TARGET_CC_NOCACHE) CC=cc \
++			cargo install -v --profile stripped --target $(RUSTC_TARGET_ARCH) --root $(PKG_INSTALL_DIR) --path "$(if $(strip $(1)),$(strip $(1)),.)" $(2) ; \
++	)
+ endef
+diff --git a/utils/ripgrep/Makefile b/utils/ripgrep/Makefile
+index 4a6c766b2d..fe449bc2d8 100644
+--- a/utils/ripgrep/Makefile
++++ b/utils/ripgrep/Makefile
+@@ -8,10 +8,13 @@ PKG_NAME:=ripgrep
+ PKG_VERSION:=13.0.0
+ PKG_RELEASE:=1
+ 
+-PKG_SOURCE:=$(PKG_VERSION).tar.gz
+-PKG_SOURCE_URL:=https://github.com/BurntSushi/ripgrep/archive/refs/tags/
++PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
++PKG_SOURCE_URL:=https://codeload.github.com/BurntSushi/ripgrep/tar.gz/$(PKG_VERSION)?
+ PKG_HASH:=0fb17aaf285b3eee8ddab17b833af1e190d73de317ff9648751ab0660d763ed2
++
+ PKG_MAINTAINER:=Luca Barbato <lu_zero@luminem.org>
++PKG_LICENSE:=MIT Unlicense
++PKG_LICENSE_FILES:=LICENSE-MIT UNLICENSE
+ 
+ PKG_BUILD_DEPENDS:=rust/host
+ 
+@@ -22,21 +25,22 @@ define Build/Compile
+ 	$(call Build/Compile/Cargo,, --features 'pcre2')
+ endef
+ 
+-define Package/$(PKG_NAME)
+-    SECTION:=utils
+-    CATEGORY:=Utilities
+-    DEPENDS:=$(RUST_ARCH_DEPENDS) +libpcre2
+-    TITLE:=ripgrep (rg) regex grep
+-    URL:=https://github.com/BurntSushi/ripgrep
++define Package/ripgrep
++  SECTION:=utils
++  CATEGORY:=Utilities
++  TITLE:=ripgrep (rg) regex grep
++  DEPENDS:=$(RUST_ARCH_DEPENDS) +libpcre2
++  URL:=https://github.com/BurntSushi/ripgrep
+ endef
+ 
+-define Package/$(PKG_NAME)/description
+-ripgrep (rg) recursively searches directories for a regex pattern while respecting your gitignore
++define Package/ripgrep/description
++  ripgrep (rg) recursively searches directories for a regex pattern
++  while respecting your gitignore
+ endef
+ 
+-define Package/$(PKG_NAME)/install
++define Package/ripgrep/install
+ 	$(INSTALL_DIR) $(1)/bin
+ 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/target/$(RUSTC_TARGET_ARCH)/stripped/rg $(1)/bin/rg
+ endef
+ 
+-$(eval $(call BuildPackage,$(PKG_NAME)))
++$(eval $(call BuildPackage,ripgrep))
+-- 
+2.39.2
+
