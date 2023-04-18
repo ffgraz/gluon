@@ -347,7 +347,7 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	uci:set('wireless', radio_name, 'htmode', htmode)
 	uci:set('wireless', radio_name, 'country', site.regdom())
 
-	radio.current_channel = channel
+	radio.current_channel = get_channel(radio, config)
 	radio.wireless_config = config
 
 	uci:delete('wireless', radio_name, 'supported_rates')
