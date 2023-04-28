@@ -62,7 +62,8 @@ local function get_channel(radio, config)
 			-- if channel was auto and is now channel_adjustable use the default from config
 			return config.channel()
 		end
-		channel = radio.channel
+
+		return radio.channel
 	elseif radio.band == '5g' and is_outdoor() then
 		-- actual channel will be picked and probed from chanlist
 		return 'auto'
