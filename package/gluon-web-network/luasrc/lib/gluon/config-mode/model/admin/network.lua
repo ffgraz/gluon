@@ -10,6 +10,8 @@ local dns_static = uci:get_first("gluon-wan-dnsmasq", "static")
 
 local files = require 'posix.dirent'.files
 local unistd = require "posix.unistd"
+local sysconfig = require 'gluon.sysconfig'
+local util = require 'gluon.util'
 
 local f = Form(translate("WAN connection"))
 
