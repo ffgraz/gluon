@@ -12,7 +12,6 @@ define Package/gluon-mesh-olsrd
 	DEPENDS:= \
 		+gluon-core \
 		+kmod-macvlan \
-		@IPV6 \
 		+olsrd \
 		+oonf-olsrd2 \
 		+firewall4 \
