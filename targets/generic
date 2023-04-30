@@ -109,10 +109,11 @@ packages {
 	'-wpad-basic-mbedtls',
 	'gluon-core',
 	'-iptables',
+	'-ip6tables',
 	'-nftables',
 	'nftables-json',
 	'-xtables-legacy',
-	'ip6tables-nft',
-	'iptables-nft',
+	'-ip6tables-nft',
+	'-iptables-nft',
 	'-kmod-ipt-core',
 }
