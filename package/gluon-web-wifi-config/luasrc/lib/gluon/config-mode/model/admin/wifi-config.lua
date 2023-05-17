@@ -116,9 +116,9 @@ uci:foreach('wireless', 'wifi-device', function(config)
 	--   could be handeled dynamically. a toggle to switch between p2p and mesh if driver supports it.
 	local vif = vif_option('p2p', {'p2p'}, translate('Enable point-to-point (AP/STA) mesh'))
 	if vif then
-		vif.default = is_60gz
-
 		local name6 = 'p2p_' .. radio
+
+		vif.default = not uci:get_bool('wireless', name6, 'disabled')
 
 		local id = p:option(Value, radio .. '_p2pid', translate('SSID'))
 		id.datatype = "maxlength(32)"
