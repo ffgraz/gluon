@@ -1,0 +1,42 @@
+From 90f68be82385ced1309aa71b1fc9aba5e9a57bd4 Mon Sep 17 00:00:00 2001
+From: Patrick Grimm <patrick@lunatiki.de>
+Date: Fri, 13 Jan 2023 20:52:36 +0100
+Subject: [PATCH] oonf-init-scripts: start olsrd2 10 seceond after boot.
+ Workaround.
+
+Signed-off-by: Patrick Grimm <patrick@lunatiki.de>
+---
+ oonf-init-scripts/Makefile           | 2 +-
+ oonf-init-scripts/files/oonf_init.sh | 6 ++++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/oonf-init-scripts/Makefile b/oonf-init-scripts/Makefile
+index 8bfbf6e..7abd3b9 100644
+--- a/oonf-init-scripts/Makefile
++++ b/oonf-init-scripts/Makefile
+@@ -3,7 +3,7 @@ include $(INCLUDE_DIR)/kernel.mk
+ 
+ PKG_NAME:=oonf-init-scripts
+ PKG_VERSION:=0.9.1-r3
+-PKG_RELEASE:=1
++PKG_RELEASE:=2
+ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+ 
+ include $(INCLUDE_DIR)/package.mk
+diff --git a/oonf-init-scripts/files/oonf_init.sh b/oonf-init-scripts/files/oonf_init.sh
+index a945c4e..32a5a2f 100755
+--- a/oonf-init-scripts/files/oonf_init.sh
++++ b/oonf-init-scripts/files/oonf_init.sh
+@@ -135,3 +135,9 @@ status()
+     echo "stopped"
+   fi
+ }
++
++boot() {
++  sleep 10
++  logger -t olsrd2init "boot delay"
++  start
++}
+-- 
+2.40.1
+
