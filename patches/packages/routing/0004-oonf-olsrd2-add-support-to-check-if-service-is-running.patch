@@ -1,21 +1,51 @@
-From: Maciej Krüger <mkg20001@gmail.com>
+From 0c4b0ec2880a9b837ffea6c10dfdd505c21f154a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
 Date: Sun, 10 Apr 2022 01:58:41 +0200
-Subject: oonf-olsrd2: add support to check if service is running
+Subject: [PATCH] oonf-olsrd2: add support to check if service is running
 
+---
+ oonf-init-scripts/files/oonf_init.sh | 17 +++++++++++++++++
+ oonf-olsrd2/files/olsrd2.init        |  4 ++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/oonf-init-scripts/files/oonf_init.sh b/oonf-init-scripts/files/oonf_init.sh
+index 8ab5b3b..a945c4e 100755
+--- a/oonf-init-scripts/files/oonf_init.sh
++++ b/oonf-init-scripts/files/oonf_init.sh
+@@ -118,3 +118,20 @@ reload()
+   oonf_add_devices_to_configuration
+   oonf_reread_config
+ }
++
++running()
++{
++  # check if we have a pidfile and then check if that pid still exists.
++  # since we don't use -e this has to be explicitly returned. exit would stop the process.
++  test -e "/tmp/run/olsrd2.pid" && test -e "/proc/$(cat "/tmp/run/olsrd2.pid")" && return 0
++  return 1
++}
++
++status()
++{
++  if running; then
++    echo "running"
++  else
++    echo "stopped"
++  fi
++}
 diff --git a/oonf-olsrd2/files/olsrd2.init b/oonf-olsrd2/files/olsrd2.init
-index 04b30ffa4a7a4d65e2fb9944e4570273a9418f2e..f516b1b17e32b7eba7c4d485d72a123c87fb52f6 100755
+index 04b30ff..9f5595b 100755
 --- a/oonf-olsrd2/files/olsrd2.init
 +++ b/oonf-olsrd2/files/olsrd2.init
-@@ -5,4 +5,12 @@ DAEMON='olsrd2'
+@@ -5,4 +5,8 @@ DAEMON='olsrd2'
  
  [ -n "$IPKG_INSTROOT" ] || {
          . /lib/functions/oonf_init.sh
 +
-+        running() {
-+          test -e "/tmp/run/olsrd2.pid" && test -e "/proc/$(cat "/tmp/run/olsrd2.pid")" && return 0
-+          return 1
-+        }
-+
 +        extra_command "running" "Check if service is running"
++        extra_command "status" "Service status"
  }
 +
+-- 
+2.40.1
+
