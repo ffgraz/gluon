@@ -1,11 +1,5 @@
 #!/usr/bin/lua
 
-local uci = require('simple-uci').cursor()
-local site = require 'gluon.site'
-local util = require 'gluon.util'
-local wireless = require 'gluon.wireless'
-local sysconfig = require 'gluon.sysconfig'
-local util = require 'gluon.util'
 local olsrd = require 'gluon.olsrd'
 
 -- Utils
