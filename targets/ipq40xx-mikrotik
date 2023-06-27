@@ -13,7 +13,7 @@ device('mikrotik-sxtsq-5-ac-rbsxtsqg-5acd', 'mikrotik_sxtsq-5-ac', {
 })
 
 device('mikrotik-wireless-wire-dish-lhgg-60ad', 'mikrotik_lhgg-60ad', {
-	packages = {
-		'wpa-supplicant'
-	}
+--	packages = {
+--		'wpa-supplicant-mini',
+--	}
 })
