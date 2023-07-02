@@ -502,11 +502,17 @@ device('tp-link-cpe210-v3', 'tplink_cpe210-v3')
 
 device('tp-link-cpe220-v3', 'tplink_cpe220-v3')
 
-device('tp-link-cpe510-v1', 'tplink_cpe510-v1')
+device('tp-link-cpe510-v1', 'tplink_cpe510-v1', {
+	class = 'p2p',
+})
 
-device('tp-link-cpe510-v2', 'tplink_cpe510-v2')
+device('tp-link-cpe510-v2', 'tplink_cpe510-v2', {
+	class = 'p2p',
+})
 
-device('tp-link-cpe510-v3', 'tplink_cpe510-v3')
+device('tp-link-cpe510-v3', 'tplink_cpe510-v3', {
+	class = 'p2p',
+})
 
 device('tp-link-cpe710-v1', 'tplink_cpe710-v1')
 
