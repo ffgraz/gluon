@@ -44,20 +44,31 @@ local function clean(image, name)
 	lib.exec {'rm', '-f', dir..'/'..file}
 end
 
+local missing_images = {}
+
 for _, images in pairs(lib.images) do
 	for _, image in ipairs(images) do
+		-- Clean first
+
 		clean(image, image.image)
+
+		for _, alias in ipairs(image.aliases) do
+			clean(image, alias)
+		end
 
 		local destdir, destname = image:dest_name(image.image)
 		local source = image_source(image)
 
-		lib.exec {'cp', source, destdir..'/'..destname}
+		if not pcall(function()
+			lib.exec {'cp', source, destdir..'/'..destname}
 
-		for _, alias in ipairs(image.aliases) do
-			clean(image, alias)
-
-			local _, aliasname = image:dest_name(alias)
-			lib.exec {'ln', '-s', destname, destdir..'/'..aliasname}
+			for _, alias in ipairs(image.aliases) do
+				local _, aliasname = image:dest_name(alias)
+				lib.exec {'ln', '-s', destname, destdir..'/'..aliasname}
+			end
+		end) then
+			print(string.format('Failed to copy (%s) %s, assuming it\'s missing', image.subdir, image.image))
+			table.insert(missing_images, image)
 		end
 	end
 
@@ -93,4 +104,11 @@ if (env.GLUON_DEVICES or '') == '' then
 	lib.exec({'rmdir', '-p', dest_dir('\0')}, true, '2>/dev/null')
 	mkdir(dest_dir(package_prefix))
 	lib.exec {'cp', 'openwrt/bin/targets/'..bindir..'/packages/\0', dest_dir(package_prefix)}
+end
+
+if #missing_images > 0 then
+	print('The following images were missing:')
+	for _, image in ipairs(missing_images) do
+		print(string.format(' - (%s) %s', image.subdir, image.image))
+	end
 end
