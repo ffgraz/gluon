@@ -117,6 +117,7 @@ uci:foreach('gluon', 'interface', function(config)
 	ifaces:value('uplink', 'Uplink')
 	ifaces:value('mesh', 'Mesh')
 	ifaces:value('client', 'Client')
+	ifaces:value('private', 'Private')
 	ifaces:exclusive('uplink', 'client')
 	ifaces:exclusive('mesh', 'client')
 
