@@ -11,4 +11,5 @@ device('x86-64', 'generic', {
 		{'-kernel', '-kernel', '.bin'},
 		{'-squashfs-rootfs', '-rootfs', '.img.gz'},
 	},
+	class = 'big',
 })
