@@ -21,6 +21,6 @@ pip install -r requirements.txt
 ./run.py --image ../output/images/factory/gluon-*-x86-64.img --proto babel
 ```
 
-Images are built per site config (which selects the routing protocol);
-`../contrib/ci/mesh-site.sh <protocol> <dir>` generates a site config
-for each supported protocol.
+Images are built per site config, which selects the routing protocol:
+`../contrib/ci/minimal-site` (batman-adv), `../contrib/ci/babel-site`
+and `../contrib/ci/olsr-site`.
