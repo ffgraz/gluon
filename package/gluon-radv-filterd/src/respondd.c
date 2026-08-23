@@ -8,7 +8,7 @@
 #include "mac.h"
 
 static struct json_object * get_radv_filter() {
-	FILE *f = popen("exec ebtables-tiny -L RADV_FILTER", "r");
+	FILE *f = popen("exec nft list chain bridge gluon radv_filter", "r");
 	char *line = NULL;
 	size_t len = 0;
 	struct ether_addr mac = {};
@@ -19,7 +19,7 @@ static struct json_object * get_radv_filter() {
 		return NULL;
 
 	while (getline(&line, &len, f) > 0) {
-		if (sscanf(line, "-s " F_MAC " -j ACCEPT\n", F_MAC_VAR_REF(mac)) == ETH_ALEN)
+		if (sscanf(line, " ether saddr != " F_MAC " drop\n", F_MAC_VAR_REF(mac)) == ETH_ALEN)
 			break;
 	}
 	free(line);
