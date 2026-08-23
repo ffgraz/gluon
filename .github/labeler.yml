@@ -1,4 +1,8 @@
 ---
+"3. topic: babel":
+  - changed-files:
+    - any-glob-to-any-file:
+      - package/gluon-mesh-babel/**
 "3. topic: batman-adv":
   - changed-files:
     - any-glob-to-any-file:
@@ -45,6 +49,12 @@
       - package/gluon-core/luasrc/lib/gluon/upgrade/010-primary-mac
       - package/gluon-core/luasrc/usr/lib/lua/gluon/platform.lua
       - targets/*
+"3. topic: l3mesh":
+  - changed-files:
+    - any-glob-to-any-file:
+      - package/gluon-l3roamd/**
+      - package/gluon-mesh-layer3-common/**
+      - package/gluon-mmfd/**
 "3. topic: multidomain":
   - changed-files:
     - any-glob-to-any-file:
@@ -55,9 +65,7 @@
 "3. topic: olsr":
   - changed-files:
     - any-glob-to-any-file:
-      - package/gluon-l3roamd/**
       - package/gluon-mesh-olsrd/**
-      - package/gluon-mmfd/**
 "3. topic: package":
   - changed-files:
     - any-glob-to-any-file:
