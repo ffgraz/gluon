@@ -1,0 +1,6 @@
+image.img
+images/
+logs/
+ptys/
+ssh/
+__pycache__/
