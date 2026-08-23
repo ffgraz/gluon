@@ -22,7 +22,7 @@ from operator import itemgetter
 #    stream=sys.stderr,
 #)
 
-image = "image.img"
+image = os.environ.get('GLUON_IMAGE', 'image.img')
 SSH_KEY_FILE = 'id_ed25519.key'
 SSH_PUBKEY_FILE = SSH_KEY_FILE + '.pub'
 HOST_ID = 1
@@ -255,7 +255,7 @@ async def gen_qemu_call(image, node):
         os.mkdir(imgdir)
 
     imgfile = os.path.join(imgdir, '%02x.img' % node.id)
-    shutil.copyfile('./' + image, imgfile)
+    shutil.copyfile(image, imgfile)
 
     # TODO: machine identifier
     host_id = HOST_ID
@@ -300,12 +300,18 @@ async def gen_qemu_call(image, node):
 
     call = ['-nographic',
             '-enable-kvm',
+            '-m', '256',
 #            '-no-hpet',
 #            '-cpu', 'host',
             '-netdev', wan_netdev,
             '-device', eth_driver + ',addr=0x06,netdev=hn1,id=nic1,mac=' + nat_mac,
             '-netdev', client_netdev,
             '-device', eth_driver + ',addr=0x05,netdev=hn2,id=nic2,mac=' + client_mac]
+
+    # needed to boot combined-efi images, e.g. an OVMF firmware path
+    bios = os.environ.get('GLUON_QEMU_BIOS')
+    if bios:
+        call += ['-bios', bios]
 
     # '-d', 'guest_errors', '-d', 'cpu_reset', '-gdb', 'tcp::' + str(3000 + node.id),
     args = ['qemu-system-x86_64',
