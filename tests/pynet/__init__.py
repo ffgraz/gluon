@@ -64,6 +64,7 @@ class Node():
         self.domain_code = None
         self.configured = False
         self.addresses = []
+        self.client_tap = False  # host tap on the client interface (requires root)
         self.dbg = debug_print(initial_time, self.hostname)
 
     def add_mesh_link(self, peer, _is_peer=False, _port=None):
@@ -171,7 +172,11 @@ class Node():
             self.node = node
 
         async def __aenter__(self):
-            if USE_CLIENT_TAP:
+            # client_tap nodes are reached via the client interface's
+            # link-local address only in config mode; afterwards the tap
+            # may be moved away (e.g. into a client netns), so the WAN
+            # hostfwd port is used like in the default mode.
+            if USE_CLIENT_TAP or (self.node.client_tap and not self.node.configured):
                 # client iface link local addr
                 ifname = self.node.if_client
                 host_id = HOST_ID
@@ -292,7 +297,7 @@ async def gen_qemu_call(image, node):
 
     wan_netdev = 'user,id=hn1,hostfwd=tcp::' + str(ssh_port_configured) + '-10.0.2.15:22'
 
-    if USE_CLIENT_TAP:
+    if USE_CLIENT_TAP or node.client_tap:
         client_netdev = 'tap,id=hn2,script=no,downscript=no,ifname=%s' % node.if_client
     else:
         # in config mode, the device is used for configuration with net 192.168.1.0/24
@@ -399,7 +404,7 @@ def configure_netns(node):
 async def configure_node(initial_time, node):
     dbg = debug_print(initial_time, node.hostname)
 
-    if USE_CLIENT_TAP:
+    if USE_CLIENT_TAP or node.client_tap:
         await configure_client_if(node)
 
     dbg('configuring node')
