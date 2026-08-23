@@ -6,6 +6,10 @@ is auto-detected on the running nodes, so the same scenario can run
 against batman-adv, babel and olsrd images.
 """
 
+import os
+import subprocess
+import time
+
 from pynet import Node, connect
 
 PROTOCOLS = ('batman-adv', 'babel', 'olsrd')
@@ -105,3 +109,67 @@ def wait_all_connected(nodes):
 
 def ping(frm, to, count=5):
     frm.wait_until_succeeds('ping -c {} {}'.format(count, node_addr(to)))
+
+
+# --- attached clients ---
+
+def attach_client(node):
+    """Give node a host tap on its client interface, so a Client can
+    attach to it. Must be called before start(); requires root."""
+    if os.geteuid() != 0:
+        raise Exception('client taps require running the scenario as root')
+    node.client_tap = True
+
+
+class Client:
+    """A simulated client in its own network namespace.
+
+    Takes the client taps of the given nodes; move_to(node) brings the
+    client (one MAC, one SLAAC address) up behind that node, like a
+    device roaming through the mesh.
+    """
+
+    _count = 0
+
+    def __init__(self, *nodes):
+        Client._count += 1
+        self.netns = 'testclient%d' % Client._count
+        self.mac = '02:00:00:00:%02x:01' % Client._count
+        self.at = None
+
+        self._host('ip netns del ' + self.netns, check=False)
+        self._host('ip netns add ' + self.netns)
+        self._ns('ip link set lo up')
+        for node in nodes:
+            self._host('ip link set {} netns {}'.format(node.if_client, self.netns))
+
+    def _host(self, cmd, check=True):
+        return subprocess.run(cmd, shell=True, check=check,
+                              capture_output=True, text=True).stdout
+
+    def _ns(self, cmd, check=True):
+        return self._host('ip netns exec {} {}'.format(self.netns, cmd), check=check)
+
+    def move_to(self, node):
+        if self.at is not None:
+            self._ns('ip -6 addr flush dev ' + self.at.if_client)
+            self._ns('ip link set {} down'.format(self.at.if_client))
+
+        tap = node.if_client
+        self._ns('ip link set {} address {} down'.format(tap, self.mac))
+        self._ns('ip link set {} up'.format(tap))
+        self.at = node
+
+    def wait_addr(self, timeout=60):
+        """Wait for the SLAAC address on the current node's tap."""
+        for _ in range(timeout):
+            out = self._ns('ip -6 addr show dev {} scope global'.format(self.at.if_client))
+            for line in out.split('\n'):
+                line = line.strip()
+                if line.startswith('inet6 ') and 'tentative' not in line:
+                    return line.split()[1].split('/')[0]
+            time.sleep(1)
+        raise Exception('client got no SLAAC address on ' + self.at.hostname)
+
+    def succeed(self, cmd):
+        return self._ns(cmd)
