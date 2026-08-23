@@ -35,7 +35,14 @@ def chain(n):
         connect(x, y)
     return nodes
 
-# ponytail: star()/full-mesh topologies when a scenario needs them
+
+def full_mesh(n):
+    """n nodes, every pair directly connected."""
+    nodes = [Node() for _ in range(n)]
+    for i, x in enumerate(nodes):
+        for y in nodes[i + 1:]:
+            connect(x, y)
+    return nodes
 
 
 # --- protocol abstractions ---
@@ -70,6 +77,30 @@ def node_addr(node):
     if proto(node) == 'batman-adv':
         return node.hostname  # pynet's /etc/hosts entries
     return node.succeed('uci get network.loopback.ip6addr | cut -d/ -f1')
+
+
+def wait_connected(frm, to):
+    """Wait until frm knows to at the routing layer (any hop count):
+    a batman-adv originator entry or a babel/olsrd route to its node
+    address."""
+    p = proto(frm)
+    if p == 'batman-adv':
+        mac = to.succeed('cat /sys/class/net/primary0/address')
+        frm.wait_until_succeeds("batctl o -H | grep -q '{}'".format(mac))
+    elif p == 'babel':
+        frm.wait_until_succeeds(
+            "echo dump | nc ::1 33123 | grep -q 'add route.*{}'".format(node_addr(to)))
+    else:  # olsrd
+        frm.wait_until_succeeds(
+            "echo 'olsrv2info routing' | nc ::1 2009 | grep -q '{}'".format(node_addr(to)))
+
+
+def wait_all_connected(nodes):
+    """Wait until every node knows every other node."""
+    for a in nodes:
+        for b in nodes:
+            if a is not b:
+                wait_connected(a, b)
 
 
 def ping(frm, to, count=5):
