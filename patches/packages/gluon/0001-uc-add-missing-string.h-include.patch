@@ -10,20 +10,24 @@ diff --git a/utils/uc/patches/0001-add-missing-string.h-include.patch b/utils/uc
 new file mode 100644
 --- /dev/null
 +++ b/utils/uc/patches/0001-add-missing-string.h-include.patch
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,20 @@
 +--- a/client.c
 ++++ b/client.c
-+@@ -30,4 +30,5 @@
-+ #include <sys/epoll.h>
-+ #include <errno.h>
-+ #include <stdarg.h>
-+ #include <stdlib.h>
-++#include <string.h>
-+--- a/server.c
-++++ b/server.c
-+@@ -26,4 +26,5 @@
-+ #include <stdio.h>
++@@ -27,6 +27,7 @@
 + #include <sys/socket.h>
 + #include <sys/un.h>
 + #include <unistd.h>
 ++#include <string.h>
++ #include <sys/epoll.h>
++ #include <errno.h>
++ #include <stdarg.h>
++--- a/server.c
+++++ b/server.c
++@@ -27,6 +27,7 @@
++ #include <sys/socket.h>
++ #include <sys/un.h>
++ #include <unistd.h>
+++#include <string.h>
++
++ #define SOCK_FILE "server.sock"
++

@@ -111,6 +111,27 @@ def ping(frm, to, count=5):
     frm.wait_until_succeeds('ping -c {} {}'.format(count, node_addr(to)))
 
 
+# --- firewall ---
+
+def dump_firewall(node):
+    """Return the node's active firewall state (nft ruleset plus the
+    ebtables tables if that backend is present), for characterization
+    across the ebtables->nftables migration. Also written to the node
+    log so it is archived as a test artifact."""
+    parts = []
+    for label, cmd in (
+        ('nft', 'nft list ruleset 2>/dev/null'),
+        ('ebtables-filter', 'ebtables -t filter -L 2>/dev/null'),
+        ('ebtables-nat', 'ebtables -t nat -L 2>/dev/null'),
+    ):
+        _, out = node.execute(cmd)
+        if out.strip():
+            parts.append('### {}\n{}'.format(label, out))
+    dump = '\n'.join(parts)
+    node.dbg('firewall dump:\n' + dump)
+    return dump
+
+
 # --- attached clients ---
 
 def attach_client(node):
