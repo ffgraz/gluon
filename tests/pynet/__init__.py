@@ -331,17 +331,14 @@ async def ssh_call(p, cmd):
     return res.stdout
 
 async def set_mesh_devs(p, devs):
+    # Assign the 'mesh' role; gluon-reconfigure generates the network
+    # and firewall configuration from it.
     for d in devs:
-        await ssh_call(p, 'uci set network.' + d + '_mesh=interface')
-        await ssh_call(p, 'uci set network.' + d + '_mesh.auto=1')
-        await ssh_call(p, 'uci set network.' + d + '_mesh.proto=gluon_wired')
-        await ssh_call(p, 'uci set network.' + d + '_mesh.ifname=' + d)
+        await ssh_call(p, 'uci set gluon.iface_' + d + '=interface')
+        await ssh_call(p, "uci set gluon.iface_" + d + ".name='" + d + "'")
+        await ssh_call(p, "uci add_list gluon.iface_" + d + ".role='mesh'")
 
-        # allow vxlan in firewall
-        await ssh_call(p, 'uci add_list firewall.wired_mesh.network=' + d + '_mesh')
-
-    await ssh_call(p, 'uci commit network')
-    await ssh_call(p, 'uci commit firewall')
+    await ssh_call(p, 'uci commit gluon')
 
 async def add_ssh_key(p):
     keyfile = os.path.join(workdir, 'ssh', SSH_PUBKEY_FILE)
@@ -505,8 +502,8 @@ async def config_node(initial_time, node, ssh_conn):
     for cmd in set(node.uci_commits):
         await ssh_call(p, cmd)
 
-    if node.domain_code is not None:
-        await ssh_call(p, "gluon-reconfigure")
+    # apply interface roles, domain and uci changes
+    await ssh_call(p, "gluon-reconfigure")
 
     prefix = (await ssh_call(p, 'gluon-show-site | jsonfilter -e @.prefix6')).strip()
     prefix = ipaddress.ip_network(prefix)
