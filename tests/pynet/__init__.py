@@ -349,13 +349,11 @@ async def add_ssh_key(p):
         content = f.read()
         await ssh_call(p, 'cat >> /etc/dropbear/authorized_keys <<EOF\n' + content)
 
-@asyncio.coroutine
-def wait_bash_cmd(cmd):
-    create = asyncio.create_subprocess_exec(shutil.which("bash"), '-c', cmd)
-    proc = yield from create
+async def wait_bash_cmd(cmd):
+    proc = await asyncio.create_subprocess_exec(shutil.which("bash"), '-c', cmd)
 
     # Wait for the subprocess exit
-    yield from proc.wait()
+    await proc.wait()
 
 async def configure_client_if(node):
     dbg = debug_print(initial_time, node.hostname)
@@ -440,10 +438,9 @@ async def install_client(initial_time, node):
 def spawn_in_tmux(title, cmd):
     run('tmux -S test new-window -d -n ' + title + ' ' + cmd)
 
-@asyncio.coroutine
-def read_to_buffer(node):
+async def read_to_buffer(node):
     while processes.get(node.id) is None:
-        yield from asyncio.sleep(0)
+        await asyncio.sleep(0)
     process = processes[node.id]
     master = masters[node.id]
     stdout_buffers[node.id] = b""
@@ -454,7 +451,7 @@ def read_to_buffer(node):
 
     with open(os.path.join(logdir, node.hostname + '.log'), 'wb') as f1:
         while True:
-            b = yield from process.stdout.read(1) # TODO: is this unbuffered?
+            b = await process.stdout.read(1) # TODO: is this unbuffered?
             stdout_buffers[node.id] += b
             try:
                 os.write(master, b)
@@ -465,15 +462,14 @@ def read_to_buffer(node):
             if b == b'\n':
                 f1.flush()
 
-@asyncio.coroutine
-def wait_for(node, b):
+async def wait_for(node, b):
     i = node.id
     while stdout_buffers.get(i) is None:
-        yield from asyncio.sleep(0)
+        await asyncio.sleep(0)
     while True:
         if b.encode('utf-8') in stdout_buffers[i]:
             return
-        yield from asyncio.sleep(0)
+        await asyncio.sleep(0)
 
 async def add_hosts(p):
     host_entries = ""
@@ -593,7 +589,8 @@ def start():
         run('ssh-keygen -t rsa -f ' + os.path.join(sshdir, SSH_KEY_FILE) + ' -N \'\'')
 
     global loop
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     if args.run_tests_on_existing_instance:
         # We expect the nodes to be already configured.
@@ -640,7 +637,8 @@ def connect(a, b):
 
 def new_loop():
     global loop
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
 
 initial_time = time.time()
