@@ -14,6 +14,11 @@ from pynet import Node, connect
 
 PROTOCOLS = ('batman-adv', 'babel', 'olsrd')
 
+# gluon-mesh-babel registers mesh interfaces with "update-interval 300",
+# so a route can take up to five minutes to propagate; measured ~325s for
+# the first route between two nodes. olsrd is given the same headroom.
+CONVERGENCE_TIMEOUT = {'batman-adv': 180, 'babel': 480, 'olsrd': 480}
+
 _DETECT = {
     'batman-adv': 'batctl',
     'babel': 'babeld',
@@ -88,15 +93,18 @@ def wait_connected(frm, to):
     a batman-adv originator entry or a babel/olsrd route to its node
     address."""
     p = proto(frm)
+    timeout = CONVERGENCE_TIMEOUT[p]
     if p == 'batman-adv':
         mac = to.succeed('cat /sys/class/net/primary0/address')
-        frm.wait_until_succeeds("batctl o -H | grep -q '{}'".format(mac))
+        frm.wait_until_succeeds("batctl o -H | grep -q '{}'".format(mac), timeout)
     elif p == 'babel':
         frm.wait_until_succeeds(
-            "echo dump | nc ::1 33123 | grep -q 'add route.*{}'".format(node_addr(to)))
+            "echo dump | nc ::1 33123 | grep -q 'add route.*{}'".format(node_addr(to)),
+            timeout)
     else:  # olsrd
         frm.wait_until_succeeds(
-            "echo 'olsrv2info routing' | nc ::1 2009 | grep -q '{}'".format(node_addr(to)))
+            "echo 'olsrv2info routing' | nc ::1 2009 | grep -q '{}'".format(node_addr(to)),
+            timeout)
 
 
 def wait_all_connected(nodes):
@@ -108,7 +116,8 @@ def wait_all_connected(nodes):
 
 
 def ping(frm, to, count=5):
-    frm.wait_until_succeeds('ping -c {} {}'.format(count, node_addr(to)))
+    frm.wait_until_succeeds('ping -c {} {}'.format(count, node_addr(to)),
+                            CONVERGENCE_TIMEOUT[proto(frm)])
 
 
 # --- firewall ---

@@ -34,11 +34,11 @@ USE_NETNS = False
 #
 # https://github.com/NixOS/nixpkgs/blob/2577ec293255cbb995e42a86169cc40c427a6e7d/nixos/lib/test-driver/test-driver.py#L129-L140
 #
-def retry(fn) -> None:
+def retry(fn, timeout=180) -> None:
     """Call the given function repeatedly, with 1 second intervals,
     until it returns True or a timeout is reached.
     """
-    for _ in range(180):
+    for _ in range(timeout):
         if fn(False):
             return
         time.sleep(1)
@@ -149,7 +149,7 @@ class Node():
             self.dbg(f'Expected success: command "{cmd}" succeeded with exit status {status}.')
             return stdout
 
-    def wait_until_succeeds(self, cmd):
+    def wait_until_succeeds(self, cmd, timeout=180):
         output = ""
 
         def check_success(is_last_attempt) -> bool:
@@ -162,7 +162,7 @@ class Node():
                 return status == 0
 
         self.dbg(f'Waiting until "{cmd}" succeeds.')
-        retry(check_success)
+        retry(check_success, timeout)
         self.dbg(f'"{cmd}" succeeded.')
         return output
 
