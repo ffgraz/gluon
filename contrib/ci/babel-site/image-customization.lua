@@ -1,8 +1,5 @@
 features {
 	'autoupdater',
-	'ebtables-filter-multicast',
-	'ebtables-filter-ra-dhcp',
-	'ebtables-limit-arp',
 	'mesh-babel',
 	'mesh-vpn-fastd',
 	'respondd',
