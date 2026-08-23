@@ -1,0 +1,29 @@
+From: Maciej Krüger <mkg20001@gmail.com>
+Date: Sun, 23 Aug 2026 21:00:00 +0200
+Subject: uc: add missing string.h include
+
+client.c and server.c use memset/strcpy without including string.h.
+GCC 14 turns implicit function declarations into hard errors, so uc
+no longer builds.
+
+diff --git a/utils/uc/patches/0001-add-missing-string.h-include.patch b/utils/uc/patches/0001-add-missing-string.h-include.patch
+new file mode 100644
+--- /dev/null
++++ b/utils/uc/patches/0001-add-missing-string.h-include.patch
+@@ -0,0 +1,16 @@
++--- a/client.c
+++++ b/client.c
++@@ -30,4 +30,5 @@
++ #include <sys/epoll.h>
++ #include <errno.h>
++ #include <stdarg.h>
++ #include <stdlib.h>
+++#include <string.h>
++--- a/server.c
+++++ b/server.c
++@@ -26,4 +26,5 @@
++ #include <stdio.h>
++ #include <sys/socket.h>
++ #include <sys/un.h>
++ #include <unistd.h>
+++#include <string.h>

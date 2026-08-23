@@ -1,0 +1,19 @@
+From: Maciej Krüger <mkg20001@gmail.com>
+Date: Sun, 23 Aug 2026 21:00:00 +0200
+Subject: libbabelhelper: raise CMake minimum version
+
+CMake 4 removed compatibility with CMake < 3.5, so the build fails at
+cmake_minimum_required(VERSION 2.8.8).
+
+diff --git a/utils/libbabelhelper/patches/0001-raise-CMake-minimum-version.patch b/utils/libbabelhelper/patches/0001-raise-CMake-minimum-version.patch
+new file mode 100644
+--- /dev/null
++++ b/utils/libbabelhelper/patches/0001-raise-CMake-minimum-version.patch
+@@ -0,0 +1,7 @@
++--- a/CMakeLists.txt
+++++ b/CMakeLists.txt
++@@ -1,3 +1,3 @@
++-cmake_minimum_required(VERSION 2.8.8)
+++cmake_minimum_required(VERSION 3.5)
++
++ # list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
