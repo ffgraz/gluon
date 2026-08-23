@@ -23,7 +23,7 @@ from operator import itemgetter
 #)
 
 image = "image.img"
-SSH_KEY_FILE = 'id_rsa.key'
+SSH_KEY_FILE = 'id_ed25519.key'
 SSH_PUBKEY_FILE = SSH_KEY_FILE + '.pub'
 HOST_ID = 1
 USE_CLIENT_TAP = False
@@ -586,7 +586,7 @@ def start():
         os.mkdir(sshdir)
 
     if not os.path.exists(os.path.join(sshdir, SSH_PUBKEY_FILE)):
-        run('ssh-keygen -t rsa -f ' + os.path.join(sshdir, SSH_KEY_FILE) + ' -N \'\'')
+        run('ssh-keygen -t ed25519 -f ' + os.path.join(sshdir, SSH_KEY_FILE) + ' -N \'\'')
 
     global loop
     loop = asyncio.new_event_loop()
