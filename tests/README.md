@@ -18,8 +18,14 @@ Usage:
 
 ```sh
 pip install -r requirements.txt
-./run.py --image ../output/images/factory/gluon-*-x86-64.img --proto babel
+./run.py --image ../output/images/factory/gluon-*-x86-64.img.gz --proto babel
 ```
+
+`--image` takes a `.img` or a `.img.gz`; a gzipped image is unpacked next
+to the archive and reused until the archive changes. Keep one built image
+per protocol around (e.g. `images/babel-x86-64.img.gz`) to avoid a
+firmware rebuild when switching protocols - rebuild only when the
+packages or site config actually change.
 
 Images are built per site config, which selects the routing protocol:
 `../contrib/ci/minimal-site` (batman-adv), `../contrib/ci/babel-site`

@@ -12,12 +12,30 @@ with, so incompatible scenarios are skipped.
 
 import argparse
 import glob
+import gzip
 import os
 import re
+import shutil
 import subprocess
 import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+
+
+def prepare_image(path):
+    """Accept a .img or a .img.gz; gzipped images are unpacked next to
+    the archive and reused while they stay newer than it, so a cached
+    image does not have to be unpacked for every run."""
+    if not path.endswith('.gz'):
+        return path
+
+    unpacked = path[:-3]
+    if (not os.path.exists(unpacked)
+            or os.path.getmtime(unpacked) < os.path.getmtime(path)):
+        print('unpacking %s' % path, flush=True)
+        with gzip.open(path, 'rb') as src, open(unpacked, 'wb') as dst:
+            shutil.copyfileobj(src, dst)
+    return unpacked
 
 
 def scenario_protocols(path):
@@ -32,7 +50,8 @@ def scenario_protocols(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', default=os.environ.get('GLUON_IMAGE', 'image.img'),
-                        help='firmware image (default: $GLUON_IMAGE or ./image.img)')
+                        help='firmware image, .img or .img.gz '
+                             '(default: $GLUON_IMAGE or ./image.img)')
     parser.add_argument('--proto', choices=['batman-adv', 'babel', 'olsrd'],
                         help='routing protocol the image was built with')
     parser.add_argument('scenarios', nargs='*',
@@ -53,7 +72,7 @@ def main():
                        glob.glob(os.path.join(BASE, 'test_*.py')))
 
     env = dict(os.environ,
-               GLUON_IMAGE=os.path.abspath(args.image),
+               GLUON_IMAGE=os.path.abspath(prepare_image(args.image)),
                PYTHONPATH=BASE + os.pathsep + os.environ.get('PYTHONPATH', ''))
 
     failed = []
