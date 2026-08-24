@@ -13,7 +13,7 @@ define Package/gluon-mesh-olsrd
 		+gluon-core \
 		+kmod-macvlan \
 		+olsrd \
-		+firewall4 \
+		+firewall \
 		+libgluonutil \
 		+libjson-c \
 		+libubox +libuclient \
