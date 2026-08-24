@@ -173,6 +173,12 @@ lint-lua: FORCE
 lint-sh: FORCE
 	@scripts/lint-sh.sh
 
+# Run the integration tests against a built image. Pass arguments to the
+# test runner in GLUON_TEST_ARGS, e.g.
+#   make test GLUON_TEST_ARGS='-j 4 connect_two'
+test: FORCE
+	@$(GLUON_ENV) scripts/run-tests.sh $(GLUON_TEST_ARGS)
+
 
 LUA := openwrt/staging_dir/hostpkg/bin/lua
 
