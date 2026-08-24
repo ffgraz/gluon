@@ -20,5 +20,13 @@ file:write("redistribute ip " .. site.node_prefix6() .. " eq 128  allow\n")
 file:write("redistribute ip 2000::/3 allow\n")
 file:write("redistribute local if br-wan deny\n")
 file:write("redistribute local ip 0.0.0.0/0 deny\n")
+
+-- Import routes another routing daemon put into the kernel, so a mesh
+-- running olsrd next to babel stays reachable from the babel side.
+-- Listed as prefixes in site.conf; anything not listed keeps being
+-- ignored, so the uplink default route is never pulled into the mesh.
+for _, prefix in ipairs(site.mesh.babel.import({})) do
+	file:write("redistribute ip " .. prefix .. " allow\n")
+end
 file:write("install pref-src " .. nodeip .."\n")
 file:close()
