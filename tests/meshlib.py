@@ -158,6 +158,18 @@ def resolves_dns(node, name=None):
     return status == 0
 
 
+def as_mesh_vpn(cmd):
+    """Run a command as the gluon-mesh-vpn group.
+
+    Only that group's DNS is redirected to gluon-wan-dnsmasq, so a
+    lookup has to come from it to take the path the package exists for.
+    The node has no su or setpriv; busybox's start-stop-daemon can
+    change the group of what it starts."""
+    program, _, arguments = cmd.partition(' ')
+    return ('start-stop-daemon -S -c :gluon-mesh-vpn -x "$(which {})" -- {}'
+            .format(program, arguments))
+
+
 # --- firewall ---
 
 # --- respondd ---
