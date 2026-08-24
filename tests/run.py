@@ -4,8 +4,9 @@
 Tests live next to the package they exercise, in
 package/<package>/tests/*.py. A test runs when its own package is
 installed on the image, plus any extra packages it declares in a
-'# requires: <package>...' comment line. The installed set is read from
-a booted node, so the image itself decides which tests apply.
+'# requires: <package>...' comment line, where 'a|b' means either name
+will do. The installed set is read from a booted node, so the image
+itself decides which tests apply.
 
 Tests run in their own process (pynet keeps global state) and, by
 default, two at a time; each gets a pynet slot so the host ports do not
@@ -67,16 +68,26 @@ def prepare_image(path):
 
 
 def required_packages(path):
-    """Packages a test needs: the one owning it, plus its '# requires:'."""
+    """Packages a test needs: the one owning it, plus its '# requires:'.
+
+    Each entry is a set of interchangeable names, so a requirement can
+    be written as 'new-name|old-name' and stay satisfiable on images
+    built before a package was renamed. Naming the owning package in
+    such a set replaces the implicit requirement on it, which is how a
+    test says that it also applies to the owner's former name."""
     owner = os.path.basename(os.path.dirname(os.path.dirname(path)))
-    needed = {owner}
+    declared = []
     with open(path) as f:
         for line in f:
             match = re.match(r'#\s*requires:\s*(.+)', line)
             if match:
-                needed.update(match.group(1).split())
+                declared = [set(token.split('|'))
+                            for token in match.group(1).split()]
                 break
-    return needed
+
+    if any(owner in alternatives for alternatives in declared):
+        return declared
+    return [{owner}] + declared
 
 
 def installed_packages(env, image):
@@ -179,10 +190,13 @@ def main():
         packages = installed_packages(env, image)
         for path in paths:
             name = os.path.splitext(os.path.basename(path))[0]
-            missing = required_packages(path) - packages
+            missing = [alternatives
+                       for alternatives in required_packages(path)
+                       if not alternatives & packages]
             if missing:
                 print('~~~ %s: skipped (image lacks %s)'
-                      % (name, ' '.join(sorted(missing))), flush=True)
+                      % (name, ' '.join('|'.join(sorted(a))
+                                        for a in missing)), flush=True)
                 continue
             todo.append((name, path))
 
