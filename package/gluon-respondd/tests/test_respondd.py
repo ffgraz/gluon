@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# protocols: batman-adv
+# requires: gluon-mesh-batman-adv
 import sys
 from pynet import *
 import asyncio

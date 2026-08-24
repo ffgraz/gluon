@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# protocols: batman-adv
 import sys
 from pynet import *
 import asyncio

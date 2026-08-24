@@ -9,6 +9,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'tests/**'
+      - 'package/*/tests/**'
       - 'package/**'
       - 'targets/x86*'
       - 'targets/generic'
@@ -65,7 +66,7 @@ jobs:
         run: sudo chmod 666 /dev/kvm
 
       - name: Run mesh tests
-        run: cd tests && python3 run.py --proto ${{ matrix.proto }} -j 2 --image ../output/images/factory/gluon-ci-*-x86-64.img.gz
+        run: cd tests && python3 run.py -j 2 --image ../output/images/factory/gluon-ci-*-x86-64.img.gz
 
       - name: Archive node logs
         if: ${{ !cancelled() }}

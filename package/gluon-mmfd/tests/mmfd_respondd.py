@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# protocols: babel olsrd
 """mmfd forwards respondd multicast across the whole layer-3 mesh: a
 query from one end of a chain is answered by every node, including the
 one two hops away."""

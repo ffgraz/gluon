@@ -3,29 +3,56 @@
 QEMU/KVM-based mesh integration tests, driven by the vendored
 [pynet](pynet/README.md) module.
 
-Layout:
+Tests live next to the package they exercise:
 
-- `pynet/` — boots x86-64 images in QEMU and drives them over SSH
-- `meshlib.py` — topology helpers (`pair()`, `chain(n)`) and
-  protocol abstractions (`wait_neighbours()`, `ping()`, `node_addr()`)
-  that auto-detect batman-adv/babel/olsrd on the running image
-- `scenarios/` — protocol-independent test scenarios built on meshlib
-- `test_*.py` — standalone scenarios; a `# protocols: <name>...`
-  header restricts them to matching images
-- `run.py` — runs a scenario set against one image
+```
+package/gluon-core/tests/connect_two.py
+package/gluon-mmfd/tests/mmfd_respondd.py
+package/gluon-l3roamd/tests/l3roamd_roam.py
+...
+```
+
+A test runs when its own package is installed on the image. If it needs
+more than that, it says so in a header:
+
+```python
+# requires: gluon-mesh-batman-adv
+```
+
+`run.py` reads the installed package list from `<image>.packages` next
+to the image, and boots one node to produce it when that file is missing
+or older than the image. The image therefore decides which tests apply -
+no protocol flags to keep in sync. `--all` skips the probe and runs
+everything.
+
+Shared code lives here:
+
+- `pynet/` - boots x86-64 images in QEMU and drives them over SSH
+- `meshlib.py` - topology helpers (`pair()`, `chain(n)`, `full_mesh(n)`),
+  protocol abstractions (`wait_neighbours()`, `wait_connected()`,
+  `ping()`) that auto-detect batman-adv/babel/olsrd on the running
+  image, attached clients (`attach_client()`, `Client`), respondd and
+  firewall helpers
+- `run.py` - selects and runs tests, two at a time by default (`-j`)
 
 Usage:
 
 ```sh
 pip install -r requirements.txt
-./run.py --image ../output/images/factory/gluon-*-x86-64.img.gz --proto babel
+sudo ./run.py --image ../output/images/factory/gluon-*-x86-64.img.gz
+sudo ./run.py connect_two firewall_packets   # named tests only
 ```
 
 `--image` takes a `.img` or a `.img.gz`; a gzipped image is unpacked next
 to the archive and reused until the archive changes. Keep one built image
-per protocol around (e.g. `images/babel-x86-64.img.gz`) to avoid a
-firmware rebuild when switching protocols - rebuild only when the
-packages or site config actually change.
+per protocol around to avoid a firmware rebuild when switching protocols
+- rebuild only when the packages or site config actually change.
+
+Root is needed for the tests that attach clients (network namespaces and
+taps); `tcpdump` and `scapy` are needed for the firewall packet test.
+
+Each test gets `tests/run/<test>/` with its output in `test.log` and the
+node consoles under `logs/`.
 
 Images are built per site config, which selects the routing protocol:
 `../contrib/ci/minimal-site` (batman-adv), `../contrib/ci/babel-site`

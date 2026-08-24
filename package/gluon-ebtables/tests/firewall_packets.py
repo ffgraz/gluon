@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# protocols: batman-adv
+# requires: gluon-ebtables-filter-multicast gluon-ebtables-filter-ra-dhcp gluon-ebtables-limit-arp
 """Sends one packet of every kind the client-bridge firewall is meant to
 allow or block from a client behind one node, and checks at a client
 behind the other node whether it arrived.

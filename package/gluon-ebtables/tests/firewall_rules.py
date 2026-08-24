@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# protocols: batman-adv
+# requires: gluon-ebtables-filter-multicast gluon-ebtables-filter-ra-dhcp gluon-ebtables-limit-arp
 """Characterizes the client-bridge firewall behaviour that the
 ebtables-based filters implement, so the nftables rewrite can be shown
 to reproduce it. Asserts observable effects, not rule syntax, so the

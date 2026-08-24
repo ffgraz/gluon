@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Test rig: run mesh test scenarios against a Gluon x86-64 image.
+"""Test rig: run Gluon mesh tests against an x86-64 image.
 
-Scenarios run in their own process (pynet keeps global state) and, by
+Tests live next to the package they exercise, in
+package/<package>/tests/*.py. A test runs when its own package is
+installed on the image, plus any extra packages it declares in a
+'# requires: <package>...' comment line. The installed set is read from
+a booted node, so the image itself decides which tests apply.
+
+Tests run in their own process (pynet keeps global state) and, by
 default, two at a time; each gets a pynet slot so the host ports do not
-collide and its own directory under tests/run/<scenario>/ holding the
-node logs and its output. A scenario limited to specific routing
-protocols declares them in a '# protocols: <name>...' comment line;
-without it, it runs for every protocol. Pass --proto to say which
-protocol the image was built with, so incompatible scenarios are
-skipped.
+collide and its own directory under tests/run/<test>/ holding the node
+logs and its output.
 
-    ./run.py --image ../output/.../gluon-*-x86-64.img.gz --proto babel -j 2
+    ./run.py --image ../output/.../gluon-*-x86-64.img.gz -j 2
 """
 
 import argparse
@@ -25,6 +27,7 @@ import subprocess
 import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+PACKAGES = os.path.join(os.path.dirname(BASE), 'package')
 
 
 def prepare_image(path):
@@ -43,13 +46,73 @@ def prepare_image(path):
     return unpacked
 
 
-def scenario_protocols(path):
+def required_packages(path):
+    """Packages a test needs: the one owning it, plus its '# requires:'."""
+    owner = os.path.basename(os.path.dirname(os.path.dirname(path)))
+    needed = {owner}
     with open(path) as f:
         for line in f:
-            m = re.match(r'#\s*protocols:\s*(.+)', line)
-            if m:
-                return m.group(1).split()
-    return None  # all
+            match = re.match(r'#\s*requires:\s*(.+)', line)
+            if match:
+                needed.update(match.group(1).split())
+                break
+    return needed
+
+
+def installed_packages(env, image):
+    """The packages the image has installed, from a '<image>.packages'
+    cache next to it, or by booting a node when that is missing or older
+    than the image."""
+    cache = image + '.packages'
+    if (os.path.exists(cache)
+            and os.path.getmtime(cache) >= os.path.getmtime(image)):
+        with open(cache) as f:
+            tokens = f.read().split()
+        print('using cached package list %s' % cache, flush=True)
+        return expand_package_names(tokens)
+
+    tokens = probe_packages(env)
+    with open(cache, 'w') as f:
+        f.write('\n'.join(tokens) + '\n')
+    print('cached package list to %s' % cache, flush=True)
+    return expand_package_names(tokens)
+
+
+def expand_package_names(tokens):
+    """apk reports "name-1.2-r3"; index both the full token and the name."""
+    packages = set()
+    for token in tokens:
+        token = token.strip()
+        if token:
+            packages.add(token)
+            packages.add(re.sub(r'-\d[^-]*(-r\d+)?$', '', token))
+    return packages
+
+
+def probe_packages(env):
+    """Boot a node and report what it has installed."""
+    print('probing image for installed packages', flush=True)
+    workdir = os.path.join(BASE, 'run', '.probe')
+    shutil.rmtree(workdir, ignore_errors=True)
+    os.makedirs(workdir)
+    result = subprocess.run(
+        [sys.executable, '-u', os.path.join(BASE, 'probe_packages.py')],
+        cwd=workdir, env=dict(env, PYNET_SLOT='0'),
+        capture_output=True, text=True)
+
+    if result.returncode != 0:
+        sys.exit('probing the image failed:\n' + result.stdout[-2000:]
+                 + result.stderr[-2000:])
+
+    lines = result.stdout.splitlines()
+    try:
+        marker = lines.index('--- packages ---')
+    except ValueError:
+        sys.exit('probe produced no package list:\n' + result.stdout[-2000:])
+
+    tokens = [line.strip() for line in lines[marker + 1:] if line.strip()]
+    print('image has %d packages' % len(tokens), flush=True)
+    return tokens
 
 
 def main():
@@ -57,57 +120,66 @@ def main():
     parser.add_argument('--image', default=os.environ.get('GLUON_IMAGE', 'image.img'),
                         help='firmware image, .img or .img.gz '
                              '(default: $GLUON_IMAGE or ./image.img)')
-    parser.add_argument('--proto', choices=['batman-adv', 'babel', 'olsrd'],
-                        help='routing protocol the image was built with')
     parser.add_argument('-j', '--jobs', type=int, default=2,
-                        help='scenarios to run concurrently (default: 2, max 8)')
-    parser.add_argument('scenarios', nargs='*',
-                        help='scenario names or paths (default: all applicable)')
+                        help='tests to run concurrently (default: 2, max 8)')
+    parser.add_argument('--all', action='store_true',
+                        help='skip the probe and run every test')
+    parser.add_argument('tests', nargs='*',
+                        help='test names or paths (default: all applicable)')
     args = parser.parse_args()
 
     if not 1 <= args.jobs <= 8:
         parser.error('--jobs must be 1..8')
 
-    if args.scenarios:
-        paths = []
-        for s in args.scenarios:
-            for candidate in (s, os.path.join(BASE, 'scenarios', s + '.py'), os.path.join(BASE, s)):
-                if os.path.isfile(candidate):
-                    paths.append(os.path.abspath(candidate))
-                    break
-            else:
-                parser.error('no such scenario: ' + s)
-    else:
-        paths = sorted(glob.glob(os.path.join(BASE, 'scenarios', '*.py')) +
-                       glob.glob(os.path.join(BASE, 'test_*.py')))
+    available = sorted(glob.glob(os.path.join(PACKAGES, '*', 'tests', '*.py')))
 
+    if args.tests:
+        paths = []
+        for name in args.tests:
+            matches = [p for p in available
+                       if os.path.splitext(os.path.basename(p))[0] == name
+                       or p == os.path.abspath(name)]
+            if not matches and os.path.isfile(name):
+                matches = [os.path.abspath(name)]
+            if not matches:
+                parser.error('no such test: ' + name)
+            paths += matches
+    else:
+        paths = available
+
+    image = os.path.abspath(prepare_image(args.image))
     env = dict(os.environ,
-               GLUON_IMAGE=os.path.abspath(prepare_image(args.image)),
+               GLUON_IMAGE=image,
                PYTHONPATH=BASE + os.pathsep + os.environ.get('PYTHONPATH', ''))
 
     todo = []
-    for path in paths:
-        name = os.path.splitext(os.path.basename(path))[0]
-        protocols = scenario_protocols(path)
-        if args.proto and protocols and args.proto not in protocols:
-            print('~~~ %s: skipped (needs %s)' % (name, ' '.join(protocols)), flush=True)
-            continue
-        todo.append((name, path))
+    if args.all:
+        todo = [(os.path.splitext(os.path.basename(p))[0], p) for p in paths]
+    else:
+        packages = installed_packages(env, image)
+        for path in paths:
+            name = os.path.splitext(os.path.basename(path))[0]
+            missing = required_packages(path) - packages
+            if missing:
+                print('~~~ %s: skipped (image lacks %s)'
+                      % (name, ' '.join(sorted(missing))), flush=True)
+                continue
+            todo.append((name, path))
 
-    # Each concurrent scenario gets a slot, which shifts the host ports
+    # Each concurrent test gets a slot, which shifts the host ports
     # pynet binds, and its own directory, which keeps images, node logs
     # and ssh keys apart.
     slots = queue.Queue()
     for slot in range(args.jobs):
         slots.put(slot)
 
-    def run_scenario(name, path):
+    def run_test(name, path):
         slot = slots.get()
         try:
             workdir = os.path.join(BASE, 'run', name)
             shutil.rmtree(workdir, ignore_errors=True)
             os.makedirs(workdir)
-            logfile = os.path.join(workdir, 'scenario.log')
+            logfile = os.path.join(workdir, 'test.log')
             with open(logfile, 'wb') as log:
                 rc = subprocess.run([sys.executable, '-u', path], cwd=workdir,
                                     env=dict(env, PYNET_SLOT=str(slot)),
@@ -116,10 +188,10 @@ def main():
         finally:
             slots.put(slot)
 
-    print('running %d scenarios, %d at a time' % (len(todo), args.jobs), flush=True)
+    print('running %d tests, %d at a time' % (len(todo), args.jobs), flush=True)
     failed = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        futures = [pool.submit(run_scenario, name, path) for name, path in todo]
+        futures = [pool.submit(run_test, name, path) for name, path in todo]
         for future in concurrent.futures.as_completed(futures):
             name, rc, logfile = future.result()
             if rc != 0:
@@ -129,7 +201,7 @@ def main():
                 print('=== %s: ok' % name, flush=True)
 
     if failed:
-        print('failed scenarios: ' + ' '.join(failed))
+        print('failed tests: ' + ' '.join(failed))
         sys.exit(1)
 
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# protocols: babel olsrd
 """A client roams from one end of a chain to the other; l3roamd keeps
 its address reachable from across the mesh. Requires root."""
 from pynet import start, finish
