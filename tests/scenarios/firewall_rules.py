@@ -9,7 +9,8 @@ Requires an image built with the firewall filter features
 (filter-multicast, filter-ra-dhcp, limit-arp).
 """
 from pynet import start, finish
-from meshlib import pair, wait_connected, dump_firewall
+from meshlib import (pair, wait_connected, dump_firewall,
+                     respondd_dev, respondd_query)
 
 a, b = pair()
 
@@ -58,8 +59,7 @@ b.wait_until_succeeds('ping -c 3 node1')
 
 # 5. respondd stays reachable across the client bridge, which is what
 #    the multicast allow rules exist for.
-b.wait_until_succeeds(
-    'gluon-neighbour-info -d ff02::2:1001 -p 1001 -r nodeinfo'
-    ' -i "$(cat /lib/gluon/respondd/client.dev 2>/dev/null || echo br-client)" -c 2')
+b.wait_until_succeeds('[ "$({} | wc -l)" -ge 1 ]'.format(
+    respondd_query(respondd_dev(b), count=2)))
 
 finish()

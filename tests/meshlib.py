@@ -160,6 +160,28 @@ def resolves_dns(node, name=None):
 
 # --- firewall ---
 
+# --- respondd ---
+
+def respondd_dev(node):
+    """The device respondd serves the site-local group on.
+    /lib/gluon/respondd/client.dev names a uci network interface
+    ('client' for batman-adv, 'mmfd' for the layer-3 protocols), which
+    has to be resolved to a device the way gluon-respondd's init does."""
+    return node.succeed(
+        'ubus call network.interface dump | jsonfilter -e '
+        '"@.interface[@.interface=\'$(cat /lib/gluon/respondd/client.dev)\''
+        ' && @.up=true].device"').strip()
+
+
+def respondd_query(dev, request='nodeinfo', count=2):
+    """Command querying the mesh-wide respondd group. respondd answers
+    ff02::2:1001 on mesh devices (link-local, direct neighbours only)
+    and ff05::2:1001 on the client device, which is the one carried
+    across the mesh."""
+    return ('gluon-neighbour-info -d ff05::2:1001 -p 1001 -r {} -i {} -c {}'
+            .format(request, dev, count))
+
+
 def send_from(client, scapy_expr):
     """Send a crafted packet from a client's namespace. scapy_expr is
     evaluated with scapy.all imported and IFACE bound to the client's

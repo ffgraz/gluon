@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # protocols: babel olsrd
-"""mmfd forwards respondd multicast across the whole layer-3 mesh:
-a query on one end of a chain gets answers from all nodes."""
+"""mmfd forwards respondd multicast across the whole layer-3 mesh: a
+query from one end of a chain is answered by every node, including the
+one two hops away."""
 from pynet import start, finish
-from meshlib import chain, wait_connected
+from meshlib import (chain, wait_connected, proto, respondd_dev,
+                     respondd_query, CONVERGENCE_TIMEOUT)
 
 a, b, c = chain(3)
 
@@ -11,10 +13,12 @@ start()
 
 wait_connected(a, c)
 
-# respondd listens on the device from client.dev (the mmfd interface);
-# replies from b and c can only arrive if mmfd forwards the multicast
+# Answers from b and c can only arrive if mmfd carries the site-local
+# respondd group across the mesh.
+dev = respondd_dev(a)
+a.dbg('querying respondd via ' + dev)
 a.wait_until_succeeds(
-    '[ "$(gluon-neighbour-info -d ff02::2:1001 -p 1001 -r nodeinfo'
-    ' -i "$(cat /lib/gluon/respondd/client.dev)" -c 5 | wc -l)" -ge 3 ]')
+    '[ "$({} | wc -l)" -ge 3 ]'.format(respondd_query(dev, count=5)),
+    CONVERGENCE_TIMEOUT[proto(a)])
 
 finish()
