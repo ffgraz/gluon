@@ -23,6 +23,15 @@ from operator import itemgetter
 #)
 
 image = os.environ.get('GLUON_IMAGE', 'image.img')
+
+# Concurrency: each parallel run picks a slot, which shifts every host
+# port it binds so runs do not collide. Per-run files (images, logs,
+# ptys, ssh keys) are kept apart by running in separate directories.
+SLOT = int(os.environ.get('PYNET_SLOT', '0'))
+if not 0 <= SLOT <= 7:
+    raise ValueError('PYNET_SLOT must be 0..7')
+MESH_PORT_BASE = 17000 + SLOT * 500
+SSH_PORT_BASE = 22000 + SLOT * 200
 SSH_KEY_FILE = 'id_ed25519.key'
 SSH_PUBKEY_FILE = SSH_KEY_FILE + '.pub'
 HOST_ID = 1
@@ -49,7 +58,7 @@ def retry(fn, timeout=180) -> None:
 class Node():
 
     max_id = 0
-    max_port = 17321
+    max_port = MESH_PORT_BASE
     all_nodes = []
 
     def __init__(self):
@@ -185,7 +194,7 @@ class Node():
                 port = 22
             else:
                 addr = '127.0.0.1'
-                port = 22000 + self.node.id
+                port = SSH_PORT_BASE + self.node.id
                 if self.node.configured:
                     port += 100
 
@@ -292,8 +301,8 @@ async def gen_qemu_call(image, node):
 
         mesh_id += 1
 
-    ssh_port = 22000 + node.id
-    ssh_port_configured = 22100 + node.id
+    ssh_port = SSH_PORT_BASE + node.id
+    ssh_port_configured = SSH_PORT_BASE + 100 + node.id
 
     wan_netdev = 'user,id=hn1,hostfwd=tcp::' + str(ssh_port_configured) + '-10.0.2.15:22'
 
