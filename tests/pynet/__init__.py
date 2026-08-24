@@ -45,9 +45,14 @@ USE_NETNS = False
 #
 def retry(fn, timeout=180) -> None:
     """Call the given function repeatedly, with 1 second intervals,
-    until it returns True or a timeout is reached.
+    until it returns True or timeout seconds have passed.
+
+    The bound is wall-clock: every attempt opens an ssh connection and
+    some commands wait for network responses, so counting attempts
+    instead would stretch the wait to many times the timeout.
     """
-    for _ in range(timeout):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         if fn(False):
             return
         time.sleep(1)

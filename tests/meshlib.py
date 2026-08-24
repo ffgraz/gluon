@@ -173,13 +173,21 @@ def respondd_dev(node):
         ' && @.up=true].device"').strip()
 
 
-def respondd_query(dev, request='nodeinfo', count=2):
+# gluon-respondd serves the client device with '-t 10', so it spreads
+# replies over up to ten seconds to avoid a response storm, while
+# gluon-neighbour-info gives up after three by default. Querying with
+# the default timeout therefore loses most replies.
+RESPONDD_MAXDELAY = 10
+
+
+def respondd_query(dev, request='nodeinfo', count=2,
+                   timeout=RESPONDD_MAXDELAY + 5):
     """Command querying the mesh-wide respondd group. respondd answers
     ff02::2:1001 on mesh devices (link-local, direct neighbours only)
     and ff05::2:1001 on the client device, which is the one carried
     across the mesh."""
     return ('gluon-neighbour-info -d ff05::2:1001 -p 1001 -r {} -i {} -c {}'
-            .format(request, dev, count))
+            ' -t {}'.format(request, dev, count, timeout))
 
 
 def send_from(client, scapy_expr):
