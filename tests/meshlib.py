@@ -227,11 +227,16 @@ def dump_firewall(node):
     ebtables tables if that backend is present), for characterization
     across the ebtables->nftables migration. Also written to the node
     log so it is archived as a test artifact."""
+    # The ebtables backend ships the binary as ebtables-tiny, and its
+    # ip(6)tables rules come from fw3; the nftables backend has neither.
     parts = []
     for label, cmd in (
         ('nft', 'nft list ruleset 2>/dev/null'),
-        ('ebtables-filter', 'ebtables -t filter -L 2>/dev/null'),
-        ('ebtables-nat', 'ebtables -t nat -L 2>/dev/null'),
+        ('ebtables-filter',
+         'ebtables -t filter -L 2>/dev/null || ebtables-tiny -t filter -L 2>/dev/null'),
+        ('ebtables-nat',
+         'ebtables -t nat -L 2>/dev/null || ebtables-tiny -t nat -L 2>/dev/null'),
+        ('ip6tables', 'ip6tables -L -n 2>/dev/null'),
     ):
         _, out = node.execute(cmd)
         if out.strip():
