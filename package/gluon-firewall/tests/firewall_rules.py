@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# requires: gluon-firewall-filter-multicast gluon-firewall-filter-ra-dhcp gluon-firewall-limit-arp
+# requires: gluon-firewall|gluon-ebtables gluon-firewall-filter-multicast|gluon-ebtables-filter-multicast gluon-firewall-filter-ra-dhcp|gluon-ebtables-filter-ra-dhcp gluon-firewall-limit-arp|gluon-ebtables-limit-arp
 """Characterizes the client-bridge firewall behaviour that the
 ebtables-based filters implement, so the nftables rewrite can be shown
 to reproduce it. Asserts observable effects, not rule syntax, so the

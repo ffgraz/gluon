@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# requires: gluon-firewall-filter-multicast gluon-firewall-filter-ra-dhcp gluon-firewall-limit-arp
+# requires: gluon-firewall|gluon-ebtables gluon-firewall-filter-multicast|gluon-ebtables-filter-multicast gluon-firewall-filter-ra-dhcp|gluon-ebtables-filter-ra-dhcp gluon-firewall-limit-arp|gluon-ebtables-limit-arp
 """Sends one packet of every kind the client-bridge firewall is meant to
 allow or block from a client, and checks on that same node what the
 firewall did with it.
