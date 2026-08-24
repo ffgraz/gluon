@@ -222,6 +222,40 @@ def capture_while(client, pcap_filter, action, seconds=4):
     return len([line for line in out.splitlines() if line.strip()])
 
 
+def drop_counters(node):
+    """Total packets the firewall's drop rules have counted.
+
+    Both backends can be read the same way: ebtables counts every rule,
+    and gluon's nftables drop rules carry an explicit counter. Returns a
+    single total - the test compares a delta, so it does not matter
+    which rule caught the packet."""
+    _, out = node.execute(
+        "nft list ruleset 2>/dev/null | grep -oE 'counter packets [0-9]+'"
+        " | awk '{s+=$3} END {print s+0}'")
+    total = int(out.strip() or 0)
+    if total:
+        return total
+    # ebtables backend: -Lc prints "-- pcnt N -- bcnt M" per rule
+    for binary in ('ebtables', 'ebtables-tiny'):
+        _, out = node.execute(
+            "{} -t filter -L --Lc 2>/dev/null"
+            " | grep -oE 'pcnt = [0-9]+' | awk '{{s+=$3}} END {{print s+0}}'"
+            .format(binary))
+        if out.strip() and out.strip() != '0':
+            return int(out.strip())
+    return 0
+
+
+def mesh_tx(node):
+    """Packets transmitted on the node's mesh interfaces, to tell
+    whether a frame actually left towards the mesh."""
+    _, out = node.execute(
+        'for d in $(gluon-list-mesh-interfaces); do'
+        ' cat /sys/class/net/$d/statistics/tx_packets 2>/dev/null; done'
+        " | awk '{s+=$1} END {print s+0}'")
+    return int(out.strip() or 0)
+
+
 def dump_firewall(node):
     """Return the node's active firewall state (nft ruleset plus the
     ebtables tables if that backend is present), for characterization
