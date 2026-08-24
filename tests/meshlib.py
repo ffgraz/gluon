@@ -223,37 +223,62 @@ def capture_while(client, pcap_filter, action, seconds=4):
 
 
 def drop_counters(node):
-    """Total packets the firewall's drop rules have counted.
+    """Packets the firewall's drop rules have counted, or None when the
+    backend cannot report them.
 
-    Both backends can be read the same way: ebtables counts every rule,
-    and gluon's nftables drop rules carry an explicit counter. Returns a
-    single total - the test compares a delta, so it does not matter
-    which rule caught the packet."""
+    Gluon's nftables drop rules carry an explicit counter. The ebtables
+    backend ships as ebtables-tiny, which has no --Lc, so there is
+    nothing to read there and the caller has to fall back on observing
+    the packet itself."""
     _, out = node.execute(
         "nft list ruleset 2>/dev/null | grep -oE 'counter packets [0-9]+'"
-        " | awk '{s+=$3} END {print s+0}'")
-    total = int(out.strip() or 0)
-    if total:
-        return total
-    # ebtables backend: -Lc prints "-- pcnt N -- bcnt M" per rule
-    for binary in ('ebtables', 'ebtables-tiny'):
-        _, out = node.execute(
-            "{} -t filter -L --Lc 2>/dev/null"
-            " | grep -oE 'pcnt = [0-9]+' | awk '{{s+=$3}} END {{print s+0}}'"
-            .format(binary))
-        if out.strip() and out.strip() != '0':
-            return int(out.strip())
-    return 0
+        " | awk '{s+=$3; n++} END {if (n) print s}'")
+    if out.strip():
+        return int(out.strip())
+    return None
 
 
-def mesh_tx(node):
-    """Packets transmitted on the node's mesh interfaces, to tell
-    whether a frame actually left towards the mesh."""
+def mesh_dev(node):
+    """The device a client frame crosses on its way into the mesh.
+
+    On batman-adv that is bat0, the client bridge's mesh-facing port,
+    which is where the bridge hands a frame to the mesh protocol. On a
+    layer-3 mesh there is no such port, so fall back to the mesh
+    interfaces themselves."""
     _, out = node.execute(
-        'for d in $(gluon-list-mesh-interfaces); do'
-        ' cat /sys/class/net/$d/statistics/tx_packets 2>/dev/null; done'
-        " | awk '{s+=$1} END {print s+0}'")
-    return int(out.strip() or 0)
+        'for d in bat0 $(gluon-list-mesh-interfaces); do'
+        ' [ -e /sys/class/net/$d ] && echo $d && break; done')
+    dev = out.strip()
+    if not dev:
+        raise Exception('node has no mesh-facing device')
+    return dev
+
+
+def mesh_tx(node, dev=None):
+    """Frames the client bridge handed to the node's mesh-facing device.
+
+    Counts the transmitted frames together with the ones the device
+    itself discarded: batman-adv drops multicast it knows nobody in the
+    mesh has joined, which says nothing about what the firewall
+    decided, and that decision drifts with what the rest of the mesh is
+    listening to. Both together move for exactly the frames the bridge
+    firewall let out, which is the question a firewall test asks."""
+    _, out = node.execute(
+        'cd /sys/class/net/{}/statistics && cat tx_packets tx_dropped'
+        .format(dev or mesh_dev(node)))
+    return sum(int(v) for v in out.split())
+
+
+def flood_multicast(node):
+    """Have the client bridge offer every multicast frame to every port.
+
+    br-client snoops multicast, so a frame addressed to a group nothing
+    has joined is dropped by the bridge before the firewall ever sees
+    it - which looks exactly like the firewall blocking it, and drifts
+    with whatever the mesh happens to have joined. Turning snooping off
+    leaves the firewall as the only thing that can stop a frame, which
+    is what a firewall test wants to measure."""
+    node.succeed('echo 0 > /sys/class/net/br-client/bridge/multicast_snooping')
 
 
 def dump_firewall(node):
