@@ -1,8 +1,5 @@
 features {
 	'autoupdater',
-	'firewall-filter-multicast',
-	'firewall-filter-ra-dhcp',
-	'firewall-limit-arp',
 	'mesh-olsrd',
 	'mesh-vpn-fastd',
 	'respondd',
