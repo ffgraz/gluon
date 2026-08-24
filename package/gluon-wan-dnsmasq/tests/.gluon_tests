@@ -1,0 +1,2 @@
+# Marks this directory as holding Gluon integration tests, so the
+# rig picks them up. See tests/README.md.
