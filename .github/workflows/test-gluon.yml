@@ -58,7 +58,7 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install qemu-system-x86
+          sudo apt-get -y install qemu-system-x86 tcpdump
           python3 -m pip install -r tests/requirements.txt
 
       - name: Allow KVM access

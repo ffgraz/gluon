@@ -7,6 +7,7 @@ against batman-adv, babel and olsrd images.
 """
 
 import os
+import shlex
 import subprocess
 import time
 
@@ -120,7 +121,76 @@ def ping(frm, to, count=5):
                             CONVERGENCE_TIMEOUT[proto(frm)])
 
 
+# --- uplink / internet ---
+
+# Overridable so a disconnected lab can point at a local responder
+# instead of a public one.
+V4_TARGET = os.environ.get('GLUON_TEST_V4_TARGET', '1.1.1.1')
+V6_TARGET = os.environ.get('GLUON_TEST_V6_TARGET', '2606:4700:4700::1111')
+DNS_NAME = os.environ.get('GLUON_TEST_DNS_NAME', 'one.one.one.one')
+
+
+def wait_uplink(node, family=6):
+    """Wait until the node's uplink has an address and a default route."""
+    if family == 4:
+        node.wait_until_succeeds('ip -4 addr show dev br-wan | grep -q "inet "')
+        node.wait_until_succeeds(
+            'ip -4 route show table all | grep "^default" | grep -q br-wan')
+    else:
+        # any non-link-local address counts; QEMU's user networking
+        # hands out fec0::/64
+        node.wait_until_succeeds(
+            'ip -6 addr show dev br-wan | grep inet6 | grep -qv fe80')
+        # gluon keeps uplink routes in a separate policy table
+        node.wait_until_succeeds(
+            'ip -6 route show table all | grep "^default" | grep -q br-wan')
+
+
+def reaches_internet(node, family=6, target=None):
+    """True if the node can reach the given address off-mesh."""
+    target = target or (V4_TARGET if family == 4 else V6_TARGET)
+    status, _ = node.execute('ping -{} -c 3 -W 5 {}'.format(family, target))
+    return status == 0
+
+
+def resolves_dns(node, name=None):
+    status, _ = node.execute('nslookup {} >/dev/null'.format(name or DNS_NAME))
+    return status == 0
+
+
 # --- firewall ---
+
+def send_from(client, scapy_expr):
+    """Send a crafted packet from a client's namespace. scapy_expr is
+    evaluated with scapy.all imported and IFACE bound to the client's
+    interface."""
+    prog = ('from scapy.all import *\nIFACE={!r}\n{}\n'
+            .format(client.at.if_client, scapy_expr))
+    return client._ns("python3 -c {}".format(shlex.quote(prog)))
+
+
+def capture_while(client, pcap_filter, action, seconds=4):
+    """Capture on a client's interface while action() runs, and return
+    the number of matching packets that arrived."""
+    pcap = '/tmp/{}.pcap'.format(client.netns)
+    subprocess.run('rm -f ' + pcap, shell=True, check=False)
+    tcpdump = subprocess.Popen(
+        ['ip', 'netns', 'exec', client.netns, 'tcpdump', '-p', '-U',
+         '-i', client.at.if_client, '-w', pcap, pcap_filter],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        time.sleep(1.5)  # let tcpdump attach before anything is sent
+        action()
+        time.sleep(seconds)
+    finally:
+        tcpdump.terminate()
+        tcpdump.wait()
+
+    out = subprocess.run(
+        ['tcpdump', '-nn', '-r', pcap], capture_output=True, text=True,
+        check=False).stdout
+    return len([line for line in out.splitlines() if line.strip()])
+
 
 def dump_firewall(node):
     """Return the node's active firewall state (nft ruleset plus the
