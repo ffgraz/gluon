@@ -27,7 +27,27 @@ import subprocess
 import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-PACKAGES = os.path.join(os.path.dirname(BASE), 'package')
+ROOT = os.path.dirname(BASE)
+
+
+MARKER = '.gluon_tests'
+
+
+def discover_tests():
+    """Every package's tests, from gluon's own packages and from all
+    checked-out feeds - including any extra feed a site adds through
+    GLUON_SITE_FEEDS, since those are checked out alongside the rest.
+
+    Feeds nest to different depths and upstream packages ship unrelated
+    tests/ directories of their own, so a directory is only ours when it
+    holds a .gluon_tests marker."""
+    paths = set()
+    for pattern in (os.path.join(ROOT, 'package', '**', MARKER),
+                    os.path.join(ROOT, 'packages', '**', MARKER)):
+        for marker in glob.glob(pattern, recursive=True):
+            paths.update(os.path.abspath(p) for p in
+                         glob.glob(os.path.join(os.path.dirname(marker), '*.py')))
+    return sorted(paths)
 
 
 def prepare_image(path):
@@ -131,7 +151,7 @@ def main():
     if not 1 <= args.jobs <= 8:
         parser.error('--jobs must be 1..8')
 
-    available = sorted(glob.glob(os.path.join(PACKAGES, '*', 'tests', '*.py')))
+    available = discover_tests()
 
     if args.tests:
         paths = []

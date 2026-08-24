@@ -3,14 +3,22 @@
 QEMU/KVM-based mesh integration tests, driven by the vendored
 [pynet](pynet/README.md) module.
 
-Tests live next to the package they exercise:
+Tests live next to the package they exercise, in a `tests/` directory
+holding a `.gluon_tests` marker file:
 
 ```
+package/gluon-core/tests/.gluon_tests
 package/gluon-core/tests/connect_two.py
 package/gluon-mmfd/tests/mmfd_respondd.py
 package/gluon-l3roamd/tests/l3roamd_roam.py
 ...
 ```
+
+Both gluon's own `package/` tree and every checked-out feed under
+`packages/` are scanned, so a package feed a site pulls in through
+`GLUON_SITE_FEEDS` can ship tests the same way. The marker is what
+distinguishes them from the unrelated `tests/` directories some
+upstream packages ship.
 
 A test runs when its own package is installed on the image. If it needs
 more than that, it says so in a header:
