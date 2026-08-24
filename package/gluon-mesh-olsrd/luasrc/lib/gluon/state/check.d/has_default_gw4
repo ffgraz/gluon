@@ -1,0 +1,19 @@
+#!/usr/bin/env lua
+
+local olsrd = require 'gluon.olsrd'
+
+local info = olsrd.get_info()
+
+local gateways = { }
+
+if info.olsr4.running then
+	for _, hna in ipairs(olsrd.get_nodeinfo(4, 'hna').hna) do
+		if hna.destination == '0.0.0.0' then
+			table.insert(gateways, hna.gateway)
+		end
+	end
+end
+
+if #gateways == 0 then
+	os.exit(1)
+end

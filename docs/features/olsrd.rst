@@ -38,3 +38,28 @@ override) that configuration per address family.
         },
       },
     }
+
+Neighbour MACs
+--------------
+
+olsrd only knows the addresses of its neighbours, never their MACs - it reads
+OLSR packets from UDP sockets, so the link layer never reaches it. Gluon
+identifies neighbours by MAC though, so ``olsr-macd`` listens to the OLSR
+traffic on a packet socket, remembers which MAC an address was last seen with
+and answers over ``/var/run/olsr-macd.sock``::
+
+    echo dump | nc -U /var/run/olsr-macd.sock
+    echo 'resolve mesh_vpn 10.12.11.1' | nc -U /var/run/olsr-macd.sock
+
+VLAN tagged OLSR traffic is not picked up, the same limitation olsrds own
+arprefresh plugin has.
+
+Querying olsrd
+--------------
+
+Both daemons load the jsoninfo plugin, IPv4 on ``127.0.0.1:9090`` and IPv6 on
+``[::1]:9091``. ``olsrd-cli`` queries them::
+
+    olsrd-cli info
+    olsrd-cli olsr4 nodeinfo links
+    olsrd-cli olsr6 neigh

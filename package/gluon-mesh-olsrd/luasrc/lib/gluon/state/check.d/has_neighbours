@@ -1,0 +1,17 @@
+#!/usr/bin/lua
+
+local olsrd = require 'gluon.olsrd'
+
+local info = olsrd.get_info()
+
+local links = 0
+
+for _, ipv in ipairs({ 4, 6 }) do
+	if info['olsr' .. ipv].running then
+		links = links + #olsrd.get_nodeinfo(ipv, 'links').links
+	end
+end
+
+if links == 0 then
+	os.exit(1)
+end

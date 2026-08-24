@@ -1,0 +1,120 @@
+#!/usr/bin/lua
+
+local olsrd = require 'gluon.olsrd'
+
+-- Utils
+
+local function printf(...)
+	print(string.format(...))
+end
+
+-- Print contents of `tbl`, with indentation.
+-- `indent` sets the initial level of indentation.
+-- src https://gist.github.com/xytis/5361405
+local function tprint(tbl, indent)
+	indent = indent or 0
+	for k, v in pairs(tbl) do
+		local formatting = string.rep('  ', indent) .. k .. ': '
+		if type(v) == 'table' then
+			print(formatting)
+			tprint(v, indent + 1)
+		else
+			print(formatting .. tostring(v))
+		end
+	end
+end
+
+-- src https://stackoverflow.com/a/24823383/3990041
+local function slice(tbl, first, last, step)
+	local sliced = {}
+
+	for i = first or 1, last or #tbl, step or 1 do
+		sliced[#sliced+1] = tbl[i]
+	end
+
+	return sliced
+end
+
+-- CLI lib
+
+local sub
+
+local function list_cmd(level, cmds)
+	for key, cmd in pairs(cmds) do
+		printf('%s%s: %s', string.rep('  ', level), key, cmd[2])
+		if cmd[3] ~= nil then
+			list_cmd(level + 1, cmd[3])
+		end
+	end
+end
+
+local function show_help()
+	printf('Usage: %s <command>', arg[0])
+	list_cmd(1, sub)
+end
+
+local function cmd_err(msg, no_show_help)
+	-- since argv0 is at... well... 0... even though this is lua...
+	--- ...slice just returns arg without argv0 as the for starts at 1
+	printf('Error: Command "%s" %s', table.concat(slice(arg), ' '), msg)
+	if not no_show_help then
+		printf('')
+		show_help()
+	end
+	os.exit(2)
+end
+
+local function exec_cmd(args, cmds)
+	local cmd = cmds[args[1]]
+
+	if cmd == nil then
+		return cmd_err('does not exist')
+	end
+
+	if cmd[3] ~= nil and #args > 1 then
+		exec_cmd(slice(args, 2), cmd[3])
+	else
+		cmd[1](unpack(slice(args, 2)))
+	end
+end
+
+local function dummy()
+	cmd_err('requires a subcommand')
+end
+
+-- our stuff
+
+local function show_info()
+	tprint(olsrd.get_info())
+end
+
+local function nodeinfo(ipv)
+	return function(...)
+		if #{ ... } == 0 then
+			return cmd_err('requires at least one argument (example: "all")', true)
+		end
+
+		tprint(olsrd.get_nodeinfo(ipv, table.concat({ ... }, '/')))
+	end
+end
+
+local function neigh(ipv)
+	return function()
+		tprint(olsrd.get_neigh(ipv))
+	end
+end
+
+sub = {
+	info = { show_info, 'Show information about status of olsr4 and olsr6' },
+	help = { show_help, 'Show help' },
+	olsr4 = { dummy, 'OLSR IPv4 Control Commands', {
+		nodeinfo = { nodeinfo(4), 'OLSR IPv4 Nodeinfo' },
+		neigh = { neigh(4), 'OLSR IPv4 Neighbour List' },
+	}	},
+	olsr6 = { dummy, 'OLSR IPv6 Control Commands', {
+		nodeinfo = { nodeinfo(6), 'OLSR IPv6 Nodeinfo' },
+		neigh = { neigh(6), 'OLSR IPv6 Neighbour List' },
+	}	}
+}
+
+exec_cmd(slice(arg), sub)
