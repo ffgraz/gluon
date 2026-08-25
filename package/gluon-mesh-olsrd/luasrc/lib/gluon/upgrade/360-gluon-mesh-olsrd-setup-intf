@@ -59,6 +59,18 @@ end
 	Both daemons load jsoninfo, which gluon queries (see libolsrdhelper),
 	so they need a port of their own each.
 ]]
+--[[
+	olsrd only takes an interface that carries a routable address of its
+	family: get_ipv6_address() in olsrd skips loopback, link local and site
+	local scopes, so an interface with nothing but its fe80 address is
+	refused and never meshes.
+
+	The node address goes on every interface the IPv6 daemon is given, the
+	same one on all of them - that is what MID is for, and it keeps the
+	originator stable and unique no matter which link a neighbour meets us on.
+]]
+local node_ip6 = uci:get('network', 'loopback', 'ip6addr')
+
 local daemons = {
 	{
 		key = 'v4',
@@ -140,7 +152,15 @@ for _, daemon in ipairs(daemons) do
 				uci:section(uci_name, 'Interface', name, {
 					interface = intf[name],
 					Mode = 'mesh', -- should be mode 'ether' but that appears broken for some reason
+					-- leaves olsrd no choice but the address we put there
+					IPv6Src = daemon.ipv == 6 and node_ip6 and (node_ip6 .. '/128') or nil,
 				})
+
+				if daemon.ipv == 6 and node_ip6 then
+					for _, iface in ipairs(intf[name]) do
+						uci:set('network', iface, 'ip6addr', node_ip6)
+					end
+				end
 			end
 		end
 
