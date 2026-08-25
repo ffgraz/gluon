@@ -48,8 +48,20 @@ const char *uclient_get_errmsg(int code) {
 }
 
 
+/*
+	Tearing the connection down makes uclient reset its state and hand us a
+	second eof, with data_eof cleared by then - so only the outcome we see
+	first counts, whatever follows would just overwrite it with a bogus error.
+*/
 static void request_done(struct uclient *cl, int err_code) {
-	uclient_data(cl)->err_code = err_code;
+	struct uclient_data *d = uclient_data(cl);
+
+	if (d->done)
+		return;
+
+	d->done = true;
+	d->err_code = err_code;
+
 	uclient_disconnect(cl);
 	uloop_end();
 }
@@ -106,8 +118,11 @@ static void header_done_cb(struct uclient *cl) {
 
 
 static void eof_cb(struct uclient *cl) {
-	request_done(cl, cl->data_eof ? 0 : UCLIENT_ERROR_CONNECTION_RESET_PREMATURELY);
-	if (cl->data_eof) {
+	bool complete = cl->data_eof;
+
+	request_done(cl, complete ? 0 : UCLIENT_ERROR_CONNECTION_RESET_PREMATURELY);
+
+	if (complete) {
 		uclient_data(cl)->eof(cl);
 	}
 }

@@ -6,6 +6,7 @@
 
 
 #include <libubox/uclient.h>
+#include <stdbool.h>
 #include <sys/types.h>
 
 
@@ -15,6 +16,7 @@ struct uclient_data {
 	/* data used by uclient callbacks */
 	int retries;
 	int err_code;
+	bool done;
 	ssize_t downloaded;
 	ssize_t length;
 	void (*eof)(struct uclient *cl);
