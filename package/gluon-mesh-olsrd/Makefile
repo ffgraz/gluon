@@ -37,6 +37,9 @@ define Package/gluon-mesh-olsrd/install
 	$(INSTALL_DIR) $(1)/usr/lib/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/libolsrdhelper.so $(1)/usr/lib/
 
+	$(INSTALL_DIR) $(1)/usr/lib/respondd
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/respondd.so $(1)/usr/lib/respondd/$(PKG_NAME).so
+
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/olsrd-debug $(1)/usr/bin/olsrd-debug
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/olsr-respondd $(1)/usr/bin/olsr-respondd
