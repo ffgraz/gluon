@@ -8,6 +8,7 @@
 #include <libubox/uloop.h>
 
 #include <errno.h>
+#include <ctype.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,11 +102,21 @@ static void header_done_cb(struct uclient *cl) {
 
 	blobmsg_parse(&policy, 1, &tb_len, blob_data(cl->meta), blob_len(cl->meta));
 	if (tb_len) {
+		/* olsrd pads the value with spaces, so it can adjust it later on */
+		const char *str = blobmsg_get_string(tb_len);
 		char *endptr;
 
+		while (isspace((unsigned char)*str))
+			str++;
+
 		errno = 0;
-		unsigned long long val = strtoull(blobmsg_get_string(tb_len), &endptr, 10);
-		if (!errno && !*endptr && val <= SSIZE_MAX) {
+		unsigned long long val = strtoull(str, &endptr, 10);
+
+		const char *num_end = endptr;
+		while (isspace((unsigned char)*endptr))
+			endptr++;
+
+		if (!errno && num_end != str && !*endptr && val <= SSIZE_MAX) {
 			if (uclient_data(cl)->length >= 0 && uclient_data(cl)->length != (ssize_t)val) {
 				request_done(cl, UCLIENT_ERROR_SIZE_MISMATCH);
 				return;
@@ -117,13 +128,20 @@ static void header_done_cb(struct uclient *cl) {
 }
 
 
+/*
+	uclient only sets data_eof when it tracked the length of the body itself,
+	and it discards the Content-Length olsrd pads with spaces, so it reads
+	until the connection closes instead. Whether that was the whole body is
+	then ours to say.
+*/
 static void eof_cb(struct uclient *cl) {
-	bool complete = cl->data_eof;
+	struct uclient_data *d = uclient_data(cl);
+	bool complete = cl->data_eof || d->length < 0 || d->downloaded >= d->length;
 
 	request_done(cl, complete ? 0 : UCLIENT_ERROR_CONNECTION_RESET_PREMATURELY);
 
 	if (complete) {
-		uclient_data(cl)->eof(cl);
+		d->eof(cl);
 	}
 }
 
