@@ -213,17 +213,24 @@ static void handle_packet(struct uloop_fd *fd, unsigned int events) {
 		if (from.sll_pkttype == PACKET_OUTGOING || from.sll_halen != ETH_ALEN)
 			continue;
 
-		if (ntohs(from.sll_protocol) == ETH_P_IP) {
-			const struct iphdr *ip = (const struct iphdr *)buf;
+		if (len < (ssize_t)ETH_HLEN)
+			continue;
 
-			if (len < (ssize_t)sizeof(*ip))
+		/* a raw socket hands us the ethernet header the filter matched on */
+		const unsigned char *packet = buf + ETH_HLEN;
+		ssize_t packet_len = len - ETH_HLEN;
+
+		if (ntohs(from.sll_protocol) == ETH_P_IP) {
+			const struct iphdr *ip = (const struct iphdr *)packet;
+
+			if (packet_len < (ssize_t)sizeof(*ip))
 				continue;
 
 			entry_update(from.sll_ifindex, AF_INET, &ip->saddr, from.sll_addr);
 		} else {
-			const struct ip6_hdr *ip6 = (const struct ip6_hdr *)buf;
+			const struct ip6_hdr *ip6 = (const struct ip6_hdr *)packet;
 
-			if (len < (ssize_t)sizeof(*ip6))
+			if (packet_len < (ssize_t)sizeof(*ip6))
 				continue;
 
 			entry_update(from.sll_ifindex, AF_INET6, &ip6->ip6_src, from.sll_addr);
@@ -262,7 +269,11 @@ static struct sock_filter filter_ipv6[] = {
 
 /** Opens a packet socket that only passes OLSR traffic of one address family */
 static int packet_socket(int protocol, struct sock_filter *filter, unsigned short filter_len) {
-	int fd = socket(PF_PACKET, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(protocol));
+	/*
+		SOCK_RAW, not SOCK_DGRAM: the filters below read the ethernet header,
+		and the kernel only leaves it in place for the filter on a raw socket.
+	*/
+	int fd = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(protocol));
 	if (fd < 0) {
 		perror("olsr-macd: packet socket");
 		return -1;
