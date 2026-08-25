@@ -209,6 +209,9 @@ static void handle_packet(struct uloop_fd *fd, unsigned int events) {
 		if (len < 0)
 			return;
 
+		fprintf(stderr, "DBG rx fd=%d proto=0x%04x len=%zd pkttype=%d halen=%d\n",
+			fd->fd, ntohs(from.sll_protocol), len, from.sll_pkttype, from.sll_halen);
+
 		/* our own packets tell us nothing about our neighbours */
 		if (from.sll_pkttype == PACKET_OUTGOING || from.sll_halen != ETH_ALEN)
 			continue;
@@ -404,6 +407,8 @@ int main(void) {
 	listen_fd.fd = listen_socket(OLSR_MACD_SOCKET);
 	if (listen_fd.fd < 0)
 		return 1;
+
+	fprintf(stderr, "DBG sockets v4=%d v6=%d\n", packet_fd[0].fd, packet_fd[1].fd);
 
 	uloop_fd_add(&packet_fd[0], ULOOP_READ);
 	uloop_fd_add(&packet_fd[1], ULOOP_READ);
