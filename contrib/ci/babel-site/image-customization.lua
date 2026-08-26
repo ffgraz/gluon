@@ -1,6 +1,6 @@
 features {
 	'autoupdater',
-	'mesh-olsrd',
+	'mesh-babel',
 	'mesh-vpn-fastd',
 	'respondd',
 	'status-page',
