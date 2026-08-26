@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-# requires: gluon-ebtables-filter-multicast gluon-ebtables-filter-ra-dhcp gluon-ebtables-limit-arp
+# requires: gluon-firewall-filter-multicast gluon-firewall-filter-ra-dhcp gluon-firewall-limit-arp
 """Sends each kind of frame the client-bridge firewall should pass or
-drop from a client and reads the mesh-facing device's transmit counter,
-which moves for exactly the frames the firewall let out (ebtables-tiny
-exposes no per-rule counters).
+drop from a client and reads the firewall's own drop counters, which
+every drop rule Gluon installs carries.
 
 Needs root (client taps) and scapy on the host.
 """
@@ -11,8 +10,8 @@ import contextlib
 
 from pynet import start, finish
 from meshlib import (
-    pair, wait_connected, attach_client, Client, send_from, mesh_dev,
-    mesh_tx, flood_multicast)
+    pair, wait_connected, attach_client, Client, send_from, drop_counters,
+    flood_multicast)
 
 # Each case is sent COPIES times; the majority decides.
 COPIES = 20
@@ -31,9 +30,6 @@ client = Client(a)
 client.move_to(a)
 client.wait_addr()
 
-dev = mesh_dev(a)
-a.dbg('watching mesh-facing device ' + dev)
-
 results = []
 
 
@@ -45,15 +41,15 @@ def send(scapy_expr):
 @contextlib.contextmanager
 def case(display, expect):
     """One kind of frame the firewall has to pass or drop; the body
-    sends it and the transmit counter delta decides."""
-    before = mesh_tx(a, dev)
+    sends it and the drop counter delta decides."""
+    before = drop_counters(a)
     yield
     a.execute('sleep 2')
-    forwarded = mesh_tx(a, dev) - before
+    dropped = drop_counters(a) - before
 
-    got = PASS if forwarded >= COPIES / 2 else DROP
-    results.append((display, got, expect, forwarded))
-    a.dbg('{:<34} mesh_tx={:<5} expected={}'.format(display, forwarded, expect))
+    got = DROP if dropped >= COPIES / 2 else PASS
+    results.append((display, got, expect, dropped))
+    a.dbg('{:<34} dropped={:<5} expected={}'.format(display, dropped, expect))
 
 
 # A client must not be able to play router or DHCP server.
@@ -107,10 +103,10 @@ with case('respondd multicast', PASS):
 
 print('\n--- firewall packet matrix ---')
 bad = []
-for display, got, expect, forwarded in results:
+for display, got, expect, dropped in results:
     ok = got == expect
-    print('{:<34} {:<9} mesh_tx={:<5} expected={}'.format(
-        display, 'OK' if ok else 'MISMATCH', forwarded, expect))
+    print('{:<34} {:<9} dropped={:<5} expected={}'.format(
+        display, 'OK' if ok else 'MISMATCH', dropped, expect))
     if not ok:
         bad.append(display)
 

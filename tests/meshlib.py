@@ -249,28 +249,14 @@ def capture_while(client, pcap_filter, action, seconds=4):
     return len([line for line in out.splitlines() if line.strip()])
 
 
-def mesh_dev(node):
-    """The device a client frame crosses into the mesh: bat0 on
-    batman-adv, otherwise (layer-3 meshes have no such port) the mesh
-    interfaces themselves."""
+def drop_counters(node):
+    """Frames the firewall's drop rules have counted: every drop rule
+    Gluon installs carries a counter, so the ruleset says what became
+    of a frame."""
     _, out = node.execute(
-        'for d in bat0 $(gluon-list-mesh-interfaces); do'
-        ' [ -e /sys/class/net/$d ] && echo $d && break; done')
-    dev = out.strip()
-    if not dev:
-        raise Exception('node has no mesh-facing device')
-    return dev
-
-
-def mesh_tx(node, dev=None):
-    """Frames the client bridge handed to the mesh-facing device:
-    tx_packets plus tx_dropped, since batman-adv drops multicast nobody
-    joined, which says nothing about the firewall. Together they move
-    for exactly the frames the bridge firewall let out."""
-    _, out = node.execute(
-        'cd /sys/class/net/{}/statistics && cat tx_packets tx_dropped'
-        .format(dev or mesh_dev(node)))
-    return sum(int(v) for v in out.split())
+        "nft list ruleset | grep -oE 'counter packets [0-9]+'"
+        " | awk '{s+=$3} END {print s+0}'")
+    return int(out.strip())
 
 
 def flood_multicast(node):
@@ -281,23 +267,8 @@ def flood_multicast(node):
 
 
 def dump_firewall(node):
-    """The ebtables tables plus fw3's ip6tables rules, also written to
-    the node log."""
-    # ebtables-tiny is installed under either name
-    parts = []
-    for label, cmd in (
-        ('ebtables-filter',
-            'ebtables -t filter -L 2>/dev/null'
-            ' || ebtables-tiny -t filter -L 2>/dev/null'),
-        ('ebtables-nat',
-            'ebtables -t nat -L 2>/dev/null'
-            ' || ebtables-tiny -t nat -L 2>/dev/null'),
-        ('ip6tables', 'ip6tables -L -n 2>/dev/null'),
-    ):
-        _, out = node.execute(cmd)
-        if out.strip():
-            parts.append('### {}\n{}'.format(label, out))
-    dump = '\n'.join(parts)
+    """The nft ruleset, also written to the node log."""
+    dump = node.succeed('nft list ruleset')
     node.dbg('firewall dump:\n' + dump)
     return dump
 
