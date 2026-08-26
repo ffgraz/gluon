@@ -36,6 +36,10 @@ jobs:
           # one entry per routing protocol; the site config selects it
           - proto: batman-adv
             site: contrib/ci/minimal-site
+          - proto: babel
+            site: contrib/ci/babel-site
+          - proto: olsrd
+            site: contrib/ci/olsr-site
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
