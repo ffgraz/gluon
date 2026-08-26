@@ -1,9 +1,8 @@
 """Protocol- and topology-abstractions for mesh test scenarios.
 
 Topologies come from the helpers below and the routing protocol is
-detected on the running nodes, so a scenario runs unchanged on every
-protocol the rig knows. Only batman-adv is wired up; another protocol
-plugs into the tables and branches below.
+detected on the running nodes, so a scenario runs unchanged against
+batman-adv, babel and olsrd images.
 """
 
 import os
@@ -15,13 +14,18 @@ import time
 from pynet import SLOT, Node, connect
 
 #: Routing protocols the rig knows how to drive.
-PROTOCOLS = ('batman-adv',)
+PROTOCOLS = ('batman-adv', 'babel', 'olsrd')
 
-#: How long a protocol may take to converge, in seconds.
-CONVERGENCE_TIMEOUT = {'batman-adv': 180}
+#: How long a protocol may take to converge, in seconds. gluon-mesh-babel
+#: registers mesh interfaces with "update-interval 300", so a route can
+#: take up to five minutes to propagate; the first route between two
+#: nodes was measured at ~325s, and olsrd is given the same headroom.
+CONVERGENCE_TIMEOUT = {'batman-adv': 180, 'babel': 480, 'olsrd': 480}
 
 _DETECT = {
     'batman-adv': 'batctl',
+    'babel': 'babeld',
+    'olsrd': 'olsrd2',
 }
 
 _proto = None
@@ -74,28 +78,36 @@ def wait_neighbours(node, count):
     """Wait until the routing protocol on node sees >= count neighbours."""
     cmds = {
         'batman-adv': '[ "$(batctl n -H | grep -c .)" -ge {} ]',
+        'babel': '[ "$(echo dump | nc ::1 33123 | grep -c \'add neighbour\')" -ge {} ]',
+        'olsrd': '[ "$(echo \'nhdpinfo link\' | nc ::1 2009 | grep -c fe80)" -ge {} ]',
     }
     node.wait_until_succeeds(cmds[proto(node)].format(count))
 
 
 def node_addr(node):
     """An address of node reachable over the mesh."""
-    p = proto(node)
-    if p == 'batman-adv':
+    if proto(node) == 'batman-adv':
         return node.hostname  # pynet's /etc/hosts entries
-    raise Exception('no node address known for ' + p)
+    return node.succeed('uci get network.loopback.ip6addr | cut -d/ -f1')
 
 
 def wait_connected(frm, to):
-    """Wait until frm knows to at the routing layer, at any hop count -
-    for batman-adv, an originator entry for its mesh address."""
+    """Wait until frm knows to at the routing layer (any hop count):
+    a batman-adv originator entry or a babel/olsrd route to its node
+    address."""
     p = proto(frm)
     timeout = CONVERGENCE_TIMEOUT[p]
     if p == 'batman-adv':
         mac = to.succeed('cat /sys/class/net/primary0/address')
         frm.wait_until_succeeds("batctl o -H | grep -q '{}'".format(mac), timeout)
-    else:
-        raise Exception('no route check known for ' + p)
+    elif p == 'babel':
+        frm.wait_until_succeeds(
+            "echo dump | nc ::1 33123 | grep -q 'add route.*{}'".format(node_addr(to)),
+            timeout)
+    else:  # olsrd
+        frm.wait_until_succeeds(
+            "echo 'olsrv2info routing' | nc ::1 2009 | grep -q '{}'".format(node_addr(to)),
+            timeout)
 
 
 def wait_all_connected(nodes):
@@ -179,8 +191,9 @@ def as_mesh_vpn(cmd):
 
 def respondd_dev(node):
     """The device respondd serves the site-local group on:
-    /lib/gluon/respondd/client.dev names a uci interface, resolved to a
-    device the way gluon-respondd's init does."""
+    /lib/gluon/respondd/client.dev names a uci interface ('client' on
+    batman-adv, 'mmfd' on the layer-3 protocols), resolved to a device
+    the way gluon-respondd's init does."""
     return node.succeed(
         'ubus call network.interface dump | jsonfilter -e '
         '"@.interface[@.interface=\'$(cat /lib/gluon/respondd/client.dev)\''
@@ -238,7 +251,8 @@ def capture_while(client, pcap_filter, action, seconds=4):
 
 def mesh_dev(node):
     """The device a client frame crosses into the mesh: bat0 on
-    batman-adv, otherwise the mesh interfaces themselves."""
+    batman-adv, otherwise (layer-3 meshes have no such port) the mesh
+    interfaces themselves."""
     _, out = node.execute(
         'for d in bat0 $(gluon-list-mesh-interfaces); do'
         ' [ -e /sys/class/net/$d ] && echo $d && break; done')

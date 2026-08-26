@@ -80,7 +80,10 @@ output in ``test.log`` and the node consoles under ``logs/``. A failing
 test's output is printed as well.
 
 Images are built per site config, which is what selects the routing
-protocol; ``contrib/ci/minimal-site`` builds a batman-adv one.
+protocol: ``contrib/ci/minimal-site`` builds a batman-adv one,
+``contrib/ci/babel-site`` and ``contrib/ci/olsr-site`` the layer-3
+ones. Keeping one built image per protocol around avoids a rebuild when
+switching between them.
 
 Writing a test
 --------------
