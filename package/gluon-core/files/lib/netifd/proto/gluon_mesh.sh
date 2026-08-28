@@ -30,6 +30,17 @@ proto_gluon_mesh_setup() {
 
 	proto_init_update "$IFNAME" 1
 
+	# Let netifd place the addresses. gluon_wired builds this interface
+	# on an alias of the one carrying the ports, and an alias leaves
+	# $IFNAME empty here, so adding them by hand ended in
+	# "Cannot find device" and took the interface down with it.
+	if [ -n "$ipaddr" ]; then
+		proto_add_ipv4_address "${ipaddr%%/*}" "${ipaddr##*/}"
+	fi
+	if [ -n "$ip6addr" ]; then
+		proto_add_ipv6_address "${ip6addr%%/*}" "${ip6addr##*/}"
+	fi
+
 	proto_add_data
 	json_add_boolean fixed_mtu "$FIXED_MTU"
 	[ -n "${hop_penalty}" ] && json_add_int hop_penalty "${hop_penalty}"
