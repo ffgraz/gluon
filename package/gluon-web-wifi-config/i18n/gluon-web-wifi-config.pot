@@ -36,6 +36,9 @@ msgstr ""
 msgid "Outdoor Installation"
 msgstr ""
 
+msgid "Enable point-to-point (AP/STA) mesh"
+msgstr ""
+
 msgid "Transmission power"
 msgstr ""
 
@@ -49,4 +52,28 @@ msgid ""
 "adapters transmission power here. Please note that the transmission power "
 "values include the antenna gain where available, but there are many devices "
 "for which the gain is unavailable or inaccurate."
+msgstr ""
+
+msgid "60GHz WLAN"
+msgstr ""
+
+msgid "Channel"
+msgstr ""
+
+msgid "Master"
+msgstr ""
+
+msgid "Master=AP Slave=Station"
+msgstr ""
+
+msgid "P2P Mode"
+msgstr ""
+
+msgid "P2P SSID"
+msgstr ""
+
+msgid "Per radio settings"
+msgstr ""
+
+msgid "Slave"
 msgstr ""

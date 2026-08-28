@@ -50,6 +50,9 @@ msgstr "Knoten wird im Außenbereich betrieben"
 msgid "Outdoor Installation"
 msgstr "Outdoor-Installation"
 
+msgid "Enable point-to-point (AP/STA) mesh"
+msgstr "Punkt-zu-Punkt (AP/STA) mesh aktivieren"
+
 msgid "Transmission power"
 msgstr "Sendeleistung"
 
@@ -71,3 +74,27 @@ msgstr ""
 "werden. Wenn möglich, ist in den Werten der Sendeleistung der Antennengewinn "
 "enthalten; diese Werte sind allerdings für viele Geräte nicht verfügbar oder "
 "fehlerhaft."
+
+msgid "60GHz WLAN"
+msgstr "60GHz-WLAN"
+
+msgid "Channel"
+msgstr "Kanal"
+
+msgid "Master"
+msgstr "Master"
+
+msgid "Master=AP Slave=Station"
+msgstr "Master=AP, Slave=Station"
+
+msgid "P2P Mode"
+msgstr "P2P-Modus"
+
+msgid "P2P SSID"
+msgstr "P2P-SSID"
+
+msgid "Per radio settings"
+msgstr "Einstellungen pro Funkmodul"
+
+msgid "Slave"
+msgstr "Slave"

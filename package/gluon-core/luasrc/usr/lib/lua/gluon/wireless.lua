@@ -53,6 +53,10 @@ local radio_mac_offsets = {
 	client = 0,
 	mesh = 1,
 	owe = 2,
+	-- 60 GHz radios carry a point-to-point link and no OWE network,
+	-- so p2p shares that offset; the offsets must stay below 4, as
+	-- get_wlan_mac() derives the address from 4*index + offset
+	p2p = 2,
 	wan_radio = 3,
 }
 
@@ -92,6 +96,8 @@ function M.foreach_radio(uci, f)
 			f(radio, index-1, site.wifi5)
 		elseif band == '6g' then
 			f(radio, index-1, site.wifi6)
+		elseif band == '60g' then
+			f(radio, index-1, site.wifi60)
 		end
 	end
 end
@@ -152,10 +158,35 @@ function M.radio_roles(uci, radio)
 	return uci:get_list('gluon', 'band_' .. radio.band, 'role')
 end
 
+-- The per-radio gluon section is keyed by the radio's device path, so it
+-- survives /etc/config/wireless being regenerated and the radios being
+-- renumbered.
+function M.get_wradio(uci, radio)
+	local wradio_name
+	uci:foreach('gluon', 'wireless_radio', function(wradio)
+		if wradio.path == radio.path then
+			wradio_name = wradio['.name']
+		end
+	end)
+	return wradio_name
+end
+
 function M.radio_option(uci, radio, option, default)
 	return uci:get('gluon', 'band_' .. radio.band, option) or default
 end
 
+function M.device_uses_ad(uci)
+	local ret = false
+
+	uci:foreach('wireless', 'wifi-device', function(radio)
+		if radio.band == '60g' then
+			ret = true
+			return false
+		end
+	end)
+
+	return ret
+end
 
 function M.is_outdoor(uci)
 	return uci:get_bool('gluon', 'wireless', 'outdoor')
