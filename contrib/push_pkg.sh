@@ -131,13 +131,21 @@ while [ $# -gt 0 ]; do
 
 		# shellcheck disable=SC2029
 		if [ -n "$filename" ]; then
-			scp -O -P "${ssh_port}" "$feed/$filename" "root@${BL}${ssh_host}${BR}:/tmp/${filename}"
+			scp -P "${ssh_port}" "$feed/$filename" "root@${BL}${ssh_host}${BR}:/tmp/${filename}"
 			ssh -p "${ssh_port}" "root@${ssh_host}" "
 				set -e
-				echo Running apk:
-				apk add --allow-untrusted --force-reinstall '/tmp/${filename}'
-				${clobber_script}
+				if command -v apk >/dev/null; then
+					echo Running apk:
+					apk add --allow-untrusted --force-reinstall '/tmp/${filename}'
+					${clobber_script}
+				else
+					# devices built without apk, e.g. the 'tiny' class
+					echo Extracting:
+					tar xvfz '/tmp/${filename}' -C /tmp
+					tar xvfz '/tmp/data.tar.gz' -C /
+				fi
 				rm '/tmp/${filename}'
+				rm /tmp/*.tar.gz
 				gluon-reconfigure
 			"
 		else
