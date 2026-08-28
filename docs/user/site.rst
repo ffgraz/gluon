@@ -46,7 +46,7 @@ prefix6
 
 node_prefix6
   The ipv6 prefix from which the unique IP-addresses for nodes are selected
-  in olsr-based networks. This may overlap with prefix6. e.g. ::
+  in babel- and olsr-based networks. This may overlap with prefix6. e.g. ::
 
     node_prefix6 = 'fdca::ffee:babe:2::/64'
 
