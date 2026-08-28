@@ -1,0 +1,19 @@
+From: Maciej Krüger <mkg20001@gmail.com>
+Date: Sat, 1 Oct 2022 22:20:18 +0200
+Subject: extrem led
+
+diff --git a/target/linux/ath79/generic/base-files/etc/board.d/01_leds b/target/linux/ath79/generic/base-files/etc/board.d/01_leds
+index 12a54f3bd5733ea5591b90fc46f76f805c0cfcef..8387d54929ccc374426da923e3603b13fc3df5d3 100644
+--- a/target/linux/ath79/generic/base-files/etc/board.d/01_leds
++++ b/target/linux/ath79/generic/base-files/etc/board.d/01_leds
+@@ -229,6 +229,10 @@ etactica,eg200)
+ 	ucidef_set_led_netdev "lan" "LAN" "red:eth0" "eth0"
+ 	ucidef_set_led_oneshot "modbus" "Modbus" "red:modbus" "100" "33"
+ 	;;
++extreme-networks,ws-ap3805i)
++	ucidef_set_led_netdev "wlan2" "WLAN2" "green:wlan2" "mesh1"
++	ucidef_set_led_netdev "wlan5" "WLAN5" "green:wlan5" "mesh0"
++	;;
+ glinet,gl-mifi|\
+ qxwlan,e600g-v2-8m|\
+ qxwlan,e600g-v2-16m|\
