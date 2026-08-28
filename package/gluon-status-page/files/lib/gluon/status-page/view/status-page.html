@@ -151,9 +151,9 @@
 					<%- end %>
 					<dt><%:Model%></dt><dd><%| nodeinfo.hardware.model %> (<%| nodeinfo.hardware.nproc %> CPUs)</dd>
 					<dt><%:Primary MAC address%></dt><dd><%| nodeinfo.network.mac %></dd>
-					<dt><%:IP address%></dt><dd><%= pcdata(table.concat(sorted(nodeinfo.network.addresses), '\n')):gsub('\n', '<br>') %></dd>
-					<dt><%:Firmware%></dt><dd><%| nodeinfo.software.firmware.release %> (<%| nodeinfo.software.firmware.base %>)</dd>
-					<dd><%| nodeinfo.software.firmware.target %> (<%| nodeinfo.software.firmware.subtarget %>)</dd>
+					<dt><%:IP address%></dt><dd><%= pcdata(table.concat(sorted(nodeinfo.network.addresses or {}), '\n')):gsub('\n', '<br>') %></dd>
+					<dt><%:Firmware%></dt><dd><%| nodeinfo.software.firmware.release or '' %> (<%| nodeinfo.software.firmware.base or '' %>)</dd>
+					<dd><%| nodeinfo.software.firmware.target or '' %> (<%| nodeinfo.software.firmware.subtarget or '' %>)</dd>
 					<% if nodeinfo.network.mesh_vpn then -%>
 						<dt><%:Mesh VPN%></dt>
 						<dd>
