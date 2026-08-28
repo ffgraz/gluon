@@ -327,7 +327,8 @@ mesh_vpn
   setting the *preserve* option of a peer to ``1`` in UCI.
 
   **Note:** It may be interesting to include the package *gluon-firewall-clamp-mss-to-pmtu*
-  in the build when using *gluon-mesh-olsrd* to work around ICMP black holes on the internet.
+  in the build when using *gluon-mesh-babel* or *gluon-mesh-olsrd* to work
+  around ICMP black holes on the internet.
 
   ::
 
