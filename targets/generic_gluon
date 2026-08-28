@@ -1,0 +1,21 @@
+-- The Gluon-specific half of targets/generic, so a build type that
+-- uses the build system for something other than a Gluon image can
+-- leave it out. Selected by GLUON_BUILDTYPE, which defaults to gluon.
+
+assert(env.GLUON_LANGS)
+
+
+config('GLUON_SITEDIR', env.GLUON_SITEDIR)
+config('GLUON_VERSION', env.GLUON_VERSION)
+config('GLUON_SITE_VERSION', env.GLUON_SITE_VERSION)
+config('GLUON_RELEASE', env.GLUON_RELEASE)
+
+try_config('GLUON_AUTOUPDATER_BRANCH', env.GLUON_AUTOUPDATER_BRANCH)
+try_config('GLUON_AUTOUPDATER_ENABLED', istrue(env.GLUON_AUTOUPDATER_ENABLED))
+
+for lang in string.gmatch(env.GLUON_LANGS, '%S+') do
+	try_config('GLUON_WEB_LANG_' .. lang, true)
+end
+
+-- Disable non-default feeds in distfeeds.list
+config('FEED_gluon_base', false)

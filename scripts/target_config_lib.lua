@@ -169,13 +169,16 @@ local function get_default_pkgs()
 end
 
 lib.include('generic')
+lib.include('generic_' .. env.GLUON_BUILDTYPE)
 lib.include(target)
 
 lib.check_devices()
 
 handle_target_pkgs(concat_list(get_default_pkgs(), lib.target_packages))
 
-for _, dev in ipairs(lib.devices) do
+-- the if condition in ipairs checks if a user-configured target is
+-- trying to build all devices, in which case specific gluon target-definitions are skipped
+for _, dev in ipairs(lib.configs.TARGET_ALL_PROFILES and {} or lib.devices) do
 	local device_pkgs = {}
 	local function handle_pkgs(pkgs)
 		for _, pkg in ipairs(pkgs) do
@@ -192,7 +195,14 @@ for _, dev in ipairs(lib.devices) do
 		handle_pkgs({'-apk-mbedtls', '-apk'})
 	end
 	handle_pkgs(dev.options.packages or {})
-	handle_pkgs(site_specific_packages(dev))
+
+	if env.GLUON_BUILDTYPE == 'gluon' then
+		handle_pkgs(site_specific_packages(dev))
+	else
+		-- other buildtypes are built without a gluon site, so only the
+		-- target's own class packages apply
+		handle_pkgs(lib.target_class_packages[dev.options.class] or {})
+	end
 
 	local profile_config = string.format('%s_DEVICE_%s', openwrt_config_target, dev.name)
 	lib.config(
