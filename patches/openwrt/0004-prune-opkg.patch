@@ -1,0 +1,25 @@
+From 7b8b5624e8eb4674246b55d693dac82e2fe927f7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
+Date: Fri, 30 Dec 2022 03:07:27 +0100
+Subject: [PATCH] prune opkg
+
+---
+ include/rootfs.mk | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/include/rootfs.mk b/include/rootfs.mk
+index f2ed648d2f..76f95d4123 100644
+--- a/include/rootfs.mk
++++ b/include/rootfs.mk
+@@ -98,4 +98,8 @@ define prepare_rootfs
+ 	$(call clean_ipkg,$(1))
+ 	$(call mklibs,$(1))
+ 	$(if $(SOURCE_DATE_EPOCH),find $(1)/ -mindepth 1 -execdir touch -hcd "@$(SOURCE_DATE_EPOCH)" "{}" +)
++	test "$(GLUON_DEBUG)" == "1" || test "$(KEEP_OPKG)" == "1" || rm -rf $(1)/usr/lib/opkg
++	test "$(GLUON_DEBUG)" == "1" || test "$(KEEP_OPKG)" == "1" || rm -rf $(1)/bin/opkg
++	test "$(GLUON_DEBUG)" == "1" || test "$(KEEP_OPKG)" == "1" || rm -rf $(1)/usr/sbin/opkg-key
++	test "$(GLUON_DEBUG)" == "1" || test "$(KEEP_OPKG)" == "1" || rm -rf $(1)/etc/opkg
+ endef
+-- 
+2.38.1
+
