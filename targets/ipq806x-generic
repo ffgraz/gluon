@@ -35,6 +35,9 @@ device('netgear-nighthawk-x4s-r7800', 'netgear_r7800', {
 	packages = QCA9984_PACKAGES,
 })
 
+device('zyxel_nbg6817', 'zyxel_nbg6817', {
+})
+
 -- Ubiquiti
 device('ubiquiti-unifi-ac-hd', 'ubnt_unifi-ac-hd', {
 	packages = QCA9984_PACKAGES,
