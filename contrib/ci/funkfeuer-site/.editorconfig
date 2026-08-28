@@ -1,0 +1,39 @@
+# Top-most EditorConfig file
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+# The site tree is indented with spaces throughout; it is carried here
+# as it is maintained in its own repository.
+indent_style = unset
+indent_size = unset
+charset = utf-8
+
+[/patches/**]
+indent_style = unset
+indent_size = unset
+
+[*{.json,.ecrc}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+indent_style = space
+indent_size = 4
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.rst]
+indent_style = space
+indent_size = 2
+
+[*.yml]
+indent_style = space
+indent_size = 2
+
+[CMakeLists.txt]
+indent_style = space
+indent_size = 2

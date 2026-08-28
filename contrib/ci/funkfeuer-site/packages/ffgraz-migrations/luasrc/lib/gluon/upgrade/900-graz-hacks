@@ -1,0 +1,12 @@
+#!/usr/bin/lua
+
+local uci = require('simple-uci').cursor()
+
+-- use ff dns and ignore dnsmasq on ap for now
+
+uci:set('dhcp', uci:get_first('dhcp', 'dnsmasq'), 'interface', { 'ap' })
+-- uci:delete('dhcp', uci:get_first('dhcp', 'dnsmasq'), 'interface')
+uci:set('ddhcpd', 'nextnode_dns', '10.12.0.10')
+
+uci:save('dhcp')
+uci:save('ddhcpd')
