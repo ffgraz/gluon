@@ -4,6 +4,7 @@ local util = require 'gluon.util'
 local wireless = require 'gluon.wireless'
 local site = require 'gluon.site'
 local iwinfo = require 'iwinfo'
+local sysconfig = require 'gluon.sysconfig'
 
 local uci = require('simple-uci').cursor()
 
@@ -15,7 +16,7 @@ uci:delete_all('wireless', 'wifi-iface')
 uci:save('wireless')
 
 
-local radio_band_count = {band_2g=0, band_5g=0, band_6g=0}
+local radio_band_count = {band_2g=0, band_5g=0, band_6g=0, band_60g=0}
 
 local function count_band(band)
 	radio_band_count[band] = radio_band_count[band] + 1
@@ -36,6 +37,9 @@ wireless.foreach_radio(uci, function(radio)
 	elseif hwmodes.ax and not hwmodes.ac then
 		-- 6 GHz
 		count_band("band_6g")
+	elseif hwmodes.ad then
+		-- 60 GHz
+		count_band("band_60g")
 	end
 end)
 
@@ -58,23 +62,13 @@ wireless.foreach_radio(uci, function(radio)
 	end
 end)
 
-local function get_wradio(radio)
-	local wradio_name
-	uci:foreach('gluon', 'wireless_radio', function(wradio)
-		if wradio.path == radio.path then
-			wradio_name = wradio['.name']
-		end
-	end)
-	return wradio_name
-end
-
 local function get_txpower(radio)
-	local wradio_name = get_wradio(radio)
+	local wradio_name = wireless.get_wradio(uci, radio)
 	return uci:get('gluon', wradio_name, 'txpower')
 end
 
 local function get_htmode(radio)
-	local wradio_name = get_wradio(radio)
+	local wradio_name = wireless.get_wradio(uci, radio)
 	local htmode = uci:get('gluon', wradio_name, 'htmode')
 	if htmode ~= nil then
 		return htmode
@@ -157,10 +151,76 @@ local function configure_mesh(radio, index, mesh_config)
 	})
 end
 
+local function configure_p2p(radio, index, p2p_config)
+	local radio_name = radio['.name']
+	local name = 'p2p_' .. radio_name
+	local wradio_name = wireless.get_wradio(uci, radio)
+
+	local macfilter = uci:get('wireless', name, 'macfilter')
+	local maclist = uci:get('wireless', name, 'maclist')
+	local suffix = radio_name:match('^radio(%d+)$')
+
+	-- SSID and mode survive the wireless config being regenerated
+	-- because they live in the radio's gluon section
+	local ssid = uci:get('gluon', wradio_name, 'p2p_ssid')
+		or 'gluon-' .. radio.band .. '-p2p-'
+		.. string.sub(string.gsub(sysconfig.primary_mac, ':', ''), 8)
+	local mode = uci:get('gluon', wradio_name, 'p2p_mode') or 'ap'
+
+	uci:delete('wireless', name)
+
+	if not p2p_config or not suffix then
+		return
+	end
+
+	local macaddr = wireless.get_wlan_mac('p2p', index, radio)
+	if not macaddr then
+		return
+	end
+
+	uci:section('network', 'interface', name, {
+		proto = 'gluon_mesh',
+		ifname = 'p2p' .. suffix,
+	})
+
+	uci:section('wireless', 'wifi-iface', name, {
+		device = radio_name,
+		network = name,
+		ssid = ssid,
+		mode = mode,
+		macaddr = macaddr,
+		ifname = 'p2p' .. suffix,
+		encryption = 'none',
+		macfilter = macfilter,
+		maclist = maclist,
+	})
+end
+
+local function fixup_wan(radio, index)
+	local radio_name = radio['.name']
+	local name = 'wan_' .. radio_name
+
+	if not uci:get('wireless', name) then
+		return
+	end
+
+	local macaddr = wireless.get_wlan_mac('wan_radio', index, radio)
+	if not macaddr then
+		return
+	end
+
+	uci:set('wireless', name, 'macaddr', macaddr)
+end
+
 local function set_channels(radio, config)
 	local radio_name = radio['.name']
-	local wradio_name = get_wradio(radio)
+	local wradio_name = wireless.get_wradio(uci, radio)
 	local channel = uci:get('gluon', wradio_name, 'channel')
+	-- an outdoor 5 GHz radio probes its channel from the outdoor
+	-- chanlist, so a channel picked by hand does not apply there
+	if radio.band == '5g' and wireless.is_outdoor(uci) then
+		channel = nil
+	end
 	if not channel then
 		channel = wireless.get_channel(radio, config, uci)
 	end
@@ -209,6 +269,11 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	local roles = wireless.radio_roles(uci, radio)
 	local enable_mesh = wireless.supports_channel(radio, config.channel()) and util.contains(roles, 'mesh')
 
+	-- point-to-point links are not limited to 60 GHz radios
+	if util.contains(roles, 'p2p') then
+		configure_p2p(radio, index, config.p2p())
+	end
+
 	if band == '2g' then
 		uci:set('wireless', radio_name, 'legacy_rates', false)
 		if enable_mesh then
@@ -232,6 +297,8 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	end
 
 	uci:set('wireless', radio_name, 'beacon_int', beacon_interval)
+
+	fixup_wan(radio, index)
 end)
 
 
