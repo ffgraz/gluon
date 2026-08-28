@@ -10,9 +10,21 @@ BABELOPTSFILE=/tmp/addn-babelopts
 touch $BABELOPTSFILE
 
 start_service() {
+	# The node address is generated at boot when the site asks for a
+	# temporary one, which is after the configuration was written, so
+	# the source address to install routes with is taken here rather
+	# than baked into the config file. babeld installs nothing at all
+	# when told to use an address the node does not have.
+	local nodeip
+	nodeip="$(uci -q get network.loopback.ip6addr | cut -d/ -f1)"
+
 	procd_open_instance
 	procd_set_param command $DAEMON
-	procd_append_param command -D -I "$pidfile" -G "$PORT" -c "$CONFIGFILE" $(cat $BABELOPTSFILE) babeldummydoesnotexist
+	procd_append_param command -D -I "$pidfile" -G "$PORT" -c "$CONFIGFILE" $(cat $BABELOPTSFILE)
+	# Options have to come before the interface argument: babeld takes
+	# everything after the first non-option as an interface name.
+	[ -n "$nodeip" ] && procd_append_param command -C "install pref-src $nodeip"
+	procd_append_param command babeldummydoesnotexist
 	procd_set_param respawn ${respawn_threshold:-60} ${respawn_timeout:-5} ${respawn_retry:-0}
 	procd_set_param stderr 1
 	procd_set_param stdout 1

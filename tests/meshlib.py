@@ -62,8 +62,15 @@ def full_mesh(n):
 # --- protocol abstractions ---
 
 def proto(node):
-    """Routing protocol of the image, detected once on a running node."""
+    """Routing protocol of the image, detected once on a running node.
+
+    An image can carry more than one - babel and olsrd run side by side
+    on a hybrid image, where babel is the mesh and olsrd only adds the
+    older IPv4 network - so the first match wins and GLUON_TEST_PROTO
+    overrides the detection."""
     global _proto
+    if _proto is None and os.environ.get('GLUON_TEST_PROTO'):
+        _proto = os.environ['GLUON_TEST_PROTO']
     if _proto is None:
         for name, binary in _DETECT.items():
             status, _ = node.execute('which ' + binary)
@@ -76,15 +83,24 @@ def proto(node):
     return _proto
 
 
+#: olsrd v1 answers jsoninfo as a single JSON line, one daemon per
+#: address family: IPv4 on 9090, IPv6 on 9091. Whichever runs answers.
+_OLSR_JSONINFO = (
+    '{{ (echo /{0}; sleep 1) | nc 127.0.0.1 9090;'
+    ' (echo /{0}; sleep 1) | nc ::1 9091; }} 2>/dev/null')
+
+
 def wait_neighbours(node, count):
     """Wait until the routing protocol on node sees >= count neighbours."""
     cmds = {
         'batman-adv': '[ "$(batctl n -H | grep -c .)" -ge {} ]',
         'babel': '[ "$(echo dump | nc ::1 33123 | grep -c \'add neighbour\')" -ge {} ]',
-        # jsoninfo answers on one line, so count matches, not lines
-        'olsrd': '[ "$(echo /links | nc ::1 9091 | grep -o remoteIP | grep -c .)" -ge {} ]',
+        'olsrd': (
+            '[ "$(' + _OLSR_JSONINFO.format('links')
+            + ' | tr , "\\n" | grep -c remoteIP)" -ge {} ]'),
     }
-    node.wait_until_succeeds(cmds[proto(node)].format(count))
+    p = proto(node)
+    node.wait_until_succeeds(cmds[p].format(count), CONVERGENCE_TIMEOUT[p])
 
 
 def node_addr(node):
@@ -104,12 +120,17 @@ def wait_connected(frm, to):
         mac = to.succeed('cat /sys/class/net/primary0/address')
         frm.wait_until_succeeds("batctl o -H | grep -q '{}'".format(mac), timeout)
     elif p == 'babel':
+        # Not babeld's own dump: it lists a route it has retracted, and
+        # one it has not installed, the same way as a usable one. The
+        # kernel is the one that has to be able to reach the node.
         frm.wait_until_succeeds(
-            "echo dump | nc ::1 33123 | grep -q 'add route.*{}'".format(node_addr(to)),
+            "ip -6 route get {} 2>/dev/null | grep -qv unreachable".format(
+                node_addr(to)),
             timeout)
     else:  # olsrd
         frm.wait_until_succeeds(
-            "echo /routes | nc ::1 9091 | grep -q '{}'".format(node_addr(to)),
+            _OLSR_JSONINFO.format('routes')
+            + " | grep -q '{}'".format(node_addr(to)),
             timeout)
 
 
