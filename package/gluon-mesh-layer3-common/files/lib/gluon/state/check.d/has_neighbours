@@ -1,0 +1,19 @@
+#!/bin/sh
+# babel and olsrd can run side by side on a layer-3 mesh, and both used
+# to install this path, which made the two packages conflict. The check
+# lives here instead, where both of them already depend: a neighbour on
+# either daemon counts.
+
+if echo dump | nc ::1 33123 2>/dev/null | grep -qF 'add neighbour'; then
+	exit 0
+fi
+
+if (echo /links; sleep 1) | nc 127.0.0.1 9090 2>/dev/null | grep -q localIP; then
+	exit 0
+fi
+
+if (echo /links; sleep 1) | nc ::1 9091 2>/dev/null | grep -q localIP; then
+	exit 0
+fi
+
+exit 1

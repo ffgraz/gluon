@@ -1,0 +1,22 @@
+#!/usr/bin/lua
+
+--[[
+	Whether olsrd runs is the node's decision, not the site's: on a
+	hybrid image babel carries the mesh and olsrd only adds the legacy
+	IPv4 network, which not every node wants to take part in. The site
+	provides the initial value, the node keeps its own from then on
+	(see gluon-web-mesh-olsrd).
+
+	This runs before the babel configuration is generated, because babel
+	carries IPv4 itself when olsrd does not.
+]]
+
+local site = require 'gluon.site'
+local uci = require('simple-uci').cursor()
+
+if not uci:get('gluon', 'mesh_olsrd') then
+	uci:section('gluon', 'mesh_olsrd', 'mesh_olsrd', {
+		enabled = site.mesh.olsrd.enabled(false),
+	})
+	uci:save('gluon')
+end
