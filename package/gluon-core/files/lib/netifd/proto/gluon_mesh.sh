@@ -55,9 +55,14 @@ proto_gluon_mesh_setup() {
 	proto_close_data
 	proto_send_update "$CONFIG"
 
+	# A hook is something to notify, not something that decides whether
+	# the interface came up: netifd takes a non-zero exit here as the
+	# setup having failed and tears the interface down again.
 	for script in /lib/gluon/core/mesh/post-setup.d/*; do
-		[ ! -x "$script" ] || "$script"
+		[ ! -x "$script" ] || "$script" || true
 	done
+
+	return 0
 }
 
 proto_gluon_mesh_teardown() {
