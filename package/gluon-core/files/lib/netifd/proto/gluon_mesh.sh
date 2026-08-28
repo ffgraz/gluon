@@ -30,6 +30,17 @@ proto_gluon_mesh_setup() {
 
 	proto_init_update "$IFNAME" 1
 
+	# Let netifd place the addresses. gluon_wired builds this interface
+	# on an alias of the one carrying the ports, and an alias leaves
+	# $IFNAME empty here, so adding them by hand ended in
+	# "Cannot find device" and took the interface down with it.
+	if [ -n "$ipaddr" ]; then
+		proto_add_ipv4_address "${ipaddr%%/*}" "${ipaddr##*/}"
+	fi
+	if [ -n "$ip6addr" ]; then
+		proto_add_ipv6_address "${ip6addr%%/*}" "${ip6addr##*/}"
+	fi
+
 	proto_add_data
 	json_add_boolean fixed_mtu "$FIXED_MTU"
 	[ -n "${hop_penalty}" ] && json_add_int hop_penalty "${hop_penalty}"
@@ -44,13 +55,6 @@ proto_gluon_mesh_setup() {
 	proto_close_data
 	proto_send_update "$CONFIG"
 
-	if [ ! -z "$ipaddr" ]; then
-		ip addr add "$ipaddr" dev "$IFNAME"
-	fi
-	if [ ! -z "$ip6addr" ]; then
-		ip addr add "$ip6addr" dev "$IFNAME"
-	fi
-
 	for script in /lib/gluon/core/mesh/post-setup.d/*; do
 		[ ! -x "$script" ] || "$script"
 	done
@@ -59,16 +63,6 @@ proto_gluon_mesh_setup() {
 proto_gluon_mesh_teardown() {
 	export CONFIG="$1"
 	export IFNAME="$2"
-
-	local ipaddr ip6addr
-	json_get_vars ipaddr ip6addr
-
-	if [ ! -z "$ipaddr" ]; then
-		ip addr del "$ipaddr" dev "$IFNAME"
-	fi
-	if [ ! -z "$ip6addr" ]; then
-		ip addr del "$ip6addr" dev "$IFNAME"
-	fi
 
 	for script in /lib/gluon/core/mesh/teardown.d/*; do
 		[ ! -x "$script" ] || "$script"
