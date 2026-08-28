@@ -19,9 +19,11 @@ define Package/gluon-state-check/description
   when the state was last changed.
 
   This package provides the following checks:
-  - `has_default_gw6` - check whether the router has a default IPv6-route on br-client.
   - `has_ntp_sync` - check whether the last stratum event of busybox ntpd was <16
   - `has_lost_ntp_sync` - check whether the last stratum event of busybox was 16
+
+  Checks that depend on the mesh protocol (`has_default_gw4`, `has_default_gw6`,
+  `has_neighbours`) are provided by the mesh protocol package.
 
   The checks are executed once every minute (by micron.d).
   The two NTP checks are hotplug results of ntpd and as a result not available
