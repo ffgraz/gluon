@@ -151,13 +151,26 @@ function M.get_role_interfaces_with_options(uci, role, extra_keys, exclusive)
 	local ret = {}
 
 	local function add(name, extra_values)
+		local subindex = nil
+
 		-- Interface names with a / prefix refer to sysconfig interfaces
 		-- (lan_ifname/wan_ifname/single_ifname)
 		if string.sub(name, 1, 1) == '/' then
+			subindex = tonumber(string.match(name, "%[(%d+)%]"))
+			if subindex then
+				-- handle something like "/lan[10]":
+				name = string.gsub(name, "%[%d+%]", "")
+			end
+
 			name = sysconfig[string.sub(name, 2) .. '_ifname'] or ''
 		end
+		local i = 0
 		for iface in string.gmatch(name, '%S+') do
-			ret[iface] = extra_values
+			if not subindex or subindex == i then
+				ret[iface] = extra_values
+			end
+
+			i = i + 1
 		end
 	end
 
@@ -209,6 +222,7 @@ local if_mac_offsets = {
 }
 
 function M.generate_mac(index)
+	if index > 15 or index < 0 then return nil end -- max allowed id (0b1111)
 
 	local hashed = string.sub(hash.md5(sysconfig.primary_mac), 0, 12)
 	local m1, m2, m3, m4, m5, m6 = string.match(hashed, '(%x%x)(%x%x)(%x%x)(%x%x)(%x%x)(%x%x)')
@@ -223,7 +237,7 @@ function M.generate_mac(index)
 	-- vary on a single hardware interface, since some chips are using
 	-- a hardware MAC filter. (e.g 'rt305x')
 
-	m6 = bit.band(m6, 0xF8) -- zero the last three bits (space needed for counting)
+	m6 = bit.band(m6, 0xF0) -- zero the last four bits (space needed for counting)
 	m6 = bit.band(m6 + index, 0xFF) -- add virtual interface id (check overflow)
 
 	return string.format('%02x:%s:%s:%s:%s:%02x', m1, m2, m3, m4, m5, m6)
