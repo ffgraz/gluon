@@ -59,6 +59,16 @@ proto_gluon_wired_setup() {
 	[ -z "$vxpeer6addr" ] && vxpeer6addr='ff02::15c'
 
 	proto_init_update "$ifname" 1
+	proto_add_data
+	# The gluon_mesh interface built on top of this one below is what
+	# normally puts the device in the mesh zone, but it is dynamic and
+	# does not always survive; the ports are mesh ports either way, and
+	# a mesh device in no zone has its neighbours' packets dropped on
+	# input while its own still go out - a mesh that only works one way.
+	# ... except when the mesh rides on the WAN port itself, which has a
+	# zone of its own. gluon_mesh makes the same exception.
+	[ "$ifname" != 'br-wan' ] && json_add_string zone 'mesh'
+	proto_close_data
 	proto_send_update "$config"
 
 	if [ "$vxlan" -eq 1 ]; then

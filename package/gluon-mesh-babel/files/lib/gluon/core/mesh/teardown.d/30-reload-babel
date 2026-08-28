@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# babeld is handed its interfaces over its socket when the init script
+# reloads, so an interface that comes up after it started - which is
+# what happens at boot whenever a wired mesh interface is set up late -
+# is one it never meshes over until something tells it.
+
+if [ -x /etc/init.d/gluon-mesh-babel ] &&
+		/etc/init.d/gluon-mesh-babel enabled &&
+		/etc/init.d/gluon-mesh-babel running; then
+	echo "(teardown.d:$IFNAME) Reloading gluon-mesh-babel..."
+	/etc/init.d/gluon-mesh-babel reload
+fi
+
+exit 0

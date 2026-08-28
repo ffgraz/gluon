@@ -52,10 +52,23 @@ waitforsocket() {
 	[ $? -gt 0 ] && { echo "Failed to connect to babeld socket on port $PORT, assuming the service was not started properly"; exit 43; }
 }
 
+# The devices to mesh over: the gluon_mesh interfaces, and the
+# gluon_wired ones carrying the wired mesh ports. gluon_wired builds a
+# gluon_mesh interface of its own on top, but that one is dynamic and
+# does not survive the bridge of several mesh ports losing carrier
+# while its ports go from blocking to forwarding - the wired interface
+# does, and it is the same device. This is the set olsrd is given, too.
+mesh_devices() {
+	ubus call network.interface dump | jsonfilter \
+		-e "@.interface[@.proto='gluon_mesh' && @.up=true].device" \
+		-e "@.interface[@.proto='gluon_wired' && @.up=true].device" |
+		sort -u
+}
+
 reload_service() {
 	waitforsocket
 
-	for i in $(ubus call network.interface dump | jsonfilter -e "@.interface[@.proto='gluon_mesh' && @.up=true].device")
+	for i in $(mesh_devices)
 	do
 	if ! echotobabel dump|grep "add interface"|grep -q $i
 	then
@@ -65,7 +78,7 @@ reload_service() {
 
 	for i in $(echotobabel "dump"|grep "add interface"|cut -d" " -f3)
 	do
-		if ! ubus call network.interface dump | jsonfilter -e "@.interface[@.proto='gluon_mesh' && @.up=true].device"|grep -q $i
+		if ! mesh_devices|grep -q $i
 		then
 			echotobabel "flush interface $i"
 		fi
