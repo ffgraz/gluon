@@ -36,6 +36,9 @@ msgstr ""
 msgid "Outdoor Installation"
 msgstr ""
 
+msgid msgid "Enable point-to-point (AP/STA) mesh"
+msgstr ""
+
 msgid "Transmission power"
 msgstr ""
 
