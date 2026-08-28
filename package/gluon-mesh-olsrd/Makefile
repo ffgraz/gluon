@@ -24,7 +24,11 @@ define Package/gluon-mesh-olsrd
 		+gluon-mesh-layer3-common \
 		+gluon-l3roamd \
 		+gluon-state-check
-	PROVIDES:=gluon-mesh-provider
+	# No PROVIDES:=gluon-mesh-provider here. apk treats two packages
+	# providing the same virtual as conflicting, which is what kept
+	# this from being installed next to gluon-mesh-babel. Nothing in
+	# gluon, the site or the feed depends on the virtual, and babel is
+	# the mesh provider on a hybrid image - olsrd only adds IPv4.
 endef
 
 define Package/gluon-mesh-olsrd/install

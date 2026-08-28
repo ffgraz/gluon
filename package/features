@@ -57,6 +57,11 @@ when(_'status-page' and _'mesh-batman-adv-15', {
 	'gluon-status-page-mesh-batman-adv',
 })
 
+when(_'web-advanced' and _'mesh-olsrd' and _'mesh-babel', {
+	'gluon-web-mesh-olsrd',
+})
+
+
 when(_'status-page' and _'mesh-olsrd', {
 	'gluon-status-page-mesh-olsrd',
 })
