@@ -12,7 +12,7 @@ define Package/gluon-mesh-olsrd
 	DEPENDS:= \
 		+gluon-core \
 		+olsrd \
-		+firewall \
+		+firewall4 \
 		+libgluonutil \
 		+libjson-c \
 		+libubox +libuclient \

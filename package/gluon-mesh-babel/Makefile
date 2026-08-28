@@ -9,7 +9,7 @@ include ../gluon.mk
 
 define Package/gluon-mesh-babel
   TITLE:=Babel mesh
-  DEPENDS:=+gluon-core +babeld +gluon-mesh-layer3-common +gluon-l3roamd +libiwinfo +libgluonutil +firewall +libjson-c +libnl-tiny +libubus +libubox +libblobmsg-json +libbabelhelper
+  DEPENDS:=+gluon-core +babeld +gluon-mesh-layer3-common +gluon-l3roamd +libiwinfo +libgluonutil +firewall4 +libjson-c +libnl-tiny +libubus +libubox +libblobmsg-json +libbabelhelper
   PROVIDES:=gluon-mesh-provider
 endef
 
