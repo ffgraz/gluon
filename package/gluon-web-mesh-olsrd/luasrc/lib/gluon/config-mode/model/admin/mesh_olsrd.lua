@@ -3,10 +3,8 @@ local uci = require('simple-uci').cursor()
 local f = Form(translate("OLSR"))
 
 local s = f:section(Section, nil, translate(
-	"This node meshes over babel. It can additionally take part in the "
-	.. "older OLSR network, which carries IPv4 only - babel carries IPv4 "
-	.. "itself while this is switched off. Leave it off unless the node "
-	.. "is meant to bridge the two networks."))
+	"Enable the OLSR (old) mesh. This allows for compatibility with "
+	.. "existing Funkfeuer Graz non-gluon nodes."))
 
 local enabled = s:option(Flag, "enabled", translate("Enable OLSR (IPv4)"))
 enabled.default = uci:get_bool('gluon', 'mesh_olsrd', 'enabled')

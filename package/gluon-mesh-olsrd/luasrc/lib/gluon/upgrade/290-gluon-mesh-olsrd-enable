@@ -16,7 +16,7 @@ local uci = require('simple-uci').cursor()
 
 if not uci:get('gluon', 'mesh_olsrd') then
 	uci:section('gluon', 'mesh_olsrd', 'mesh_olsrd', {
-		enabled = site.mesh.olsrd.enabled(false),
+		enabled = site.mesh.olsrd.enabled(true),
 	})
 	uci:save('gluon')
 end
