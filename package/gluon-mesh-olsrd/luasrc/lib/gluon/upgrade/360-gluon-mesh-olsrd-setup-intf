@@ -45,6 +45,20 @@ for _, i in pairs(mesh_interfaces) do
 end
 
 if has_uplink_mesh then
+	-- gluon-core points mesh_uplink at br-wan itself, so the mesh and the
+	-- uplink share one device and traffic leaks between them. Move the
+	-- interface onto a macvlan child, which gives the mesh a device of
+	-- its own while still riding the uplink port.
+	uci:section('network', 'device', 'm_uplink', {
+		name = 'm_uplink',
+		type = 'macvlan',
+		ifname = 'br-wan',
+	})
+
+	uci:section('network', 'interface', 'mesh_uplink', {
+		ifname = 'm_uplink',
+	})
+
 	table.insert(intf.wired_mesh, 'mesh_uplink')
 end
 
