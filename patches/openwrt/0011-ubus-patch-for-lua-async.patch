@@ -1,0 +1,258 @@
+From be122e1c9ffa4a1bca7ac3ee124f79f68fd70879 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
+Date: Sat, 21 Jan 2023 20:37:55 +0100
+Subject: [PATCH] ubus patch for lua async
+
+---
+ .../0001-Add-support-for-async-calls.patch    | 239 ++++++++++++++++++
+ 1 file changed, 239 insertions(+)
+ create mode 100644 package/system/ubus/patches/0001-Add-support-for-async-calls.patch
+
+diff --git a/package/system/ubus/patches/0001-Add-support-for-async-calls.patch b/package/system/ubus/patches/0001-Add-support-for-async-calls.patch
+new file mode 100644
+index 0000000000..eb7d1469b2
+--- /dev/null
++++ b/package/system/ubus/patches/0001-Add-support-for-async-calls.patch
+@@ -0,0 +1,239 @@
++From ea4da76fef7d7d2c6249f53594b950c9b1dfacd2 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
++Date: Sat, 21 Jan 2023 18:04:27 +0100
++Subject: [PATCH] Add support for async calls
++
++---
++ lua/ubus.c | 168 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
++ 1 file changed, 166 insertions(+), 2 deletions(-)
++
++diff --git a/lua/ubus.c b/lua/ubus.c
++index 07b816d..51643df 100644
++--- a/lua/ubus.c
+++++ b/lua/ubus.c
++@@ -19,6 +19,7 @@
++ #include <libubox/blobmsg_json.h>
++ #include <lauxlib.h>
++ #include <lua.h>
+++#include <libubox/ustream.h>
++ 
++ #define MODNAME		"ubus"
++ #define METANAME	MODNAME ".meta"
++@@ -42,6 +43,12 @@ struct ubus_lua_event {
++ 	int r;
++ };
++ 
+++struct ubus_lua_request {
+++	struct ubus_request r;
+++	struct ustream_fd fd;
+++	int fnc;
+++};
+++
++ struct ubus_lua_subscriber {
++ 	struct ubus_subscriber s;
++ 	int rnotify;
++@@ -660,6 +667,134 @@ ubus_lua_call_cb(struct ubus_request *req, int type, struct blob_attr *msg)
++ 		ubus_lua_parse_blob_array(L, blob_data(msg), blob_len(msg), true);
++ }
++ 
+++static void
+++ubus_lua_async_complete_cb(struct ubus_request *req, int ret)
+++{
+++	struct ubus_lua_request *lureq = container_of(req, struct ubus_lua_request, r);
+++
+++	lua_getglobal(state, "__ubus_cb_async");
+++	lua_rawgeti(state, -1, lureq->fnc);
+++	lua_remove(state, -2);
+++
+++	if (lua_isfunction(state, -1)) {
+++		lua_pushnil(state);
+++
+++		lua_newtable(state);
+++
+++		lua_pushstring(state, "type");
+++		lua_pushstring(state, "connected");
+++		lua_settable(state, -3);
+++
+++		lua_pushstring(state, "return");
+++		lua_pushnumber(state, ret);
+++		lua_settable(state, -3);
+++
+++		lua_call(state, 2, 0);
+++	} else {
+++		lua_pop(state, 1);
+++	}
+++}
+++
+++static void
+++ubus_lua_async_cb(struct ustream *s, struct blob_attr *msg)
+++{
+++	struct ubus_lua_request *lureq = container_of(s, struct ubus_lua_request, fd.stream);
+++
+++	lua_getglobal(state, "__ubus_cb_async");
+++	lua_rawgeti(state, -1, lureq->fnc);
+++	lua_remove(state, -2);
+++
+++	if (lua_isfunction(state, -1)) {
+++		if( msg ){
+++			ubus_lua_parse_blob_array(state, blob_data(msg), blob_len(msg), true);
+++		} else {
+++			lua_pushnil(state);
+++		}
+++		lua_call(state, 1, 0);
+++	} else {
+++		lua_pop(state, 1);
+++	}
+++}
+++
+++static void
+++ubus_lua_async_data_cb(struct ustream *s, int bytes)
+++{
+++	while (true) {
+++		struct blob_attr *a;
+++		int len, cur_len;
+++
+++		a = (void*) ustream_get_read_buf(s, &len);
+++		if (len < (int)sizeof(*a))
+++			break;
+++
+++		cur_len = blob_len(a) + sizeof(*a);
+++		if (len < cur_len)
+++			break;
+++
+++		ubus_lua_async_cb(s, a);
+++		ustream_consume(s, cur_len);
+++	}
+++}
+++
+++static void
+++ubus_lua_async_state_cb(struct ustream *s)
+++{
+++	struct ubus_lua_request *lureq = container_of(s, struct ubus_lua_request, fd.stream);
+++
+++	lua_getglobal(state, "__ubus_cb_async");
+++	lua_rawgeti(state, -1, lureq->fnc);
+++	lua_remove(state, -2);
+++
+++	if (lua_isfunction(state, -1)) {
+++		lua_pushnil(state);
+++
+++		lua_newtable(state);
+++
+++		lua_pushstring(state, "type");
+++		lua_pushstring(state, "closed");
+++		lua_settable(state, -3);
+++
+++		lua_call(state, 2, 0);
+++	} else {
+++		lua_pop(state, 1);
+++	}
+++}
+++
+++static void
+++ubus_lua_async_fd_cb(struct ubus_request *req, int fd)
+++{
+++	struct ubus_lua_request *lureq = container_of(req, struct ubus_lua_request, r);
+++
+++	lureq->fd.stream.notify_read = ubus_lua_async_data_cb;
+++	lureq->fd.stream.notify_state = ubus_lua_async_state_cb;
+++	ustream_fd_init(&lureq->fd, fd);
+++}
+++
+++static int
+++ubus_lua_register_async( struct ubus_lua_request ** retlureq, struct ubus_context *ctx, lua_State *L,
+++                       int fnc )
+++{
+++	struct ubus_lua_request *lureq;
+++
+++	lureq = calloc( 1, sizeof( struct ubus_lua_request ) );
+++	if( !lureq ){
+++		lua_pushstring( L, "Out of memory" );
+++		return lua_error(L);
+++	}
+++
+++	lua_getglobal(L, "__ubus_cb_async");
+++	lua_pushvalue(L, fnc);
+++	lureq->fnc = luaL_ref(L, -2);
+++	lua_pop(L, 1);
+++
+++	// remove the fnc
+++	lua_pop(L, 1);
+++
+++	*retlureq = lureq;
+++
+++	return 0;
+++}
+++
++ static int
++ ubus_lua_call(lua_State *L)
++ {
++@@ -669,6 +804,20 @@ ubus_lua_call(lua_State *L)
++ 	const char *path = luaL_checkstring(L, 2);
++ 	const char *func = luaL_checkstring(L, 3);
++ 
+++	bool isAsync = lua_isfunction(L, 5);
+++	struct ubus_lua_request * req = NULL;
+++
+++	if (isAsync) {
+++		int ret = ubus_lua_register_async(&req, c->ctx, L, lua_gettop(L));
+++		if (ret) {
+++			return ret;
+++		}
+++		if (!req) {
+++			lua_pushstring(L, "Failed to register async callback");
+++			return lua_error( L );
+++		}
+++	}
+++
++ 	luaL_checktype(L, 4, LUA_TTABLE);
++ 	blob_buf_init(&c->buf, 0);
++ 
++@@ -689,7 +838,14 @@ ubus_lua_call(lua_State *L)
++ 	}
++ 
++ 	top = lua_gettop(L);
++-	rv = ubus_invoke(c->ctx, id, func, c->buf.head, ubus_lua_call_cb, L, c->timeout * 1000);
+++
+++	if (isAsync) {
+++		rv = ubus_invoke_async(c->ctx, id, func, c->buf.head, &req->r);
+++		req->r.fd_cb = ubus_lua_async_fd_cb;
+++		req->r.complete_cb = ubus_lua_async_complete_cb;
+++	} else {
+++		rv = ubus_invoke(c->ctx, id, func, c->buf.head, ubus_lua_call_cb, L, c->timeout * 1000);
+++	}
++ 
++ 	if (rv != UBUS_STATUS_OK)
++ 	{
++@@ -699,6 +855,10 @@ ubus_lua_call(lua_State *L)
++ 		return 2;
++ 	}
++ 
+++	if (isAsync) {
+++		ubus_complete_request_async(c->ctx, &req->r);
+++	}
+++
++ 	return lua_gettop(L) - top;
++ }
++ 
++@@ -731,7 +891,7 @@ ubus_lua_load_event(lua_State *L)
++ 
++ 	event->e.cb = ubus_event_handler;
++ 
++-	/* update the he callback lookup table */
+++	/* update the callback lookup table */
++ 	lua_getglobal(L, "__ubus_cb_event");
++ 	lua_pushvalue(L, -2);
++ 	event->r = luaL_ref(L, -2);
++@@ -1021,5 +1181,9 @@ luaopen_ubus(lua_State *L)
++ 	/* create the publisher table - notifications of new subs */
++ 	lua_createtable(L, 1, 0);
++ 	lua_setglobal(L, "__ubus_cb_publisher");
+++
+++	/* create the async table - callbacks for invoke_async */
+++	lua_createtable(L, 1, 0);
+++	lua_setglobal(L, "__ubus_cb_async");
++ 	return 0;
++ }
++-- 
++2.38.1
++
+-- 
+2.38.1
+
