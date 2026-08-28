@@ -4,8 +4,9 @@ OPENWRT_REPO=https://github.com/openwrt/openwrt.git
 OPENWRT_BRANCH=openwrt-25.12
 OPENWRT_COMMIT=80bc5eabe566f71322ca3f25fdab0c1c6692419c
 
-PACKAGES_GLUON_REPO=https://github.com/freifunk-gluon/packages.git
-PACKAGES_GLUON_COMMIT=096328c0e2ff39383d66a0548181edb23ada52f8
+PACKAGES_GLUON_REPO=https://github.com/ffgraz/gluon-packages.git
+PACKAGES_GLUON_COMMIT=e8572c7d5e28e12d2a8692c96f97d9d706fa48cd
+PACKAGES_GLUON_BRANCH=funkfeuer
 
 PACKAGES_PACKAGES_REPO=https://github.com/openwrt/packages.git
 PACKAGES_PACKAGES_BRANCH=openwrt-25.12
