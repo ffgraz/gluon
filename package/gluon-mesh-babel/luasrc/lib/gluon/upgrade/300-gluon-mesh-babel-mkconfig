@@ -3,7 +3,6 @@
 local site = require 'gluon.site'
 local l3 = require 'gluon.l3'
 local uci = require('simple-uci').cursor()
-local nodeip = uci:get('network', 'loopback', 'ip6addr'):match('^[^/]+')
 local babelconf='/etc/gluon-babeld.conf'
 
 local file = io.open(babelconf, "w")
@@ -43,5 +42,4 @@ else
 
 	file:write("redistribute local ip 0.0.0.0/0 deny\n")
 end
-file:write("install pref-src " .. nodeip .."\n")
 file:close()

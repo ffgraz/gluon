@@ -11,25 +11,16 @@ taps.
 from pynet import start, finish
 from meshlib import chain, wait_connected, attach_client, Client
 
-#: gluon-reconfigure regenerates the whole configuration and restarts
-#: what it has to; on a QEMU guest that takes a while.
-RECONFIGURE_TIMEOUT = 180
-
-
 def set_olsr(node, enabled):
     """Switch olsrd on or off the way the config mode page does."""
     node.succeed('uci set gluon.mesh_olsrd.enabled={}'.format(
         1 if enabled else 0))
     node.succeed('uci commit gluon')
 
-    # gluon-reconfigure brings the network down and up again, which
-    # takes the ssh connection carrying it with it. Run it detached and
-    # wait for the marker instead, so the reconfiguration is not judged
-    # by whether its own session survived.
-    node.succeed('rm -f /tmp/reconfigured')
-    node.execute(
-        '(gluon-reconfigure; touch /tmp/reconfigured) >/dev/null 2>&1 &')
-    node.wait_until_succeeds('[ -e /tmp/reconfigured ]', RECONFIGURE_TIMEOUT)
+    # Detaching it does not survive the ssh channel closing - the
+    # reconfiguration gets killed halfway, with the services it stopped
+    # left stopped. It keeps the connection, so run it and wait.
+    node.succeed('gluon-reconfigure >/dev/null 2>&1')
 
 
 def running(node, service):
