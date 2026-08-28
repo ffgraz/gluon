@@ -1,0 +1,12 @@
+GLUON_SITE_FEEDS='site luci cm'
+PACKAGES_SITE_REPO=$(readlink -f site/.git)
+PACKAGES_SITE_COMMIT=$(git -C site/ rev-parse HEAD)
+PACKAGES_SITE_BRANCH=$(git -C site/ rev-parse --abbrev-ref HEAD)
+
+PACKAGES_LUCI_REPO=https://github.com/openwrt/luci.git
+PACKAGES_LUCI_BRANCH=openwrt-23.05
+PACKAGES_LUCI_COMMIT=e23911eb0052e6d42acfb0c74b1dc912ce03b4cf
+
+PACKAGES_CM_REPO=https://github.com/freifunk-gluon/community-packages.git
+PACKAGES_CM_COMMIT=cc5387024ec8f04d04f209c744b44ceeff7b3a4d
+PACKAGES_CM_BRANCH=funkfeuer

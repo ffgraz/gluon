@@ -1,0 +1,72 @@
+{
+  "olsrd": {
+    "adapter": {
+      "type": "procd",
+      "param": "olsrd"
+    },
+    "downtime_until_restart": 600,
+    "attempts_until_reboot": 15
+  },
+  "olsrd2": {
+    "adapter": {
+      "type": "initd",
+      "param": "olsrd2"
+    },
+    "downtime_until_restart": 600,
+    "attempts_until_reboot": 15
+  },
+  "ddhcpd": {
+    "adapter": {
+      "type": "procd",
+      "param": "ddhcpd"
+    },
+    "restart": [
+      "service dnsmasq stop",
+      "service ddhcpd stop",
+      "service dnsmasq start",
+      "service ddhcpd start"
+    ],
+    "downtime_until_restart": 10,
+    "attempts_until_reboot": 5
+  },
+  "ddhcpd-socket": {
+    "adapter": {
+      "type": "socket",
+      "param": {
+        "socket": "/tmp/ddhcpd_ctl"
+      }
+    },
+    "restart": [
+      "service dnsmasq stop",
+      "service ddhcpd stop",
+      "service dnsmasq start",
+      "service ddhcpd start"
+    ],
+    "downtime_until_restart": 10,
+    "attempts_until_reboot": 5
+  },
+  "mmfd": {
+    "adapter": {
+      "type": "procd",
+      "param": "ddhcpd"
+    },
+    "downtime_until_restart": 20,
+    "attempts_until_reboot": 3
+  },
+  "mmfd-socket": {
+    "adapter": {
+      "type": "socket",
+      "param": {
+        "socket": "/var/run/mmfd.sock",
+        "query": "get_neighbours",
+        "expect_json_array_length": "mmfd_neighbours"
+      }
+    },
+    "restart": [
+      "service mmfd restart"
+    ],
+    "downtime_until_restart": 10,
+    "attempts_until_reboot": 5,
+    "disable_reboot": true
+  }
+}

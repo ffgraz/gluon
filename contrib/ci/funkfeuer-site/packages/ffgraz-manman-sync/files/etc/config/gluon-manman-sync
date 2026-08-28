@@ -1,0 +1,14 @@
+package gluon-manman-sync
+
+config sync 'sync'
+	option enabled '0'
+  option location_id ''
+	option node ''
+	option last_data ''
+  option last_version ''
+
+config rollback 'rollback'
+  option success '1'
+  option checked_at ''
+  option previous ''
+  option new ''

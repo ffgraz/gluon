@@ -1,0 +1,78 @@
+#!/usr/bin/lua
+
+local uci = require('simple-uci').cursor()
+local wireless = require 'gluon.wireless'
+
+local function has_flag(flag)
+	return uci:get_bool('ffgraz-migrations', 'flags', flag)
+end
+
+local function set_flag(flag)
+	return uci:set('ffgraz-migrations', 'flags', flag, true)
+end
+
+-- cleanup old fw
+
+uci:delete('firewall', 'allow_olsr2_wired_mesh')
+uci:delete('firewall', 'allow_olsr4_wired_mesh')
+uci:delete('firewall', 'allow_olsr6_wired_mesh')
+uci:delete('firewall', 'allow_olsr_wired_mesh')
+
+-- migrate ip
+
+local ip = uci:get('gluon-static-ip', 'loopback', 'ip6')
+
+if ip ~= null and (ip:match('^fdff:182f:da60:23:') or ip:match("/%d+$")) then
+	uci:delete('gluon-static-ip', 'loopback')
+	uci:commit('gluon-static-ip')
+end
+
+-- migrate private ap
+uci:delete('firewall', 'mesh', 'masq')
+uci:delete('firewall', 'redirect', 'ap_masq')
+
+-- enable clientap
+
+if os.time() < os.time{year=2023, month=3, day=8} and not has_flag('clientap_rollout2') then
+	wireless.foreach_radio(uci, function(radio, index, config)
+		local radio_name = radio['.name']
+		local name = 'client_' .. radio_name
+
+		if uci:get('wireless', name) then
+			if uci:get_bool('wireless', name, 'disabled') then
+				uci:set('wireless', name, 'disabled', false)
+			end
+		end
+	end)
+
+	uci:save('wireless')
+	set_flag('clientap_rollout2')
+end
+
+if not has_flag('disable_5ghz_mesh_by_def') then
+	wireless.foreach_radio(uci, function(radio, index, config)
+		local radio_name = radio['.name']
+		local name = 'mesh_' .. radio_name
+
+		if uci:get('wireless', name) and radio.band == '5g' then
+			if not uci:get_bool('wireless', name, 'disabled') then
+				uci:set('wireless', name, 'disabled', true)
+			end
+		end
+	end)
+
+	uci:save('wireless')
+	set_flag('disable_5ghz_mesh_by_def')
+end
+
+if not has_flag('exp_2_beta') then
+	-- since this runs before 500-autoupdater, which sets branch on first install, this won't affect new experimental installs
+	if uci:get('autoupdater', 'settings', 'branch') == 'experimental' then
+		uci:set('autoupdater', 'settings', 'branch', 'beta')
+		uci:save('autoupdater')
+	end
+	set_flag('exp_2_beta')
+end
+
+uci:save('firewall')
+uci:save('ffgraz-migrations')

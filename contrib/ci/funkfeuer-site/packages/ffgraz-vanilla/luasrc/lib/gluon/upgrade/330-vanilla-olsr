@@ -1,0 +1,65 @@
+#!/usr/bin/lua
+
+local uci = require('simple-uci').cursor()
+
+local function apply(name, fnc)
+	if not uci:get_bool('ffgraz-vanilla', 'applied', name) then
+		fnc(name)
+		uci:set('ffgraz-vanilla', 'applied', name, true)
+	end
+end
+
+local libs = {}
+
+uci:foreach('olsrd', 'LoadPlugin', function (s)
+	libs[s['library']] = s['.name']
+end)
+
+function add_new(lib, val)
+	if not libs[lib] then
+		val.library = lib
+		uci:section('olsrd', 'LoadPlugin', null, val)
+	end
+end
+
+add_new('olsrd_httpinfo', {
+	ignore = true,
+	accept = '127.0.0.1',
+})
+
+add_new('olsrd_jsoninfo', {
+	ignore = false,
+	accept = '127.0.0.1',
+})
+
+add_new('olsrd_txtinfo', {
+	ignore = true,
+	accept = '127.0.0.1',
+})
+
+uci:section('firewall', 'rule', 'allow_olsr4_mesh', {
+	src = 'mesh',
+	dest_port = 698,
+	proto = 'udp',
+	target = 'ACCEPT',
+})
+
+uci:section('firewall', 'rule', 'allow_olsr2_mesh', {
+	src = 'mesh',
+	dest_port = '269',
+	proto = 'udp',
+	target = 'ACCEPT',
+})
+
+if not uci:get('olsrd2', 'http') then
+	uci:section('olsrd2', 'http', 'http', {
+
+	})
+end
+
+os.execute('/etc/init.d/olsrd6 disable')
+
+uci:save('olsrd')
+uci:save('olsrd2')
+uci:save('firewall')
+uci:save('ffgraz-vanilla')
