@@ -1,0 +1,79 @@
+#!/usr/bin/env ucode
+
+let uloop = require("uloop");
+
+uloop.init();
+
+/*
+
+Design:
+- There are multiple adapters (procd, initd, ...)
+  - They have subscribe functions that cause service start/stop events
+    - Or if not isHealthy gets polled
+- There are multiple monitors
+  - These basically are state machines that kick the service if necesarry
+- There is a "main loop" (next to the subscribe loop)
+  - It pings the state machines occasionally (every 10s)
+
+*/
+
+import Adapters from 'mar.adapters';
+import Storage from 'mar.storage';
+import ServiceMonitor from 'mar.monitor';
+
+const IS_PROD = !!getenv('MAR_PROD');
+
+const storage = Storage();
+
+const ServiceMonitors = {};
+
+import { open } from 'fs';
+let fd = open('/etc/mar.json', 'r');
+const config = json(fd);
+
+printf('Starting... (production=%s)\n', IS_PROD);
+
+for (let monitorName, monitor in config) {
+  const _adapter = monitor.adapter;
+  const type = _adapter.type;
+  const param = _adapter.param;
+  delete monitor.adapter;
+
+  const adapter = Adapters[type];
+  assert(adapter, 'adapter ' + type + ' not found');
+
+  const isHealthy = adapter.isHealthy(param);
+
+  function poll() {
+    return adapter.isHealthy(param);
+  }
+
+  printf('Monitor %s, healthy %J\n', monitorName, isHealthy);
+
+  const monitorInstance = ServiceMonitor(monitorName, monitor, isHealthy, storage, poll, IS_PROD);
+  ServiceMonitors[monitorName] = monitorInstance;
+
+  if (adapter.subscribe) {
+    adapter.subscribe(param, monitorInstance.machine);
+  } else {
+    monitorInstance.poll = poll;
+  }
+}
+
+// Polling and general lifecycle trigger
+function Main() {
+  for (let name, monitor in ServiceMonitors) {
+    let newState;
+    if ('poll' in monitor) {
+      newState = monitor.poll();
+    }
+    monitor.machine(newState);
+  }
+
+  uloop.timer(10000, Main);
+}
+uloop.timer(10000, Main);
+
+printf('Running...\n');
+
+uloop.run();
