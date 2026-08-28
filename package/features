@@ -50,7 +50,7 @@ when(_'status-page' and _'mesh-olsrd', {
 })
 
 
-when(_'mesh-olsrd', {
+when(_'mesh-babel' or _'mesh-olsrd', {
 	'gluon-radvd',
 })
 
