@@ -19,14 +19,29 @@ file:write("redistribute ip " .. l3.node_client_prefix6() .. " eq 128  allow\n")
 file:write("redistribute ip " .. site.node_prefix6() .. " eq 128  allow\n")
 file:write("redistribute ip 2000::/3 allow\n")
 file:write("redistribute local if br-wan deny\n")
-file:write("redistribute local ip 0.0.0.0/0 deny\n")
 
--- Import routes another routing daemon put into the kernel, so a mesh
--- running olsrd next to babel stays reachable from the babel side.
--- Listed as prefixes in site.conf; anything not listed keeps being
--- ignored, so the uplink default route is never pulled into the mesh.
-for _, prefix in ipairs(site.mesh.babel.import({})) do
-	file:write("redistribute ip " .. prefix .. " allow\n")
+if uci:get_bool('gluon', 'mesh_olsrd', 'enabled') then
+	-- olsrd carries IPv4 on this node, so babel keeps its hands off the
+	-- local IPv4 addresses and only picks up what olsrd puts into the
+	-- kernel. Which prefixes those are is listed in site.conf; anything
+	-- not listed keeps being ignored, so the uplink default route is
+	-- never pulled into the mesh.
+	file:write("redistribute local ip 0.0.0.0/0 deny\n")
+
+	for _, prefix in ipairs(site.mesh.babel.import({})) do
+		file:write("redistribute ip " .. prefix .. " allow\n")
+	end
+else
+	-- Nothing else routes IPv4 here, so babel carries it too: the
+	-- node's own addresses out of the site prefixes, and the routes
+	-- the other nodes announce. The default route stays out.
+	local prefix4 = site.prefix4()
+	if prefix4 then
+		file:write("redistribute local ip " .. prefix4 .. " allow\n")
+		file:write("redistribute ip " .. prefix4 .. " allow\n")
+	end
+
+	file:write("redistribute local ip 0.0.0.0/0 deny\n")
 end
 file:write("install pref-src " .. nodeip .."\n")
 file:close()

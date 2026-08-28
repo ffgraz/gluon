@@ -71,6 +71,25 @@ end
 ]]
 local node_ip6 = uci:get('network', 'loopback', 'ip6addr')
 
+--[[
+	olsrd only runs if the node opted in (290-gluon-mesh-olsrd-enable),
+	and when gluon-mesh-babel is installed alongside it, only for IPv4:
+	babel carries IPv6 in that case and the two would otherwise both
+	install IPv6 routes for the same prefixes.
+]]
+local olsrd_enabled = uci:get_bool('gluon', 'mesh_olsrd', 'enabled')
+
+local function file_exists(path)
+	local f = io.open(path)
+	if not f then
+		return false
+	end
+	f:close()
+	return true
+end
+
+local have_babel = file_exists('/etc/init.d/gluon-mesh-babel')
+
 local daemons = {
 	{
 		key = 'v4',
@@ -101,7 +120,10 @@ for _, daemon in ipairs(daemons) do
 	uci:delete_all(uci_name, 'Interface')
 	uci:delete_all(uci_name, 'LoadPlugin')
 
-	if daemon.prefix then
+	local want = daemon.prefix and olsrd_enabled
+		and not (daemon.ipv == 6 and have_babel)
+
+	if want then
 		os.execute('/etc/init.d/' .. uci_name .. ' enable')
 
 		-- set config
@@ -187,7 +209,7 @@ for _, daemon in ipairs(daemons) do
 			target = 'ACCEPT',
 		})
 	else
-		-- no prefix of this family in the site configuration
+		-- olsrd is off, or this family is not ours to carry
 		os.execute('/etc/init.d/' .. uci_name .. ' disable')
 		uci:delete('firewall', fw_rule)
 	end
