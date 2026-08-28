@@ -3,6 +3,7 @@
 local uci = require('simple-uci').cursor()
 local site = require 'gluon.site'
 local olsrd = require 'gluon.olsrd'
+local util = require 'gluon.util'
 
 -- one olsrd daemon per address family, enabled by the site prefix of that
 -- family, each with its own jsoninfo port (see libolsrdhelper)
@@ -10,6 +11,28 @@ local olsrd = require 'gluon.olsrd'
 -- interfaces are added over ubus by gluon-olsrd-sync-interfaces as they come
 -- and go, they inherit InterfaceDefaults; the Interface section holds the
 -- runtime list
+
+--[[
+	gluon-core points mesh_uplink at br-wan itself, so the mesh and the
+	uplink share one device and traffic leaks between them. Move the
+	interface onto a macvlan child, which gives the mesh a device of its
+	own while still riding the uplink port. Only the ifname is overridden,
+	everything else gluon-core configured stays as it is.
+]]
+local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
+for _, iface in ipairs(util.get_role_interfaces(uci, 'mesh')) do
+	if util.contains(uplink_interfaces, iface) then
+		uci:section('network', 'device', 'm_uplink', {
+			name = 'm_uplink',
+			type = 'macvlan',
+			ifname = 'br-wan',
+		})
+		uci:section('network', 'interface', 'mesh_uplink', {
+			ifname = 'm_uplink',
+		})
+		break
+	end
+end
 
 local node_ip6 = uci:get('network', 'loopback', 'ip6addr')
 -- strip the prefix length, if any
@@ -153,3 +176,4 @@ for _, daemon in ipairs(daemons) do
 end
 
 uci:save('firewall')
+uci:save('network')
