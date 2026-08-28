@@ -1,0 +1,21 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+"Language-Team: German\n"
+"MIME-Version: 1.0\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Enable OLSR (IPv4)"
+msgstr "OLSR aktivieren (IPv4)"
+
+msgid "OLSR"
+msgstr "OLSR"
+
+msgid ""
+"Enable the OLSR (old) mesh. This allows for compatibility with existing "
+"Funkfeuer Graz non-gluon nodes."
+msgstr ""
+"Aktiviert das (alte) OLSR-Mesh. Das stellt die Kompatibilität zu "
+"bestehenden Funkfeuer-Graz-Knoten ohne Gluon her."
