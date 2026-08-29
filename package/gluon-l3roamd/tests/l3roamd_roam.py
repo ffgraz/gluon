@@ -2,7 +2,9 @@
 """A client roams from one end of a chain to the other; l3roamd keeps
 its address reachable from across the mesh. Requires root."""
 from pynet import start, finish
-from meshlib import chain, wait_connected, attach_client, Client
+from meshlib import (
+    chain, wait_connected, attach_client, proto, Client,
+    CONVERGENCE_TIMEOUT)
 
 a, b, c = chain(3)
 attach_client(a)
@@ -18,11 +20,13 @@ client = Client(a, c)
 # client appears behind node a; the far end learns a route to it
 client.move_to(a)
 addr = client.wait_addr()
-c.wait_until_succeeds('ping -c 3 ' + addr)
+c.wait_until_succeeds(
+    'ping -c 3 ' + addr, CONVERGENCE_TIMEOUT[proto(c)])
 
 # client roams to node c; the mesh follows
 client.move_to(c)
 client.wait_addr()
-a.wait_until_succeeds('ping -c 3 ' + addr)
+a.wait_until_succeeds(
+    'ping -c 3 ' + addr, CONVERGENCE_TIMEOUT[proto(a)])
 
 finish()
