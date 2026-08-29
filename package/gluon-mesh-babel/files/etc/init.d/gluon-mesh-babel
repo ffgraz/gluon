@@ -52,17 +52,8 @@ waitforsocket() {
 	[ $? -gt 0 ] && { echo "Failed to connect to babeld socket on port $PORT, assuming the service was not started properly"; exit 43; }
 }
 
-# The devices to mesh over: the gluon_mesh interfaces, and the
-# gluon_wired ones carrying the wired mesh ports. gluon_wired builds a
-# gluon_mesh interface of its own on top, but that one is dynamic and
-# does not survive the bridge of several mesh ports losing carrier
-# while its ports go from blocking to forwarding - the wired interface
-# does, and it is the same device. This is the set olsrd is given, too.
 mesh_devices() {
-	ubus call network.interface dump | jsonfilter \
-		-e "@.interface[@.proto='gluon_mesh' && @.up=true].device" \
-		-e "@.interface[@.proto='gluon_wired' && @.up=true].device" |
-		sort -u
+	gluon-list-mesh-interfaces
 }
 
 reload_service() {

@@ -1,2 +1,14 @@
 #!/bin/sh
-ubus call network.interface dump | jsonfilter -e "@.interface[@.proto='gluon_mesh' && @.up=true].device"
+
+# The devices the node meshes over: the gluon_mesh interfaces, and the
+# gluon_wired ones carrying wired mesh ports. gluon_wired builds a
+# gluon_mesh interface of its own on top, but that one is dynamic and
+# does not survive a bridge of several mesh ports losing carrier while
+# its ports go from blocking to forwarding; the wired interface does,
+# and it is the same device. Everything that meshes - babel, mmfd,
+# l3roamd - needs the whole set, or a node with more than one wired
+# mesh port silently leaves those ports out.
+ubus call network.interface dump | jsonfilter \
+	-e "@.interface[@.proto='gluon_mesh' && @.up=true].device" \
+	-e "@.interface[@.proto='gluon_wired' && @.up=true].device" |
+	sort -u
