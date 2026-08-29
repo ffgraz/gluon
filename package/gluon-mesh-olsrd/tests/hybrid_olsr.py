@@ -9,7 +9,9 @@ it takes a client through both settings. Requires root, for the client
 taps.
 """
 from pynet import start, finish
-from meshlib import chain, wait_connected, attach_client, Client
+from meshlib import (
+    chain, wait_connected, attach_client, proto, Client,
+    CONVERGENCE_TIMEOUT)
 
 def set_olsr(node, enabled):
     """Switch olsrd on or off the way the config mode page does."""
@@ -95,12 +97,14 @@ for olsr in (True, False, True):
     # The client is untouched by any of this: babel carries IPv6 in
     # every setting, so the far node keeps reaching it.
     client.wait_addr()
-    b.wait_until_succeeds('ping -c 3 ' + addr)
+    b.wait_until_succeeds(
+        'ping -c 3 ' + addr, CONVERGENCE_TIMEOUT[proto(b)])
 
     # ... and it still roams.
     client.move_to(b)
     client.wait_addr()
-    a.wait_until_succeeds('ping -c 3 ' + addr)
+    a.wait_until_succeeds(
+        'ping -c 3 ' + addr, CONVERGENCE_TIMEOUT[proto(a)])
     client.move_to(a)
     client.wait_addr()
 
