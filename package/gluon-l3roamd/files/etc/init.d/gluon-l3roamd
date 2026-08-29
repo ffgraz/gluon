@@ -20,14 +20,14 @@ echotol3roamd() {
 
 
 reload_service() {
-	for i in $(ubus call network.interface dump | jsonfilter -e "@.interface[@.proto='gluon_mesh' && @.up=true].device")
+	for i in $(gluon-list-mesh-interfaces)
 	do
 		echotol3roamd "add_meshif $i"
 	done
 
 	for i in $(echotol3roamd "get_meshifs"| jsonfilter -e "@.mesh_interfaces[@]")
 	do
-		if ! ubus call network.interface dump | jsonfilter -e "@.interface[@.proto='gluon_mesh' && @.up=true].device" | grep -qxF "$i"
+		if ! gluon-list-mesh-interfaces | grep -qxF "$i"
 		then
 			echotol3roamd "del_meshif $i"
 		fi
