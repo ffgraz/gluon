@@ -19,22 +19,31 @@ def set_olsr(node, enabled):
 
     # Detaching it does not survive the ssh channel closing - the
     # reconfiguration gets killed halfway, with the services it stopped
-    # left stopped. It keeps the connection, so run it and wait.
-    node.succeed('gluon-reconfigure >/dev/null 2>&1')
+    # left stopped. It keeps the connection, so run it and wait. What
+    # it said is kept: when it goes wrong it goes wrong quietly, and
+    # the scenario is then failing several steps further on.
+    status, out = node.execute('gluon-reconfigure 2>&1')
+    node.dbg(
+        'gluon-reconfigure exited %d after %d lines'
+        % (status, len(out.split('\n'))))
+    if status != 0 or len(out.split('\n')) < 20:
+        for line in out.split('\n')[-30:]:
+            node.dbg('| ' + line)
+        raise Exception('gluon-reconfigure did not run to completion')
 
 
 def running(node, service):
-    status, _ = node.execute('pgrep -x ' + service)
+    status, _ = node.execute('pgrep ' + service)
     return status == 0
 
 
 def check_daemons(node, olsr):
     """babel always runs; olsrd only when switched on, and only for
     IPv4 - babel is carrying IPv6, so the second olsrd must stay down."""
-    node.wait_until_succeeds('pgrep -x babeld')
+    node.wait_until_succeeds('pgrep babeld')
 
     if olsr:
-        node.wait_until_succeeds('pgrep -x olsrd')
+        node.wait_until_succeeds('pgrep olsrd')
     else:
         assert not running(node, 'olsrd'), \
             'olsrd still running on {} with olsr switched off'.format(

@@ -43,3 +43,10 @@ else
 	file:write("redistribute local ip 0.0.0.0/0 deny\n")
 end
 file:close()
+
+-- The babeld package ships an init script of its own, which starts a
+-- second daemon from an empty /etc/config/babeld. That one exits with
+-- "asked to run on no interfaces" and procd respawns it every few
+-- seconds, for as long as the node is up. This package runs babeld.
+os.execute('/etc/init.d/babeld stop >/dev/null 2>&1')
+os.execute('/etc/init.d/babeld disable >/dev/null 2>&1')
