@@ -103,6 +103,35 @@ static char*  get_line_from_run(const char* command) {
 	return line;
 }
 
+/** Collects the IPv4 address of every interface babeld runs on */
+static bool handle_interface_address(char **data, void *arg) {
+	struct json_object *out = (struct json_object *)arg;
+
+	/* An interface line names the interface in INTERFACE, not IF -
+	   that one belongs to the neighbour and route lines. */
+	if (!data[INTERFACE] || !data[IPV4])
+		return true;
+
+	if (data[UP] && strcmp(data[UP], "true"))
+		return true;
+
+	if (!strcmp(data[IPV4], "0.0.0.0"))
+		return true;
+
+	struct json_object *address = json_object_new_string(data[IPV4]);
+
+	for (size_t i = 0; i < json_object_array_length(out); i++) {
+		if (json_object_equal(json_object_array_get_idx(out, i), address)) {
+			json_object_put(address);
+			return true;
+		}
+	}
+
+	json_object_array_add(out, address);
+
+	return true;
+}
+
 static struct json_object * get_addresses(void) {
 	char *primarymac = gluonutil_get_sysconfig("primary_mac");
 	char *address = malloc(INET6_ADDRSTRLEN+1);
@@ -127,6 +156,13 @@ static struct json_object * get_addresses(void) {
 	free(prefix_addresspart);
 
 	json_object_array_add(retval, json_object_new_string(address));
+
+	/*
+		Where babel carries IPv4 as well there is no olsrd to report
+		the node's addresses of that family, and babeld already knows
+		them - it names them on every interface it runs on.
+	*/
+	babelhelper_readbabeldata(&bhelper_ctx, "dump", (void*)retval, handle_interface_address);
 
 free:
 	free(address);
@@ -183,6 +219,15 @@ static void mesh_add_if(const char *ifname, struct json_object *mesh) {
 	if (!list) {
 		list = json_object_new_array();
 		json_object_object_add(interfaces, type, list);
+	}
+
+	/* netifd's dump nests an interface deep enough that the walk
+	   reaches the same one more than once */
+	for (size_t i = 0; i < json_object_array_length(list); i++) {
+		if (json_object_equal(json_object_array_get_idx(list, i), address)) {
+			json_object_put(address);
+			return;
+		}
 	}
 
 	json_object_array_add(list, address);
