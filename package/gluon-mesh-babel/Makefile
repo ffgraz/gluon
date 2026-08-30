@@ -4,6 +4,7 @@ PKG_NAME:=gluon-mesh-babel
 
 PKG_BUILD_DEPENDS := libbabelhelper
 PKG_BUILD_DEPENDS += libjson-c
+PKG_BUILD_DEPENDS += gluon-mesh-layer3-common
 
 include ../gluon.mk
 

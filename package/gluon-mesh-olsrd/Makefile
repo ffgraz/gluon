@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=gluon-mesh-olsrd
 PKG_VERSION=1
 
-PKG_BUILD_DEPENDS += libjson-c libolsrdhelper
+PKG_BUILD_DEPENDS += libjson-c libolsrdhelper gluon-mesh-layer3-common
 
 include ../gluon.mk
 
