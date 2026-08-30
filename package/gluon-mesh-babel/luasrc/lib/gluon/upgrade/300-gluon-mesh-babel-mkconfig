@@ -34,10 +34,14 @@ else
 	-- Nothing else routes IPv4 here, so babel carries it too: the
 	-- node's own addresses out of the site prefixes, and the routes
 	-- the other nodes announce. The default route stays out.
+	--
+	-- "ip <prefix>" alone matches that prefix and nothing below it, so
+	-- without the "le 32" the node never announces its own address and
+	-- the rest of the mesh has no route back to it.
 	local prefix4 = site.prefix4()
 	if prefix4 then
-		file:write("redistribute local ip " .. prefix4 .. " allow\n")
-		file:write("redistribute ip " .. prefix4 .. " allow\n")
+		file:write("redistribute local ip " .. prefix4 .. " le 32 allow\n")
+		file:write("redistribute ip " .. prefix4 .. " le 32 allow\n")
 	end
 
 	file:write("redistribute local ip 0.0.0.0/0 deny\n")
