@@ -28,6 +28,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <libbabelhelper/babelhelper.h>
+#include <gluon-neighbours.h>
 
 #include <libubox/blobmsg_json.h>
 #include <libubus.h>
@@ -212,6 +213,84 @@ static struct json_object * get_babel_neighbours(void) {
 	babelhelper_readbabeldata(&bhelper_ctx, "dump", (void*)neighbours, handle_neighbour);
 
 	return(neighbours);
+}
+
+/*
+	babel rates a link by cost, where 96 is a perfect one and 65535 is
+	no link at all; batman-adv rates it by tq, where 255 is perfect and
+	0 is none. Scale the one onto the other so that a consumer reading
+	tq gets the same idea of the link from either mesh.
+*/
+static int cost_to_tq(int cost) {
+	if (cost <= 0 || cost >= 65535)
+		return 0;
+
+	int tq = 255 * 96 / cost;
+
+	return tq > 255 ? 255 : tq;
+}
+
+/*
+	The same neighbours again, keyed by MAC and rated in tq, which is
+	what gluon_neighbours_to_batadv() and everything downstream of it
+	expects. babel only ever names a neighbour by its link-local
+	address, so the MAC comes back out of that.
+*/
+static bool handle_neighbour_by_mac(char **data, void *obj) {
+	char mac[18];
+
+	if (!data[NEIGHBOUR] || !data[ADDRESS] || !data[IF])
+		return true;
+
+	if (!gluon_neighbours_mac_from_lladdr(data[ADDRESS], mac))
+		return true;
+
+	struct json_object *neigh = json_object_new_object();
+	if (!neigh)
+		return true;
+
+	if (data[COST])
+		json_object_object_add(neigh, "tq", json_object_new_int(cost_to_tq(atoi(data[COST]))));
+	if (data[RXCOST])
+		json_object_object_add(neigh, "rxcost", json_object_new_int(atoi(data[RXCOST])));
+	if (data[TXCOST])
+		json_object_object_add(neigh, "txcost", json_object_new_int(atoi(data[TXCOST])));
+	if (data[COST])
+		json_object_object_add(neigh, "cost", json_object_new_int(atoi(data[COST])));
+	if (data[REACH])
+		json_object_object_add(neigh, "reachability", json_object_new_double(strtod(data[REACH], NULL)));
+
+	json_object_object_add(neigh, "ip", json_object_new_string(data[ADDRESS]));
+	json_object_object_add(neigh, "ifname", json_object_new_string(data[IF]));
+
+	json_object_object_add((struct json_object *)obj, mac, neigh);
+
+	return true;
+}
+
+static struct json_object * get_babel_neighbours_batadv(void) {
+	struct json_object *by_mac = json_object_new_object();
+	if (!by_mac)
+		return NULL;
+
+	babelhelper_readbabeldata(&bhelper_ctx, "dump", (void*)by_mac, handle_neighbour_by_mac);
+
+	struct json_object *merged = json_object_new_object();
+	if (!merged) {
+		json_object_put(by_mac);
+		return NULL;
+	}
+
+	/* One source today, but the merge is what keeps this from
+	   clobbering what another daemon reported for the same
+	   neighbour once respondd puts the two together. */
+	gluon_neighbours_merge(merged, by_mac, "babel");
+	json_object_put(by_mac);
+
+	struct json_object *batadv = gluon_neighbours_to_batadv(merged);
+	json_object_put(merged);
+
+	return batadv;
 }
 
 static void blobmsg_handle_list(struct blob_attr *attr, int len, bool array, struct json_object *wireless, struct json_object *tunnel, struct json_object *other);
@@ -510,6 +589,13 @@ static struct json_object * respondd_provider_neighbours(void) {
 	struct json_object *babel = get_babel_neighbours();
 	if (babel)
 		json_object_object_add(ret, "babel", babel);
+
+	/* Reported the batman-adv way as well, so that the map and
+	   everything else that only ever learned to read that shape sees
+	   a babel mesh too - the same thing gluon-mesh-olsrd does. */
+	struct json_object *batadv = get_babel_neighbours_batadv();
+	if (batadv)
+		json_object_object_add(ret, "batadv", batadv);
 
 
 	return ret;
