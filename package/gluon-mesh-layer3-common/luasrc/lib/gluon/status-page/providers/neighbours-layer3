@@ -1,0 +1,51 @@
+#!/usr/bin/lua
+
+-- The neighbours of every mesh daemon on this node, keyed by MAC, which
+-- is the shape the status page reads. respondd already merges what the
+-- daemons see - see gluon-neighbours - so ask it rather than teach this
+-- one how to talk to each daemon in turn.
+
+local json = require 'jsonc'
+
+local function query()
+	local handle = io.popen(
+		"gluon-neighbour-info -d ::1 -p 1001 -r neighbours -c 1 -t 3 2>/dev/null")
+	if not handle then
+		return nil
+	end
+
+	local out = handle:read('*a')
+	handle:close()
+
+	return json.parse(out)
+end
+
+local function neighbours()
+	local out = {}
+
+	local data = query()
+	if not data or type(data.batadv) ~= 'table' then
+		return out
+	end
+
+	-- respondd reports one entry per local interface; the status page
+	-- looks the interface up per neighbour instead, so flatten them.
+	for _, iface in pairs(data.batadv) do
+		if type(iface.neighbours) == 'table' then
+			for mac, neigh in pairs(iface.neighbours) do
+				out[mac] = neigh
+			end
+		end
+	end
+
+	return out
+end
+
+io.write("Content-type: text/event-stream\n\n")
+io.flush()
+
+while true do
+	io.write("data: " .. json.stringify(neighbours()) .. "\n\n")
+	io.flush()
+	os.execute('sleep 10')
+end

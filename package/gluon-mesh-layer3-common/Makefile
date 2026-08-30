@@ -8,7 +8,7 @@ include ../gluon.mk
 
 define Package/gluon-mesh-layer3-common
   TITLE:=Layer3 common files
-  DEPENDS:=+gluon-core +gluon-mmfd +gluon-state-check +firewall4 +libgluonutil +libjson-c
+  DEPENDS:=+gluon-core +gluon-mmfd +gluon-state-check +firewall4 +libgluonutil +libjson-c +lua-jsonc +gluon-neighbour-info
 endef
 
 define Package/gluon-mesh-layer3-common/install
