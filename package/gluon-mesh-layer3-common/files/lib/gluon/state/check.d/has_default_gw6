@@ -1,0 +1,6 @@
+#!/bin/sh
+# The IPv6 counterpart of has_default_gw4, protocol-agnostic for the
+# same reason: on a hybrid node babel carries IPv6 and olsrd6 does not
+# run at all, so asking olsrd6 always reported no gateway.
+
+ip -6 route show default | grep -qv '^unreachable' || exit 1
