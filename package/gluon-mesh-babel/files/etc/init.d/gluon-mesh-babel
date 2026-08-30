@@ -5,6 +5,7 @@ PORT=33123
 
 DAEMON=/usr/sbin/babeld
 pidfile=/var/run/gluon-babeld.pid
+nodeipfile=/var/run/gluon-babeld.nodeip
 CONFIGFILE=/etc/gluon-babeld.conf
 BABELOPTSFILE=/tmp/addn-babelopts
 touch $BABELOPTSFILE
@@ -17,6 +18,7 @@ start_service() {
 	# when told to use an address the node does not have.
 	local nodeip
 	nodeip="$(uci -q get network.loopback.ip6addr | cut -d/ -f1)"
+	echo "$nodeip" > $nodeipfile
 
 	procd_open_instance
 	procd_set_param command $DAEMON
@@ -57,6 +59,14 @@ mesh_devices() {
 }
 
 reload_service() {
+	# The source address is only read at start time, and babeld keeps
+	# installing routes with an address the node no longer has once it is
+	# renumbered - so a changed node address needs a restart, not a reload.
+	if [ "$(uci -q get network.loopback.ip6addr | cut -d/ -f1)" != "$(cat $nodeipfile 2>/dev/null)" ]; then
+		restart
+		return
+	fi
+
 	waitforsocket
 
 	for i in $(mesh_devices)
@@ -89,6 +99,10 @@ service_started() {
 # make sure the init script does not finish until babeld is actually up.
 # unfortunately procd will still start multiple instances of the same script which is why waitforsocket is also run on reload
 	waitforsocket
+	# babeld is started with a dummy interface only, the real ones are handed
+	# to it over the socket - without this a restart leaves it meshing on
+	# nothing until some unrelated netifd event happens to fire the trigger
+	reload_service
 }
 stop_service(){
 	kill $(pgrep -P 1 babeld)
