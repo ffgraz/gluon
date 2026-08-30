@@ -1,0 +1,11 @@
+#!/bin/sh
+# Whether the mesh gives this node a way off itself, no matter which
+# daemon put the route there - olsrd on a node that meshes over olsr,
+# babel on one that does not. Asking a single daemon reported no gateway
+# on every node that was not running it.
+#
+# gluon keeps the uplink's own default in table 1, so the main table
+# holds the mesh default alone. babeld installs retracted routes as
+# unreachable, which is the absence of a gateway, not one.
+
+ip -4 route show default | grep -qv '^unreachable' || exit 1
