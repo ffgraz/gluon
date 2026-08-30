@@ -4,15 +4,20 @@ START=55
 
 USE_PROCD=1
 PROG=/usr/sbin/l3roamd
+nodeipfile=/var/run/l3roamd.nodeip
 
 echotol3roamd() {
 	local count=0
 	local line="$1"
+	local maxretries=10
 	while ! (echo -e "$line" | uc /var/run/l3roamd.sock >/dev/null 2>&1)
 	do
 		sleep 1
 		echo retrying to connect to l3roamd in PID $$, waited ${count}s >&2
 		count=$((count+1))
+		if [ $count -gt $maxretries ]; then
+			return 1
+		fi
 	done
 	return 0
 }
@@ -20,6 +25,14 @@ echotol3roamd() {
 
 
 reload_service() {
+	# The node address is only read at start time, and l3roamd binds its
+	# socket to it - once the node is renumbered every respawn dies with
+	# "bind socket to node-IP failed", forever. Restart it instead.
+	if [ "$(uci -q get network.loopback.ip6addr | cut -d/ -f1)" != "$(cat $nodeipfile 2>/dev/null)" ]; then
+		restart
+		return
+	fi
+
 	for i in $(gluon-list-mesh-interfaces)
 	do
 		echotol3roamd "add_meshif $i"
@@ -45,6 +58,7 @@ start_service () {
 	prefix4="$(lua -e 'prefix4 = require("gluon.site").prefix4() if prefix4 then print(" -p " .. prefix4) end')"
 	prefix6="$(lua -e 'print(" -p " .. require("gluon.site").prefix6())')"
 	localip="$(uci get network.loopback.ip6addr | cut -d/ -f1)"
+	echo "$localip" > $nodeipfile
 	roamingprefix="$(lua -e 'print(" -P " .. require("gluon.l3").node_client_prefix6())')"
 
 	/sbin/sysctl -w net.ipv6.neigh.default.gc_thresh1=2
