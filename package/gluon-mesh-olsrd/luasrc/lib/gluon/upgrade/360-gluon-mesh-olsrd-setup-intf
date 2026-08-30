@@ -223,7 +223,11 @@ for _, daemon in ipairs(daemons) do
 			target = 'ACCEPT',
 		})
 	else
-		-- olsrd is off, or this family is not ours to carry
+		-- olsrd is off, or this family is not ours to carry. Disabling
+		-- only keeps it from starting again, so stop the daemon too -
+		-- otherwise turning olsr off in the web interface leaves it
+		-- routing until the node is rebooted.
+		os.execute('/etc/init.d/' .. uci_name .. ' stop >/dev/null 2>&1')
 		os.execute('/etc/init.d/' .. uci_name .. ' disable')
 		uci:delete('firewall', fw_rule)
 	end
