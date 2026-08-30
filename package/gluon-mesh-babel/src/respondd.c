@@ -135,32 +135,57 @@ free:
 	return retval;
 }
 
-static void mesh_add_if(const char *ifname, struct json_object *wireless,
-		struct json_object *tunnel, struct json_object *other) {
-	char str_ip[INET6_ADDRSTRLEN];
+/*
+	network.mesh lists the MAC of every interface the node meshes over,
+	the way batman-adv and gluon-mesh-olsrd report it - a link-local
+	address there is not what any consumer reads, and it left babel
+	nodes looking like they had no mesh interfaces at all.
+*/
+static void mesh_add_if(const char *ifname, struct json_object *mesh) {
+	struct json_object *address = gluonutil_wrap_and_free_string(gluonutil_get_interface_address(ifname));
 
-	if (!get_linklocal_address(ifname, str_ip))
+	if (!address)
 		return;
-
-	struct json_object *address = json_object_new_string(str_ip);
 
 	/* In case of VLAN and bridge interfaces, we want the lower interface
 	 * to determine the interface type (but not for the interface address) */
 	char lowername[IF_NAMESIZE];
 	gluonutil_get_interface_lower(lowername, ifname);
 
+	const char *type;
 	switch(gluonutil_get_interface_type(lowername)) {
 	case GLUONUTIL_INTERFACE_TYPE_WIRELESS:
-		json_object_array_add(wireless, address);
+		type = "wireless";
+		break;
+
+	case GLUONUTIL_INTERFACE_TYPE_WIRED:
+		type = "wired";
 		break;
 
 	case GLUONUTIL_INTERFACE_TYPE_TUNNEL:
-		json_object_array_add(tunnel, address);
+		type = "tunnel";
 		break;
 
 	default:
-		json_object_array_add(other, address);
+		type = "other";
 	}
+
+	struct json_object *entry = json_object_object_get(mesh, ifname);
+	if (!entry) {
+		entry = json_object_new_object();
+		json_object_object_add(entry, "interfaces", json_object_new_object());
+		json_object_object_add(mesh, ifname, entry);
+	}
+
+	struct json_object *interfaces = json_object_object_get(entry, "interfaces");
+
+	struct json_object *list = json_object_object_get(interfaces, type);
+	if (!list) {
+		list = json_object_new_array();
+		json_object_object_add(interfaces, type, list);
+	}
+
+	json_object_array_add(list, address);
 }
 
 
@@ -230,6 +255,20 @@ static int cost_to_tq(int cost) {
 	return tq > 255 ? 255 : tq;
 }
 
+/** The address a node with this MAC announces itself under, or false */
+static bool neigh_global_address(const char *mac, char out[INET6_ADDRSTRLEN + 1]) {
+	char node_prefix_str[INET6_ADDRSTRLEN + 1];
+	struct in6_addr node_prefix = {};
+
+	if (!gluonutil_get_node_prefix6(&node_prefix))
+		return false;
+
+	if (!inet_ntop(AF_INET6, &(node_prefix.s6_addr), node_prefix_str, INET6_ADDRSTRLEN))
+		return false;
+
+	return babelhelper_generateip_str(out, mac, node_prefix_str);
+}
+
 /*
 	The same neighbours again, keyed by MAC and rated in tq, which is
 	what gluon_neighbours_to_batadv() and everything downstream of it
@@ -260,7 +299,18 @@ static bool handle_neighbour_by_mac(char **data, void *obj) {
 	if (data[REACH])
 		json_object_object_add(neigh, "reachability", json_object_new_double(strtod(data[REACH], NULL)));
 
-	json_object_object_add(neigh, "ip", json_object_new_string(data[ADDRESS]));
+	/*
+		babel names a neighbour by its link-local address, which says
+		nothing about the node behind it. The address that node is
+		reachable and announced under is the one derived from its MAC
+		and the site's node prefix, the same way this node derives its
+		own in get_addresses().
+	*/
+	char global[INET6_ADDRSTRLEN + 1] = {};
+	if (neigh_global_address(mac, global))
+		json_object_object_add(neigh, "ip", json_object_new_string(global));
+
+	json_object_object_add(neigh, "ll_addr", json_object_new_string(data[ADDRESS]));
 	json_object_object_add(neigh, "ifname", json_object_new_string(data[IF]));
 
 	json_object_object_add((struct json_object *)obj, mac, neigh);
@@ -293,9 +343,9 @@ static struct json_object * get_babel_neighbours_batadv(void) {
 	return batadv;
 }
 
-static void blobmsg_handle_list(struct blob_attr *attr, int len, bool array, struct json_object *wireless, struct json_object *tunnel, struct json_object *other);
+static void blobmsg_handle_list(struct blob_attr *attr, int len, bool array, struct json_object *mesh);
 
-static void blobmsg_handle_element(struct blob_attr *attr, bool head, char **ifname, char **proto, struct json_object *wireless, struct json_object *tunnel, struct json_object *other) {
+static void blobmsg_handle_element(struct blob_attr *attr, bool head, char **ifname, char **proto, struct json_object *mesh) {
 	void *data;
 
 	if (!blobmsg_check_attr(attr, false))
@@ -314,14 +364,14 @@ static void blobmsg_handle_element(struct blob_attr *attr, bool head, char **ifn
 			}
 			return;
 		case BLOBMSG_TYPE_ARRAY:
-			blobmsg_handle_list(data, blobmsg_data_len(attr), true, wireless, tunnel, other);
+			blobmsg_handle_list(data, blobmsg_data_len(attr), true, mesh);
 			return;
 		case BLOBMSG_TYPE_TABLE:
-			blobmsg_handle_list(data, blobmsg_data_len(attr), false, wireless, tunnel, other);
+			blobmsg_handle_list(data, blobmsg_data_len(attr), false, mesh);
 	}
 }
 
-static void blobmsg_handle_list(struct blob_attr *attr, int len, bool array, struct json_object *wireless, struct json_object *tunnel, struct json_object *other) {
+static void blobmsg_handle_list(struct blob_attr *attr, int len, bool array, struct json_object *mesh) {
 	struct blob_attr *pos;
 	int rem = len;
 
@@ -329,51 +379,36 @@ static void blobmsg_handle_list(struct blob_attr *attr, int len, bool array, str
 	char *proto = NULL;
 
 	__blob_for_each_attr(pos, attr, rem) {
-		blobmsg_handle_element(pos, array, &ifname, &proto, wireless, tunnel, other);
+		blobmsg_handle_element(pos, array, &ifname, &proto, mesh);
 	}
 
 	if (ifname && proto) {
-		if (!strncmp(proto, "gluon_mesh", 10)) {
-			mesh_add_if(ifname, wireless, tunnel, other);
+		/* A wired mesh interface runs the gluon_wired proto, and
+		   leaving it out here is what made a node meshing over
+		   ethernet report no mesh interface at all. */
+		if (!strcmp(proto, "gluon_mesh") || !strcmp(proto, "gluon_wired")) {
+			mesh_add_if(ifname, mesh);
 		}
 	}
 	free(ifname);
 	free(proto);
 }
 
-static void add_if_not_empty(struct json_object *obj, const char *key, struct json_object *val) {
-	if (json_object_array_length(val))
-		json_object_object_add(obj, key, val);
-	else
-		json_object_put(val);
-}
-
 static void receive_call_result_data(struct ubus_request *req, int type, struct blob_attr *msg) {
-	struct json_object *ret = json_object_new_object();
-	struct json_object *wireless = json_object_new_array();
-	struct json_object *tunnel = json_object_new_array();
-	struct json_object *other = json_object_new_array();
+	struct json_object *mesh = json_object_new_object();
 
-	if (!ret || !wireless || !tunnel || !other) {
-		json_object_put(wireless);
-		json_object_put(tunnel);
-		json_object_put(other);
-		json_object_put(ret);
+	if (!mesh)
 		return;
-	}
 
 	if (!msg) {
 		printf("empty message\n");
+		json_object_put(mesh);
 		return;
 	}
 
-	blobmsg_handle_list(blobmsg_data(msg), blobmsg_data_len(msg), false, wireless, tunnel, other);
+	blobmsg_handle_list(blobmsg_data(msg), blobmsg_data_len(msg), false, mesh);
 
-	add_if_not_empty(ret, "wireless", wireless);
-	add_if_not_empty(ret, "tunnel", tunnel);
-	add_if_not_empty(ret, "other", other);
-
-	*((struct json_object**)(req->priv)) = ret;
+	*((struct json_object**)(req->priv)) = mesh;
 }
 
 
@@ -406,13 +441,15 @@ end:
 	return ret;
 }
 
+/*
+	Keyed by interface name, like gluon-mesh-olsrd and batman-adv report
+	it, so that on a node running both daemons the two describe the same
+	interfaces instead of each inventing a mesh of its own.
+*/
 static struct json_object * get_mesh(void) {
-	struct json_object *ret = json_object_new_object();
-	struct json_object *interfaces = NULL;
-	interfaces = json_object_new_object();
-	json_object_object_add(interfaces, "interfaces", get_mesh_ifs());
-	json_object_object_add(ret, "babel", interfaces);
-	return ret;
+	struct json_object *mesh = get_mesh_ifs();
+
+	return mesh ? mesh : json_object_new_object();
 }
 
 static struct json_object * get_babeld_version(void) {
