@@ -37,22 +37,22 @@ FILES_MACD = $(SOURCES_MACD) macd/olsr-macd.h
 all: olsrd-debug olsrd.so libolsrdhelper.so olsr-respondd olsr-macd respondd.so
 
 respondd.so: libolsrdhelper.so $(FILES_RESPONDD)
-	$(CC) $(CFLAGS) $(LDFLAGS) -L. -shared -fPIC -fvisibility=hidden -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper
+	$(CC) $(CFLAGS) $(LDFLAGS) -L. -shared -fPIC -fvisibility=hidden -o $@ $(SOURCES_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper -lgluon-neighbours
 
 olsr-respondd: libolsrdhelper.so $(FILES_OLSR_RESPONDD)
-	$(CC) $(CFLAGS) $(LDFLAGS) -fPIE -L. -o $@ $(SOURCES_OLSR_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper
+	$(CC) $(CFLAGS) $(LDFLAGS) -fPIE -L. -o $@ $(SOURCES_OLSR_RESPONDD) $(LDLIBS) -lgluonutil -lolsrdhelper -lgluon-neighbours
 
 olsr-macd: $(FILES_MACD)
 	$(CC) $(CFLAGS) $(LDFLAGS) -fPIE -o $@ $(SOURCES_MACD) $(LDLIBS) -lubox
 
 libolsrdhelper.so: $(FILES_HELPER)
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(SOURCES_HELPER) $(LDLIBS) -lgluonutil -luclient
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(SOURCES_HELPER) $(LDLIBS) -lgluonutil -luclient -lgluon-neighbours
 
 olsrd.so: libolsrdhelper.so $(FILES_LUA)
-	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -L. -shared -fPIC -o $@ $(SOURCES_LUA) $(LDLIBS) -lgluonutil -lolsrdhelper -llua-jsonc
+	$(CC) $(LUA_CFLAGS) $(CFLAGS) $(LDFLAGS) -L. -shared -fPIC -o $@ $(SOURCES_LUA) $(LDLIBS) -lgluonutil -lolsrdhelper -llua-jsonc -lgluon-neighbours
 
 olsrd-debug: libolsrdhelper.so $(FILES_DEBUG)
-	$(CC) $(CFLAGS) $(LDFLAGS) -fPIE -L. -o $@ $(SOURCES_DEBUG) $(LDLIBS) -lgluonutil -lolsrdhelper
+	$(CC) $(CFLAGS) $(LDFLAGS) -fPIE -L. -o $@ $(SOURCES_DEBUG) $(LDLIBS) -lgluonutil -lolsrdhelper -lgluon-neighbours
 
 clean:
 	rm -f *.so *.o olsrd-debug olsr-respondd olsr-macd

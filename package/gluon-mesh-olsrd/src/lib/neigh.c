@@ -4,62 +4,11 @@
 #include "libolsrdhelper.h"
 #include "olsr-macd.h"
 
+#include <gluon-neighbours.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/*
-	Merges the neighbours of one daemon into out, which is keyed by the MAC of
-	the neighbour. Values seen by both daemons are averaged, the addresses are
-	kept per daemon (olsr4_ip / olsr6_ip).
-*/
-static void merge_neighs(json_object *out, json_object *neighs, const char *name) {
-	json_object_object_foreach(neighs, mac, neighbour_original) {
-		json_object *neighbour = json_object_object_get(out, mac);
-
-		if (!neighbour) {
-			neighbour = json_object_new_object();
-			json_object_object_add(out, mac, neighbour);
-		}
-
-		json_object_object_foreach(neighbour_original, key, new) {
-			json_object *cur = json_object_object_get(neighbour, key);
-
-			if (!strcmp(key, "tq") || !strcmp(key, "etx")) {
-				if (cur) {
-					json_object_object_add(
-						neighbour,
-						key,
-						json_object_new_double(
-							(json_object_get_double(cur) + json_object_get_double(new)) / 2
-						)
-					);
-				} else {
-					json_object_object_add(neighbour, key, json_object_get(new));
-				}
-			} else if (!strcmp(key, "ip")) {
-				char ip_key[32];
-				snprintf(ip_key, sizeof(ip_key), "%s_%s", name, key);
-
-				json_object_object_add(neighbour, ip_key, json_object_get(new));
-			} else if (!strcmp(key, "best")) {
-				if (cur) {
-					json_object_object_add(
-						neighbour,
-						"best",
-						json_object_new_boolean(
-							json_object_get_boolean(cur) || json_object_get_boolean(new)
-						)
-					);
-				} else {
-					json_object_object_add(neighbour, "best", json_object_get(new));
-				}
-			} else {
-				json_object_object_add(neighbour, key, json_object_get(new));
-			}
-		}
-	}
-}
 
 json_object * olsr_get_merged_neighs(void) {
 	struct olsr_info info;
@@ -85,7 +34,7 @@ json_object * olsr_get_merged_neighs(void) {
 			return NULL;
 		}
 
-		merge_neighs(out, neighs, olsr_name(ipv));
+		gluon_neighbours_merge(out, neighs, olsr_name(ipv));
 		json_object_put(neighs);
 	}
 
