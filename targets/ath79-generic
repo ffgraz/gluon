@@ -134,9 +134,13 @@ device('devolo-wifi-pro-1750x', 'devolo_dvl1750x', {
 
 -- D-Link
 
-device('d-link-dap-1330-a1', 'dlink_dap-1330-a1')
+device('d-link-dap-1330-a1', 'dlink_dap-1330-a1', {
+	class = 'tiny', -- 8M
+})
 
-device('d-link-dap-1365-a1', 'dlink_dap-1365-a1')
+device('d-link-dap-1365-a1', 'dlink_dap-1365-a1', {
+	class = 'tiny', -- 8M
+})
 
 device('d-link-dap-2660-a1', 'dlink_dap-2660-a1', {
 	factory_ext = '.img',
@@ -154,10 +158,12 @@ device('d-link-dap-2695-a1', 'dlink_dap-2695-a1', {
 })
 
 device('d-link-dir-505', 'dlink_dir-505', {
+	class = 'tiny', -- 8M
 	factory = false,
 })
 
 device('d-link-dir825b1', 'dlink_dir-825-b1', {
+	class = 'tiny', -- 8M
 	factory = false,
 })
 
@@ -218,6 +224,7 @@ device('joy-it-jt-or750i', 'joyit_jt-or750i', {
 
 -- lacks support for additional radios
 device('librerouter-v1', 'librerouter_librerouter-v1', {
+	class = 'tiny', -- 8M
 	factory = false,
 })
 
@@ -225,6 +232,7 @@ device('librerouter-v1', 'librerouter_librerouter-v1', {
 -- NETGEAR
 
 device('netgear-wndr3700', 'netgear_wndr3700', {
+	class = 'tiny', -- 8M
 	factory_ext = '.img',
 })
 
@@ -241,6 +249,7 @@ device('netgear-wndr3800ch', 'netgear_wndr3800ch', {
 })
 
 device('netgear-wnr2200-8m', 'netgear_wnr2200-8m', {
+	class = 'tiny', -- 8M
 	factory_ext = '.img',
 })
 
@@ -489,29 +498,38 @@ device('tp-link-archer-c60-v1', 'tplink_archer-c60-v1', {
 })
 
 device('tp-link-archer-d50-v1', 'tplink_archer-d50-v1', {
+	class = 'tiny', -- 8M
 	packages = ATH10K_PACKAGES_SMALLBUFFERS_QCA9880,
 	factory = false,
 	broken = true, -- 64M ath9k + ath10k & power LED not working
 })
 
-device('tp-link-cpe210-v1', 'tplink_cpe210-v1')
+device('tp-link-cpe210-v1', 'tplink_cpe210-v1', {
+	class = 'tiny', -- 8M
+})
 
-device('tp-link-cpe210-v2', 'tplink_cpe210-v2')
+device('tp-link-cpe210-v2', 'tplink_cpe210-v2', {
+	class = 'tiny', -- 8M
+})
 
-device('tp-link-cpe210-v3', 'tplink_cpe210-v3')
+device('tp-link-cpe210-v3', 'tplink_cpe210-v3', {
+	class = 'tiny', -- 8M
+})
 
-device('tp-link-cpe220-v3', 'tplink_cpe220-v3')
+device('tp-link-cpe220-v3', 'tplink_cpe220-v3', {
+	class = 'tiny', -- 8M
+})
 
 device('tp-link-cpe510-v1', 'tplink_cpe510-v1', {
-	class = 'p2p',
+	class = 'p2p-tiny', -- 8M, safeloader caps the fs partition at 4.5M
 })
 
 device('tp-link-cpe510-v2', 'tplink_cpe510-v2', {
-	class = 'p2p',
+	class = 'p2p-tiny', -- 8M, safeloader caps the fs partition at 4.5M
 })
 
 device('tp-link-cpe510-v3', 'tplink_cpe510-v3', {
-	class = 'p2p',
+	class = 'p2p-tiny', -- 8M, safeloader caps the fs partition at 4.5M
 })
 
 device('tp-link-cpe710-v1', 'tplink_cpe710-v1')
@@ -553,13 +571,21 @@ device('tp-link-tl-wr1043nd-v4', 'tplink_tl-wr1043nd-v4')
 
 device('tp-link-tl-wr1043n-v5', 'tplink_tl-wr1043n-v5')
 
-device('tp-link-tl-wr2543n-nd', 'tplink_tl-wr2543-v1')
+device('tp-link-tl-wr2543n-nd', 'tplink_tl-wr2543-v1', {
+	class = 'tiny', -- 8M
+})
 
-device('tp-link-wbs210-v1', 'tplink_wbs210-v1')
+device('tp-link-wbs210-v1', 'tplink_wbs210-v1', {
+	class = 'tiny', -- 8M
+})
 
-device('tp-link-wbs210-v2', 'tplink_wbs210-v2')
+device('tp-link-wbs210-v2', 'tplink_wbs210-v2', {
+	class = 'tiny', -- 8M
+})
 
-device('tp-link-wbs510-v1', 'tplink_wbs510-v1')
+device('tp-link-wbs510-v1', 'tplink_wbs510-v1', {
+	class = 'tiny', -- 8M
+})
 
 
 -- Ubiquiti
@@ -569,14 +595,19 @@ device('ubiquiti-nanobeam-ac-gen1-xc', 'ubnt_nanobeam-ac-xc', {
 })
 
 device('ubiquiti-nanostation-loco-m-xw', 'ubnt_nanostation-loco-m-xw', {
+	class = 'tiny', -- 8M
 	aliases = {
 		'ubiquiti-nanobeam-m5-xw',
 	},
 })
 
-device('ubiquiti-nanostation-m-xw', 'ubnt_nanostation-m-xw')
+device('ubiquiti-nanostation-m-xw', 'ubnt_nanostation-m-xw', {
+	class = 'tiny', -- 8M
+})
 
-device('ubiquiti-rocket-m-xm', 'ubnt_rocket-m')
+device('ubiquiti-rocket-m-xm', 'ubnt_rocket-m', {
+	class = 'tiny', -- 8M
+})
 
 device('ubiquiti-unifi-ac-lite', 'ubnt_unifiac-lite', {
 	factory = false,
@@ -605,6 +636,7 @@ device('ubiquiti-unifi-ac-pro', 'ubnt_unifiac-pro', {
 })
 
 device('ubiquiti-unifi-ap', 'ubnt_unifi-ap', {
+	class = 'tiny', -- 8M
 	aliases = {
 		'ubiquiti-unifi-ap-lr',
 	},
