@@ -2,55 +2,7 @@
 
 local uci = require('simple-uci').cursor()
 local site = require 'gluon.site'
-local util = require 'gluon.util'
-local wireless = require 'gluon.wireless'
 local olsrd = require 'gluon.olsrd'
-
-local mesh_interfaces = util.get_role_interfaces(uci, 'mesh')
-local uplink_interfaces = util.get_role_interfaces(uci, 'uplink')
-
-local intf = {
-	wired_mesh = {},
-	vpn_mesh = {},
-	radio_mesh = {},
-}
-
--- get all mesh radios and mesh lans and then add them to olsrd
-wireless.foreach_radio(uci, function(radio, _, _)
-	local radio_name = radio['.name']
-	if uci:get('network', 'mesh_' .. radio_name, 'proto') then
-		table.insert(intf.radio_mesh, 'mesh_' .. radio_name)
-	end
-end)
-
-if pcall(function() require 'gluon.mesh-vpn' end) then
-	local vpn_core = require 'gluon.mesh-vpn'
-
-	if vpn_core.enabled() then
-		-- mesh_vpn is a interface that has the right ifname
-		-- we can't use mesh-vpn (dash instead of underscore) since it's not a uci interface
-		table.insert(intf.vpn_mesh, 'mesh_vpn')
-	end
-end
-
-local has_uplink_mesh = false
-local has_other_mesh = false
-
-for _, i in pairs(mesh_interfaces) do
-	if util.contains(uplink_interfaces, i) then
-		has_uplink_mesh = true
-	else
-		has_other_mesh = true
-	end
-end
-
-if has_uplink_mesh then
-	table.insert(intf.wired_mesh, 'mesh_uplink')
-end
-
-if has_other_mesh then
-	table.insert(intf.wired_mesh, 'mesh_other')
-end
 
 --[[
 	olsrd runs one daemon per address family, each one is enabled by the
@@ -60,14 +12,17 @@ end
 	so they need a port of their own each.
 ]]
 --[[
-	olsrd only takes an interface that carries a routable address of its
-	family: get_ipv6_address() in olsrd skips loopback, link local and site
-	local scopes, so an interface with nothing but its fe80 address is
-	refused and never meshes.
-
-	The node address goes on every interface the IPv6 daemon is given, the
-	same one on all of them - that is what MID is for, and it keeps the
-	originator stable and unique no matter which link a neighbour meets us on.
+	Which interfaces the daemons mesh on is not decided here: netifd knows
+	which of them are up, and gluon-olsrd-sync-interfaces hands them over as
+	they come and go. All that is configured here is what an interface looks
+	like once it arrives, in InterfaceDefaults - an interface added over ubus
+	inherits exactly that section - and the empty Interface section the
+	runtime list is kept in.
+]]
+--[[
+	The IPv6 daemon meshes on the node address, which the same script puts on
+	every interface it hands over; IPv6Src points at it so olsrd picks that one
+	and not whatever else may show up on the interface.
 ]]
 local node_ip6 = uci:get('network', 'loopback', 'ip6addr')
 
@@ -99,6 +54,7 @@ for _, daemon in ipairs(daemons) do
 	local fw_rule = 'allow_olsr' .. daemon.ipv .. '_mesh'
 
 	uci:delete_all(uci_name, 'Interface')
+	uci:delete_all(uci_name, 'InterfaceDefaults')
 	uci:delete_all(uci_name, 'LoadPlugin')
 
 	if daemon.prefix then
@@ -147,22 +103,13 @@ for _, daemon in ipairs(daemons) do
 			})
 		end
 
-		for _, name in ipairs({ 'wired_mesh', 'vpn_mesh', 'radio_mesh' }) do
-			if #intf[name] > 0 then
-				uci:section(uci_name, 'Interface', name, {
-					interface = intf[name],
-					Mode = 'mesh', -- should be mode 'ether' but that appears broken for some reason
-					-- leaves olsrd no choice but the address we put there
-					IPv6Src = daemon.ipv == 6 and node_ip6 and (node_ip6 .. '/128') or nil,
-				})
+		uci:section(uci_name, 'InterfaceDefaults', nil, {
+			Mode = 'mesh', -- should be mode 'ether' but that appears broken for some reason
+			-- leaves olsrd no choice but the address we put there
+			IPv6Src = daemon.ipv == 6 and node_ip6 and (node_ip6 .. '/128') or nil,
+		})
 
-				if daemon.ipv == 6 and node_ip6 then
-					for _, iface in ipairs(intf[name]) do
-						uci:set('network', iface, 'ip6addr', node_ip6)
-					end
-				end
-			end
-		end
+		uci:section(uci_name, 'Interface', 'mesh')
 
 		uci:foreach(uci_name, 'userconfig', function(config)
 			local section_name = config['.name']
@@ -196,4 +143,3 @@ for _, daemon in ipairs(daemons) do
 end
 
 uci:save('firewall')
-uci:save('network')

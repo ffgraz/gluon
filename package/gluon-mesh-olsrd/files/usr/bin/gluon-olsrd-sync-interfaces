@@ -1,0 +1,103 @@
+#!/bin/sh
+
+# Runs the olsrd daemons on exactly the mesh interfaces netifd has up.
+#
+# olsrd takes interfaces over ubus, so one appearing or going away costs
+# neither a restart of the daemon nor the adjacencies it holds on all the
+# other interfaces. The same list is written to the uci state, which the init
+# script builds olsrd.conf from, so a daemon that gets restarted anyway comes
+# back on the interfaces it had.
+#
+# Called from the gluon_mesh protocol hooks, with the interface that is being
+# torn down as its argument, if there is one.
+
+# shellcheck disable=SC1091
+. /lib/functions.sh
+
+GONE="$1"
+
+DUMP="$(ubus call network.interface dump)"
+
+daemons=
+for daemon in olsrd olsrd6; do
+	[ -x "/etc/init.d/$daemon" ] || continue
+	"/etc/init.d/$daemon" enabled || continue
+
+	daemons="$daemons $daemon"
+done
+
+device_of() {
+	echo "$DUMP" | jsonfilter -e "@.interface[@.interface='$1'].device"
+}
+
+# gluon_wired meshes on a vxlan of its own, in an interface it spawns named
+# after itself, while the addresses are configured on the interface in uci
+config_of() {
+	if uci -q get "network.$1" > /dev/null; then
+		echo "$1"
+	else
+		echo "${1%_mesh}"
+	fi
+}
+
+# olsrd only takes an interface that carries a routable address of its family
+# - get_ipv6_address() skips loopback, link local and site local scopes, so an
+# interface with nothing but its fe80 address is refused and never meshes.
+#
+# The IPv6 daemon gets the node address on every one of them, the same one on
+# all: that is what MID is for, and it keeps the originator stable and unique
+# no matter which link a neighbour meets us on. IPv4 has one address per
+# interface, wherever the network configuration puts it.
+address_of() {
+	case "$1" in
+		olsrd6) uci -q get network.loopback.ip6addr ;;
+		*) uci -q get "network.$(config_of "$2").ipaddr" ;;
+	esac
+}
+
+ifname_call() {
+	ubus call "$1" "$2" "{\"ifname\":\"$3\"}" > /dev/null 2>&1
+
+	case "$?" in
+		0) ;;
+		4) ;; # no such object: the daemon is not running, the state will tell it when it starts
+		6) ;; # add: it has the interface already, del: it never had it
+		*) logger -t gluon-mesh-olsrd "$1 $2 $3 failed" ;;
+	esac
+}
+
+interfaces=
+
+for iface in $(echo "$DUMP" | jsonfilter -e "@.interface[@.proto='gluon_mesh' && @.up=true].interface"); do
+	[ "$iface" != "$GONE" ] || continue
+
+	device="$(device_of "$iface")"
+	[ -n "$device" ] || continue
+
+	for daemon in $daemons; do
+		address="$(address_of "$daemon" "$iface")"
+		[ -z "$address" ] || ip addr replace "$address" dev "$device"
+
+		ifname_call "$daemon" add_interface "$device"
+	done
+
+	interfaces="$interfaces $iface"
+done
+
+device=
+[ -z "$GONE" ] || device="$(device_of "$GONE")"
+
+if [ -n "$device" ]; then
+	for daemon in $daemons; do
+		ifname_call "$daemon" del_interface "$device"
+
+		address="$(address_of "$daemon" "$GONE")"
+		# the device is usually on its way out with the interface
+		[ -z "$address" ] || ip addr del "$address" dev "$device" 2>/dev/null
+	done
+fi
+
+# what the init script builds olsrd.conf from the next time a daemon starts
+for daemon in $daemons; do
+	uci_toggle_state "$daemon" mesh interface "${interfaces# }"
+done
