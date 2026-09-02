@@ -38,13 +38,14 @@ address_of() {
 			uci -q get network.loopback.ip6addr
 			;;
 		*)
-			address="$(uci -q get network.loopback.ipaddr)"
-			# what gluon leaves there until the node is given an address of
-			# its own is the loopback one, which olsrd must not mesh on
-			case "$address" in
-				127.*) ;;
-				*) echo "$address" ;;
-			esac
+			# the address on loopback that is not the loopback one, put
+			# there by 350-gluon-mesh-olsrd-node-address
+			for address in $(uci -q get network.loopback.ipaddr); do
+				case "$address" in
+					127.*) ;;
+					*) echo "${address%/*}"; return ;;
+				esac
+			done
 			;;
 	esac
 }

@@ -1,0 +1,72 @@
+#!/usr/bin/lua
+
+local site = require 'gluon.site'
+local sysconfig = require 'gluon.sysconfig'
+
+local uci = require('simple-uci').cursor()
+
+--[[
+	Both daemons mesh on a single address, the one the node is known by, and
+	take it off the loopback interface - see gluon-olsrd-sync-interfaces.
+	IPv6 has one there already; IPv4 is given one here, out of node_prefix4
+	where the site has one and out of prefix4 otherwise, numbered by the MAC
+	the node is identified by everywhere else so that the address is this
+	node's and stays this node's.
+
+	An address that is there already and is not the loopback one is left
+	alone - an operator who set one, or an earlier run of this, meant it.
+	Renumbering a node means deleting it first.
+]]
+
+local LOOPBACK4 = '127.0.0.1/8'
+
+local function configured_address()
+	for _, address in ipairs(uci:get_list('network', 'loopback', 'ipaddr')) do
+		if not address:match('^127%.') then
+			return address
+		end
+	end
+end
+
+local function generate_address()
+	local prefix = site.node_prefix4()
+	local range = prefix and site.node_prefix4_range()
+
+	prefix = prefix or site.prefix4()
+	if not prefix then
+		return
+	end
+
+	local a, b, c, d, plen = prefix:match('^(%d+)%.(%d+)%.(%d+)%.(%d+)/(%d+)$')
+	if not a then
+		return
+	end
+
+	-- the part of the prefix the nodes are numbered in
+	local host = tonumber(
+		(uci:get('network', 'loopback', 'macaddr') or sysconfig.primary_mac):gsub(':', ''):sub(-8), 16
+	) % 2 ^ (32 - (range or tonumber(plen)))
+
+	-- .0 is the prefix itself, .1 is where a gateway tends to sit
+	if host < 2 then
+		host = 2
+	end
+
+	local address = ((a * 256 + b) * 256 + c) * 256 + d + host
+
+	return string.format('%d.%d.%d.%d',
+		math.floor(address / 2 ^ 24) % 256,
+		math.floor(address / 2 ^ 16) % 256,
+		math.floor(address / 2 ^ 8) % 256,
+		address % 256)
+end
+
+if not configured_address() then
+	local address = generate_address()
+
+	if address then
+		uci:set_list('network', 'loopback', 'ipaddr', { LOOPBACK4, address .. '/32' })
+		uci:delete('network', 'loopback', 'netmask')
+		uci:save('network')
+	end
+end
