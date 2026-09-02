@@ -18,40 +18,34 @@ GONE="$1"
 
 DUMP="$(ubus call network.interface dump)"
 
-daemons=
-for daemon in olsrd olsrd6; do
-	[ -x "/etc/init.d/$daemon" ] || continue
-	"/etc/init.d/$daemon" enabled || continue
-
-	daemons="$daemons $daemon"
-done
-
 device_of() {
 	echo "$DUMP" | jsonfilter -e "@.interface[@.interface='$1'].device"
-}
-
-# gluon_wired meshes on a vxlan of its own, in an interface it spawns named
-# after itself, while the addresses are configured on the interface in uci
-config_of() {
-	if uci -q get "network.$1" > /dev/null; then
-		echo "$1"
-	else
-		echo "${1%_mesh}"
-	fi
 }
 
 # olsrd only takes an interface that carries a routable address of its family
 # - get_ipv6_address() skips loopback, link local and site local scopes, so an
 # interface with nothing but its fe80 address is refused and never meshes.
 #
-# The IPv6 daemon gets the node address on every one of them, the same one on
-# all: that is what MID is for, and it keeps the originator stable and unique
-# no matter which link a neighbour meets us on. IPv4 has one address per
-# interface, wherever the network configuration puts it.
+# Every interface gets the same address, the one the node is known by: olsrd
+# keys its link set by interface name rather than by the address it was heard
+# on, so nothing has to tell them apart, and MID is left with nothing to
+# advertise, which is the truth about a node that has one address.
 address_of() {
+	local address
+
 	case "$1" in
-		olsrd6) uci -q get network.loopback.ip6addr ;;
-		*) uci -q get "network.$(config_of "$2").ipaddr" ;;
+		olsrd6)
+			uci -q get network.loopback.ip6addr
+			;;
+		*)
+			address="$(uci -q get network.loopback.ipaddr)"
+			# what gluon leaves there until the node is given an address of
+			# its own is the loopback one, which olsrd must not mesh on
+			case "$address" in
+				127.*) ;;
+				*) echo "$address" ;;
+			esac
+			;;
 	esac
 }
 
@@ -66,6 +60,17 @@ ifname_call() {
 	esac
 }
 
+daemons=
+for daemon in olsrd olsrd6; do
+	[ -x "/etc/init.d/$daemon" ] || continue
+	"/etc/init.d/$daemon" enabled || continue
+
+	daemons="$daemons $daemon"
+
+	[ -n "$(address_of "$daemon")" ] ||
+		logger -t gluon-mesh-olsrd "$daemon has no address to mesh with, it will take no interface"
+done
+
 interfaces=
 
 for iface in $(echo "$DUMP" | jsonfilter -e "@.interface[@.proto='gluon_mesh' && @.up=true].interface"); do
@@ -75,7 +80,7 @@ for iface in $(echo "$DUMP" | jsonfilter -e "@.interface[@.proto='gluon_mesh' &&
 	[ -n "$device" ] || continue
 
 	for daemon in $daemons; do
-		address="$(address_of "$daemon" "$iface")"
+		address="$(address_of "$daemon")"
 		[ -z "$address" ] || ip addr replace "$address" dev "$device"
 
 		ifname_call "$daemon" add_interface "$device"
@@ -91,7 +96,7 @@ if [ -n "$device" ]; then
 	for daemon in $daemons; do
 		ifname_call "$daemon" del_interface "$device"
 
-		address="$(address_of "$daemon" "$GONE")"
+		address="$(address_of "$daemon")"
 		# the device is usually on its way out with the interface
 		[ -z "$address" ] || ip addr del "$address" dev "$device" 2>/dev/null
 	done
