@@ -2,14 +2,12 @@
 
 # Runs the olsrd daemons on exactly the mesh interfaces netifd has up.
 #
-# olsrd takes interfaces over ubus, so one appearing or going away costs
-# neither a restart of the daemon nor the adjacencies it holds on all the
-# other interfaces. The same list is written to the uci state, which the init
-# script builds olsrd.conf from, so a daemon that gets restarted anyway comes
-# back on the interfaces it had.
+# olsrd takes interfaces over ubus, this script hands them to olsr.
+# If the daemon is down the interfaces are also written to the uci state,
+# so if the daemon comes back on it's interfaces are the right ones.
 #
 # Called from the gluon_mesh protocol hooks, with the interface that is being
-# torn down as its argument, if there is one.
+# torn down as its argument, if there is one, otherwise no arguments.
 
 # shellcheck disable=SC1091
 . /lib/functions.sh
@@ -22,14 +20,8 @@ device_of() {
 	echo "$DUMP" | jsonfilter -e "@.interface[@.interface='$1'].device"
 }
 
-# olsrd only takes an interface that carries a routable address of its family
-# - get_ipv6_address() skips loopback, link local and site local scopes, so an
-# interface with nothing but its fe80 address is refused and never meshes.
-#
-# Every interface gets the same address, the one the node is known by: olsrd
-# keys its link set by interface name rather than by the address it was heard
-# on, so nothing has to tell them apart, and MID is left with nothing to
-# advertise, which is the truth about a node that has one address.
+# olsr requires a routable address on all it's interfaces
+# Get the address of the family that's required for the daemon
 address_of() {
 	local address
 
@@ -37,7 +29,7 @@ address_of() {
 		olsrd6)
 			uci -q get network.loopback.ip6addr
 			;;
-		*)
+		olsrd)
 			# the address on loopback that is not the loopback one, put
 			# there by 350-gluon-mesh-olsrd-node-address
 			for address in $(uci -q get network.loopback.ipaddr); do
@@ -46,6 +38,9 @@ address_of() {
 					*) echo "${address%/*}"; return ;;
 				esac
 			done
+			;;
+		*)
+			exit 2
 			;;
 	esac
 }
