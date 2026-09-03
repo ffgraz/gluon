@@ -1,0 +1,100 @@
+From: Maciej Krüger <mkg20001@gmail.com>
+Date: Thu, 3 Sep 2026 03:22:26 +0000
+Subject: mmfd, l3roamd: fix the build on openwrt-25.12
+
+CMake 4 refuses cmake_minimum_required below 3.5, and GCC 14 rejects the
+positional msghdr initializer in l3roamd's routemgr.c on musl. Both
+projects already carry the fixes in the ffgraz forks; until upstream
+tags them, apply them as package patches.
+
+diff --git a/net/l3roamd/patches/0001-raise-CMake-minimum-version.patch b/net/l3roamd/patches/0001-raise-CMake-minimum-version.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..bacf8a2bada53a11b8d08706f05d5bed532a5277
+--- /dev/null
++++ b/net/l3roamd/patches/0001-raise-CMake-minimum-version.patch
+@@ -0,0 +1,21 @@
++From 0e6588caa0c96520ed802857050e4025096fff52 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
++Date: Mon, 24 Aug 2026 03:21:54 +0200
++Subject: [PATCH] raise CMake minimum version
++
++CMake 4 removed compatibility with CMake < 3.5, so the build fails at
++cmake_minimum_required(VERSION 2.8.3).
++---
++ CMakeLists.txt | 2 +-
++ 1 file changed, 1 insertion(+), 1 deletion(-)
++
++diff --git a/CMakeLists.txt b/CMakeLists.txt
++index ea89942..34831c1 100644
++--- a/CMakeLists.txt
+++++ b/CMakeLists.txt
++@@ -1,4 +1,4 @@
++-cmake_minimum_required(VERSION 2.8.3)
+++cmake_minimum_required(VERSION 3.5)
++ project(L3ROAMD C)
++ 
++ INCLUDE(FindPkgConfig)
+diff --git a/net/l3roamd/patches/0002-use-designated-initializers-for-msghdr.patch b/net/l3roamd/patches/0002-use-designated-initializers-for-msghdr.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..c393bf06054e12726139ad600fc36506d61410da
+--- /dev/null
++++ b/net/l3roamd/patches/0002-use-designated-initializers-for-msghdr.patch
+@@ -0,0 +1,31 @@
++From 6559c7053bc23f278943c94c250430b10c888dae Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
++Date: Mon, 24 Aug 2026 03:21:54 +0200
++Subject: [PATCH] use designated initializers for msghdr
++
++The positional initializer assumes struct msghdr has exactly seven
++members in a fixed order, but musl places padding members between
++them, so NULL ends up initializing an int. GCC 14 rejects that with
++-Wint-conversion as an error.
++---
++ src/routemgr.c | 7 ++++++-
++ 1 file changed, 6 insertions(+), 1 deletion(-)
++
++diff --git a/src/routemgr.c b/src/routemgr.c
++index 117e4cb..6c4cb10 100644
++--- a/src/routemgr.c
+++++ b/src/routemgr.c
++@@ -620,7 +620,12 @@ void rtmgr_rtnl_talk(int fd, struct nlmsghdr *req) {
++ 	struct sockaddr_nl nladdr = {.nl_family = AF_NETLINK};
++ 
++ 	struct iovec iov = {req, 0};
++-	struct msghdr msg = {&nladdr, sizeof(nladdr), &iov, 1, NULL, 0, 0};
+++	struct msghdr msg = {
+++		.msg_name = &nladdr,
+++		.msg_namelen = sizeof(nladdr),
+++		.msg_iov = &iov,
+++		.msg_iovlen = 1,
+++	};
++ 
++ 	iov.iov_len = req->nlmsg_len;
++ 
+diff --git a/net/mmfd/patches/0001-raise-CMake-minimum-version.patch b/net/mmfd/patches/0001-raise-CMake-minimum-version.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..a3c2453c9b69a43dddeb1d26393d01363c8fad89
+--- /dev/null
++++ b/net/mmfd/patches/0001-raise-CMake-minimum-version.patch
+@@ -0,0 +1,21 @@
++From aa2ca24888bbe7a733c3d3fc725ec9cd205b7d58 Mon Sep 17 00:00:00 2001
++From: =?UTF-8?q?Maciej=20Kr=C3=BCger?= <mkg20001@gmail.com>
++Date: Mon, 24 Aug 2026 03:21:43 +0200
++Subject: [PATCH] raise CMake minimum version
++
++CMake 4 removed compatibility with CMake < 3.5, so the build fails at
++cmake_minimum_required(VERSION 2.8.3).
++---
++ CMakeLists.txt | 2 +-
++ 1 file changed, 1 insertion(+), 1 deletion(-)
++
++diff --git a/CMakeLists.txt b/CMakeLists.txt
++index 0a54029..f3a91e7 100644
++--- a/CMakeLists.txt
+++++ b/CMakeLists.txt
++@@ -1,4 +1,4 @@
++-cmake_minimum_required(VERSION 2.8.3)
+++cmake_minimum_required(VERSION 3.5)
++ project(MMFD C)
++ 
++ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
