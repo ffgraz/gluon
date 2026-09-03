@@ -165,12 +165,10 @@ static struct json_object * get_mesh_subifs(const char *ifname) {
 
 		globfree(&lower);
 
-		// TODO: add the device's own mac aswell
-		// not sure if we're handling this correctly and if it may make more sense
-		// to just query this
+		// TODO: add the device's own mac as well
 		mesh_add_subif(ifname, wireless, wired, tunnel, other);
 	} else if (globreturn == GLOB_NOMATCH) {
-		// this is already a lower interface, add directly
+		// already a lower interface
 		mesh_add_subif(ifname, wireless, wired, tunnel, other);
 	}
 
@@ -182,7 +180,7 @@ static struct json_object * get_mesh_subifs(const char *ifname) {
 	return ret;
 }
 
-/** Collects what one of the daemons has to say about itself */
+/** software entry of one daemon */
 static struct json_object * get_software(int ipv, const struct olsr_daemon_info *daemon,
 		struct json_object *n_addresses, struct json_object *n_interfaces) {
 	struct json_object *software = json_object_new_object();

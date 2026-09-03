@@ -49,11 +49,7 @@ const char *uclient_get_errmsg(int code) {
 }
 
 
-/*
-	Tearing the connection down makes uclient reset its state and hand us a
-	second eof, with data_eof cleared by then - so only the outcome we see
-	first counts, whatever follows would just overwrite it with a bogus error.
-*/
+/* only the first outcome counts, teardown hands us a second eof with data_eof cleared */
 static void request_done(struct uclient *cl, int err_code) {
 	struct uclient_data *d = uclient_data(cl);
 
@@ -128,12 +124,7 @@ static void header_done_cb(struct uclient *cl) {
 }
 
 
-/*
-	uclient only sets data_eof when it tracked the length of the body itself,
-	and it discards the Content-Length olsrd pads with spaces, so it reads
-	until the connection closes instead. Whether that was the whole body is
-	then ours to say.
-*/
+/* uclient drops olsrd's space padded Content-Length and never sets data_eof, so the body length is checked here */
 static void eof_cb(struct uclient *cl) {
 	struct uclient_data *d = uclient_data(cl);
 	bool complete = cl->data_eof || d->length < 0 || d->downloaded >= d->length;
@@ -209,7 +200,7 @@ char *curl_easy_escape(const char *string, int inlength)
 
 	size_t offset = 0;
 
-	// this isn't pretending like we're complying to any spec other than urlencode, thx
+	// urlencode, nothing more
 	int slashes = 0;
 
 	while (length--) {

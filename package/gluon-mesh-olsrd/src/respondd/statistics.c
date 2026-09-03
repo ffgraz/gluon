@@ -21,13 +21,10 @@
 #define TRAFFIC_INTERFACE "local-port"
 
 static void add_gateway(struct json_object *obj) {
-	// TODO: get gateway (like in state-check scripts)
-	// note: we can only specify ONE gateway so we'll have trouble with
-	// ipv4+ipv6 having different gateways
-	// { gateway: mac, gateway_tq: tq, gateway_nexthop: best_node_mac }
+	// TODO: gateway, gateway_tq, gateway_nexthop (one gateway only, v4 and v6 may differ)
 }
 
-/** Reads the interface counters of TRAFFIC_INTERFACE, returns 0 on success */
+/** counters of TRAFFIC_INTERFACE, 0 on success */
 static int rtnl_get_link(struct rtnl_link_stats64 **out) {
 	*out = NULL;
 

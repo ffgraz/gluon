@@ -93,10 +93,8 @@ function M.mac_to_ip(prefix, mac, firstbyte, secondbyte)
 end
 
 
--- IPv4 counterpart of mac_to_ip: the host part is the low bits of the MAC,
--- limited to the last `range` bits of the prefix when given. .0 and .1 are
--- skipped, one is the prefix itself and the other is where a gateway tends
--- to sit.
+-- IPv4 mac_to_ip: the host part is the low bits of the MAC, `range` bits
+-- when given. .0 and .1 are skipped.
 function M.mac_to_ip4(prefix, mac, range)
 	local a, b, c, d, plen = prefix:match('^(%d+)%.(%d+)%.(%d+)%.(%d+)/(%d+)$')
 	if not a then

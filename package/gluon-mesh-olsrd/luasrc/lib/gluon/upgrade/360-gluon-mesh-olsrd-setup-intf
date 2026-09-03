@@ -4,28 +4,15 @@ local uci = require('simple-uci').cursor()
 local site = require 'gluon.site'
 local olsrd = require 'gluon.olsrd'
 
---[[
-	olsrd runs one daemon per address family, each one is enabled by the
-	prefix of that family being set in the site configuration.
+-- one olsrd daemon per address family, enabled by the site prefix of that
+-- family, each with its own jsoninfo port (see libolsrdhelper)
+--
+-- interfaces are added over ubus by gluon-olsrd-sync-interfaces as they come
+-- and go, they inherit InterfaceDefaults; the Interface section holds the
+-- runtime list
 
-	Both daemons load jsoninfo, which gluon queries (see libolsrdhelper),
-	so they need a port of their own each.
-]]
---[[
-	Which interfaces the daemons mesh on is not decided here: netifd knows
-	which of them are up, and gluon-olsrd-sync-interfaces hands them over as
-	they come and go. All that is configured here is what an interface looks
-	like once it arrives, in InterfaceDefaults - an interface added over ubus
-	inherits exactly that section - and the empty Interface section the
-	runtime list is kept in.
-]]
---[[
-	The IPv6 daemon meshes on the node address, which the same script puts on
-	every interface it hands over; IPv6Src points at it so olsrd picks that one
-	and not whatever else may show up on the interface.
-]]
 local node_ip6 = uci:get('network', 'loopback', 'ip6addr')
--- gluon-mesh-layer3-common writes it with its prefix length, ffgraz-static-ip without
+-- strip the prefix length, if any
 node_ip6 = node_ip6 and node_ip6:match('^[^/]+')
 
 local daemons = {
@@ -37,7 +24,7 @@ local daemons = {
 		accept = '127.0.0.1',
 		jsoninfo_port = 9090,
 		txtinfo_port = 2006,
-		-- httpinfo has no known good IPv6 configuration, so it stays IPv4 only
+		-- httpinfo: IPv4 only
 		httpinfo_port = 1978,
 	},
 	{
@@ -107,7 +94,7 @@ for _, daemon in ipairs(daemons) do
 
 		uci:section(uci_name, 'InterfaceDefaults', nil, {
 			Mode = 'mesh', -- should be mode 'ether' but that appears broken for some reason
-			-- leaves olsrd no choice but the address we put there
+			-- olsrd6 meshes on the node address sync-interfaces puts on every interface
 			IPv6Src = daemon.ipv == 6 and node_ip6 and (node_ip6 .. '/128') or nil,
 		})
 
@@ -136,7 +123,7 @@ for _, daemon in ipairs(daemons) do
 			target = 'ACCEPT',
 		})
 	else
-		-- no prefix of this family in the site configuration
+		-- no prefix for this family
 		os.execute('/etc/init.d/' .. uci_name .. ' disable')
 		uci:delete('firewall', fw_rule)
 	end

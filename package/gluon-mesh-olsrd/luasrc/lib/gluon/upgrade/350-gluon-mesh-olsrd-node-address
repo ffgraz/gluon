@@ -6,10 +6,7 @@ local sysconfig = require 'gluon.sysconfig'
 
 local uci = require('simple-uci').cursor()
 
---[[
-        Give the loopback interface an IPv4 address.
-        Keeps the existing address, in case it was set manually.
-]]
+-- IPv4 address on loopback, an existing non-127 one is kept
 
 local LOOPBACK4 = '127.0.0.1/8'
 

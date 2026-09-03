@@ -8,11 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
-	Merges the neighbours of one daemon into out, which is keyed by the MAC of
-	the neighbour. Values seen by both daemons are averaged, the addresses are
-	kept per daemon (olsr4_ip / olsr6_ip).
-*/
+/* merges one daemon's neighbours into out (keyed by MAC), shared values averaged, addresses kept as <name>_ip */
 static void merge_neighs(json_object *out, json_object *neighs, const char *name) {
 	json_object_object_foreach(neighs, mac, neighbour_original) {
 		json_object *neighbour = json_object_object_get(out, mac);
@@ -131,11 +127,7 @@ struct json_object * olsr_get_neigh(int ipv) {
 	if (!links)
 		goto cleanup_resp;
 
-	/*
-		olsrd does not tell us which MAC the other side uses, but since macs
-		are the magic uuids in gluon we need them - olsr-macd watches the OLSR
-		traffic and knows.
-	*/
+	/* olsrd knows no MACs, olsr-macd does */
 	json_object *macs = socket_request_json(OLSR_MACD_SOCKET, "dump");
 	if (!macs)
 		goto cleanup_resp;
@@ -179,7 +171,7 @@ struct json_object * olsr_get_neigh(int ipv) {
 
 		json_object_object_add(neigh, "tq", json_object_new_double(255 * quality));
 
-		// a link that is not usable at all has no etx to speak of
+		// no etx for a dead link
 		if (quality > 0)
 			json_object_object_add(neigh, "etx", json_object_new_double(1 / quality));
 

@@ -9,11 +9,7 @@
 
 #include <stdbool.h>
 
-/*
-	olsrd runs one daemon per address family: olsrd for IPv4 and olsrd6 for
-	IPv6. Both speak the same jsoninfo API, each one on its own port, so
-	every query takes the address family it is meant for.
-*/
+/* one daemon per family, olsrd (IPv4) and olsrd6 (IPv6), each with its own jsoninfo port */
 #define OLSR_IPV4 4
 #define OLSR_IPV6 6
 
@@ -27,7 +23,7 @@ struct olsr_info {
 	struct olsr_daemon_info olsr6;
 };
 
-/** Status of the daemon of the given address family, NULL if unknown */
+/** daemon of the address family, NULL if unknown */
 static inline struct olsr_daemon_info * olsr_daemon(struct olsr_info *info, int ipv) {
 	switch (ipv) {
 	case OLSR_IPV4:
@@ -39,7 +35,7 @@ static inline struct olsr_daemon_info * olsr_daemon(struct olsr_info *info, int 
 	}
 }
 
-/** Name of the daemon of the given address family as used in respondd output */
+/** daemon name as used in respondd output */
 static inline const char * olsr_name(int ipv) {
 	return ipv == OLSR_IPV4 ? "olsr4" : "olsr6";
 }
@@ -51,15 +47,9 @@ int olsr_get_nodeinfo(int ipv, const char *path, json_object **out);
 struct json_object * olsr_get_neigh(int ipv);
 struct json_object * olsr_get_merged_neighs(void);
 
-// stuff that could be in a shared library named responddhelper
+// generic socket helpers
 
-/*
-	out is an optional parameter. If not set the raw fd will be returned.
-	Example:
-		int fd = socket_request("/var/run/mmfd.sock", "get_neighbours", NULL);
-		if (fd < 0) return NULL;
-		struct json_object * response = json_object_from_fd(fd);
-*/
+/* out is optional, without it the raw fd is returned */
 int socket_request(const char *path, const char *cmd, char **out);
 
 json_object * socket_request_json(const char *path, const char *cmd);

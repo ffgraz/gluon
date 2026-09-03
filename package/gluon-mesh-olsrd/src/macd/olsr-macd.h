@@ -4,8 +4,7 @@
 #pragma once
 
 /*
-	olsr-macd remembers which MAC an OLSR neighbour address was last seen
-	with and answers on this socket:
+	olsr-macd answers here:
 
 		dump                    -> { "<ifname>": { "<ip>": "<mac>" } }
 		resolve <ifname> <ip>   -> the MAC, or an empty line

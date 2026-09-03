@@ -1,7 +1,6 @@
 #!/bin/sh /etc/rc.common
 
-# olsrd starts at 65, we want to know the MACs of its neighbours from the
-# first packet on
+# before olsrd (65)
 START=64
 USE_PROCD=1
 

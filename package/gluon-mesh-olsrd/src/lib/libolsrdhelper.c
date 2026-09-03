@@ -16,7 +16,7 @@
 #include <sys/wait.h>
 #include <libubox/uloop.h>
 
-/* jsoninfo of olsrd (IPv4) and olsrd6 (IPv6), see 360-gluon-mesh-olsrd-setup-intf */
+/* jsoninfo ports, see 360-gluon-mesh-olsrd-setup-intf */
 #define BASE_URL_4 "http://127.0.0.1:9090"
 #define BASE_URL_6 "http://[::1]:9091"
 
@@ -93,7 +93,7 @@ static const char * olsr_base_url(int ipv) {
 	}
 }
 
-/** Runs cmd with the given NULL terminated arguments, true if it exited with 0 */
+/** execv cmd with the NULL terminated args, true if it exited 0 */
 static bool success_exit(const char *cmd, ...) {
 	pid_t pid = fork();
 
@@ -120,7 +120,7 @@ static bool success_exit(const char *cmd, ...) {
 		do {
 			i++;
 			args[i] = va_arg(val, char *);
-			// since this triggers AFTERWARDS, the trailing null still gets pushed
+			// copies the trailing NULL too
 		} while (args[i] != NULL);
 		va_end(val);
 
@@ -136,10 +136,7 @@ static bool success_exit(const char *cmd, ...) {
 	return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
-/*
-	olsrd is run for every address family the site has a prefix for:
-	prefix4 enables olsrd, prefix6 enables olsrd6.
-*/
+/* prefix4 enables olsrd, prefix6 enables olsrd6 */
 int olsr_get_info(struct olsr_info *out) {
 	json_object *site = gluonutil_load_site_config();
 	if (!site)
@@ -200,13 +197,7 @@ int olsr_get_nodeinfo(int ipv, const char *path, json_object **out) {
 	return 0;
 }
 
-/*
-	out is an optional parameter. If not set the raw fd will be returned.
-	Example:
-		int fd = socket_request("/var/run/mmfd.sock", "get_neighbours", NULL);
-		if (fd < 0) return NULL;
-		struct json_object * response = json_object_from_fd(fd);
-*/
+/* out is optional, without it the raw fd is returned */
 int socket_request(const char *path, const char *cmd, char **out) {
 	int fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0)
