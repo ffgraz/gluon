@@ -25,6 +25,8 @@ local olsrd = require 'gluon.olsrd'
 	and not whatever else may show up on the interface.
 ]]
 local node_ip6 = uci:get('network', 'loopback', 'ip6addr')
+-- gluon-mesh-layer3-common writes it with its prefix length, ffgraz-static-ip without
+node_ip6 = node_ip6 and node_ip6:match('^[^/]+')
 
 local daemons = {
 	{
