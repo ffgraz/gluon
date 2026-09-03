@@ -1,5 +1,6 @@
 #!/usr/bin/lua
 
+local iputil = require 'gluon.iputil'
 local site = require 'gluon.site'
 local sysconfig = require 'gluon.sysconfig'
 
@@ -37,35 +38,14 @@ local function generate_address()
 		return
 	end
 
-	local a, b, c, d, plen = prefix:match('^(%d+)%.(%d+)%.(%d+)%.(%d+)/(%d+)$')
-	if not a then
-		return
-	end
-
-	-- the part of the prefix the nodes are numbered in
-	local host = tonumber(
-		(uci:get('network', 'loopback', 'macaddr') or sysconfig.primary_mac):gsub(':', ''):sub(-8), 16
-	) % 2 ^ (32 - (range or tonumber(plen)))
-
-	-- .0 is the prefix itself, .1 is where a gateway tends to sit
-	if host < 2 then
-		host = 2
-	end
-
-	local address = ((a * 256 + b) * 256 + c) * 256 + d + host
-
-	return string.format('%d.%d.%d.%d',
-		math.floor(address / 2 ^ 24) % 256,
-		math.floor(address / 2 ^ 16) % 256,
-		math.floor(address / 2 ^ 8) % 256,
-		address % 256)
+	return iputil.mac_to_ip4(prefix, uci:get('network', 'loopback', 'macaddr') or sysconfig.primary_mac, range)
 end
 
 if not configured_address() then
 	local address = generate_address()
 
 	if address then
-		uci:set_list('network', 'loopback', 'ipaddr', { LOOPBACK4, address .. '/32' })
+		uci:set_list('network', 'loopback', 'ipaddr', { LOOPBACK4, address })
 		uci:delete('network', 'loopback', 'netmask')
 		uci:save('network')
 	end
