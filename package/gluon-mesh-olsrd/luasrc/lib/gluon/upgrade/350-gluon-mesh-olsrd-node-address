@@ -7,16 +7,8 @@ local sysconfig = require 'gluon.sysconfig'
 local uci = require('simple-uci').cursor()
 
 --[[
-	Both daemons mesh on a single address, the one the node is known by, and
-	take it off the loopback interface - see gluon-olsrd-sync-interfaces.
-	IPv6 has one there already; IPv4 is given one here, out of node_prefix4
-	where the site has one and out of prefix4 otherwise, numbered by the MAC
-	the node is identified by everywhere else so that the address is this
-	node's and stays this node's.
-
-	An address that is there already and is not the loopback one is left
-	alone - an operator who set one, or an earlier run of this, meant it.
-	Renumbering a node means deleting it first.
+        Give the loopback interface an IPv4 address.
+        Keeps the existing address, in case it was set manually.
 ]]
 
 local LOOPBACK4 = '127.0.0.1/8'
