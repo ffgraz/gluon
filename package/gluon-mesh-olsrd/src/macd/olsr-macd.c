@@ -2,14 +2,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
-	olsrd tells us the addresses of our neighbours, but never their MACs:
-	it reads OLSR packets from UDP sockets, so the link layer never reaches
-	it. Gluon identifies neighbours by MAC though.
-
-	This daemon listens to the OLSR traffic itself, on a packet socket that
-	only lets HELLOs and friends through, and remembers which MAC an address
-	was last seen with. Everyone else asks it over a unix socket instead of
-	guessing from the ARP/neighbour table.
+	Remembers the MAC each OLSR neighbour address was last seen with, read
+	off the OLSR traffic on a packet socket, and answers over a unix socket.
+	olsrd itself only sees UDP and knows no MACs.
 */
 
 #include "olsr-macd.h"
@@ -39,10 +34,10 @@
 /* port olsrd sends its packets to, see OlsrPort in 360-gluon-mesh-olsrd-setup-intf */
 #define OLSR_PORT 698
 
-/** How long an address is remembered after we last saw it */
+/** seconds an address is remembered */
 #define ENTRY_TIMEOUT 300
 
-/** Upper bound on remembered addresses, a mesh neighbourhood is small */
+/** upper bound on remembered addresses */
 #define MAX_ENTRIES 1024
 
 #define REQUEST_LEN 128
@@ -90,7 +85,7 @@ static void entries_expire(void) {
 	}
 }
 
-/** Remembers that addr was last seen coming from mac */
+/** addr was last seen from mac */
 static void entry_update(unsigned int ifindex, int family, const void *addr, const unsigned char *mac) {
 	for (struct entry *entry = entries; entry; entry = entry->next) {
 		if (entry->ifindex != ifindex || entry->family != family)
@@ -127,7 +122,7 @@ static void entry_update(unsigned int ifindex, int family, const void *addr, con
 	entry_count++;
 }
 
-/** Looks up the MAC an address was last seen with, NULL if we have not seen it */
+/** MAC of an address, NULL if unknown */
 static const char * entry_lookup(const char *ifname, const char *ip) {
 	unsigned int ifindex = if_nametoindex(ifname);
 	if (!ifindex)
@@ -156,7 +151,7 @@ static const char * entry_lookup(const char *ifname, const char *ip) {
 	return NULL;
 }
 
-/** Everything we know as { "<ifname>": { "<ip>": "<mac>" } } */
+/** { "<ifname>": { "<ip>": "<mac>" } } */
 static json_object * entries_dump(void) {
 	json_object *out = json_object_new_object();
 	if (!out)
@@ -209,14 +204,14 @@ static void handle_packet(struct uloop_fd *fd, unsigned int events) {
 		if (len < 0)
 			return;
 
-		/* our own packets tell us nothing about our neighbours */
+		/* skip our own packets */
 		if (from.sll_pkttype == PACKET_OUTGOING || from.sll_halen != ETH_ALEN)
 			continue;
 
 		if (len < (ssize_t)ETH_HLEN)
 			continue;
 
-		/* a raw socket hands us the ethernet header the filter matched on */
+		/* skip the ethernet header */
 		const unsigned char *packet = buf + ETH_HLEN;
 		ssize_t packet_len = len - ETH_HLEN;
 
@@ -238,10 +233,7 @@ static void handle_packet(struct uloop_fd *fd, unsigned int events) {
 	}
 }
 
-/*
-	Both filters expect a plain ethernet header, so VLAN tagged OLSR traffic
-	is not picked up - the same limitation olsrds own arprefresh plugin has.
-*/
+/* plain ethernet header only, no VLAN tags (same as olsrd's arprefresh) */
 static struct sock_filter filter_ipv4[] = {
 	{ BPF_LD  | BPF_H | BPF_ABS, 0, 0, 12 },          /* ethertype */
 	{ BPF_JMP | BPF_JEQ | BPF_K, 0, 8, ETH_P_IP },
@@ -267,12 +259,9 @@ static struct sock_filter filter_ipv6[] = {
 	{ BPF_RET | BPF_K, 0, 0, 0 },
 };
 
-/** Opens a packet socket that only passes OLSR traffic of one address family */
+/** packet socket for the OLSR traffic of one address family */
 static int packet_socket(int protocol, struct sock_filter *filter, unsigned short filter_len) {
-	/*
-		SOCK_RAW, not SOCK_DGRAM: the filters below read the ethernet header,
-		and the kernel only leaves it in place for the filter on a raw socket.
-	*/
+	/* SOCK_RAW keeps the ethernet header for the filter */
 	int fd = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(protocol));
 	if (fd < 0) {
 		perror("olsr-macd: packet socket");
@@ -296,9 +285,9 @@ static int packet_socket(int protocol, struct sock_filter *filter, unsigned shor
 /* --- unix socket --- */
 
 /*
-	Requests are a single line, answers are plain text:
+	one line requests, plain text answers:
 
-		dump                    -> json of everything we know
+		dump                    -> json of everything
 		resolve <ifname> <ip>   -> the MAC, or an empty line
 */
 static void handle_request(int fd) {
@@ -351,7 +340,7 @@ static void handle_connection(struct uloop_fd *fd, unsigned int events) {
 		if (client < 0)
 			return;
 
-		/* requests are tiny, a client that cannot send one is not worth waiting for */
+		/* no waiting for slow clients */
 		struct timeval timeout = { .tv_sec = 1 };
 		setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 

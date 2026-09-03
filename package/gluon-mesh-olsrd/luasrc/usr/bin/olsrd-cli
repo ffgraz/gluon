@@ -54,8 +54,7 @@ local function show_help()
 end
 
 local function cmd_err(msg, no_show_help)
-	-- since argv0 is at... well... 0... even though this is lua...
-	--- ...slice just returns arg without argv0 as the for starts at 1
+	-- slice drops arg[0]
 	printf('Error: Command "%s" %s', table.concat(slice(arg), ' '), msg)
 	if not no_show_help then
 		printf('')

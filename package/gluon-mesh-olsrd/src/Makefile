@@ -11,11 +11,11 @@ endif
 CFLAGS += $(shell pkg-config --cflags json-c)
 LDFLAGS += $(shell pkg-config --libs json-c)
 
-# libolsrdhelper, everything that talks to olsrd
+# libolsrdhelper, talks to olsrd
 SOURCES_HELPER = lib/libolsrdhelper.c lib/neigh.c lib/uclient.c
 FILES_HELPER = $(SOURCES_HELPER) lib/libolsrdhelper.h lib/uclient.h macd/olsr-macd.h
 
-# the respondd providers, shared by the plugin and the tools
+# respondd providers, shared by plugin and tools
 SOURCES_PROVIDERS = respondd/neighbours.c respondd/nodeinfo.c respondd/statistics.c
 FILES_PROVIDERS = $(SOURCES_PROVIDERS) respondd/providers.h
 
