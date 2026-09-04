@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import atexit
+import glob
 import shutil
 import asyncio
 import socket
@@ -34,6 +35,7 @@ SSH_PORT_BASE = 22000 + SLOT * 200
 SSH_KEY_FILE = 'id_ed25519.key'
 SSH_PUBKEY_FILE = SSH_KEY_FILE + '.pub'
 HOST_ID = 1
+GATEWAY_HOST_ID = 2  # MAC byte 3 of gateway VMs, disjoint from the nodes
 USE_CLIENT_TAP = False
 USE_NETNS = False
 
@@ -241,6 +243,36 @@ class Node():
             self.conn.close()
 
 
+class Gateway(Node):
+    """A NixOS VM declared in the scenario's ``<scenario>.nix``, booted
+    beside the nodes by :func:`start`. ``name`` is the attribute in that
+    file; its image is built with nix from the site config and package
+    list of the gluon image under test (see ``tests/nix``). It joins the
+    mesh through :func:`connect` like a node and is driven over ssh like
+    one; what it runs is up to the modules the .nix file imports.
+    """
+
+    def __init__(self, name):
+        super().__init__()
+        self.hostname = name
+        self.dbg = debug_print(initial_time, self.hostname)
+        self.image = None  # qcow2 in the nix store, set by start()
+        # Reached on the operational ssh port from the first boot.
+        self.configured = True
+
+    def addr(self, family=6):
+        """The gateway's address in the mesh: its first global address
+        that is not on the uplink."""
+        return self.succeed(
+            "ip -{} -o addr show scope global | grep -v ' {} ' | head -1"
+            " | awk '{{print $4}}' | cut -d/ -f1".format(family, GATEWAY_UPLINK))
+
+
+#: The gateway image names its NICs by the role in the MAC's last byte
+#: (tests/nix/gateway/base.nix): uplink, client, mesh1..
+GATEWAY_UPLINK = 'uplink'
+
+
 class MobileClient():
 
     max_id = 0
@@ -285,22 +317,37 @@ workdir = "./"
 
 async def gen_qemu_call(image, node):
 
-    imgdir = os.path.join(workdir, 'images')
-    if not os.path.exists(imgdir):
-        os.mkdir(imgdir)
+    extra = []
+    if isinstance(node, Gateway):
+        # The store image is read-only; snapshot=on keeps the writes in a
+        # temporary file, so no copy is needed.
+        drive = 'format=qcow2,snapshot=on,if=virtio,file=' + node.image
+        host_id = GATEWAY_HOST_ID
+        eth_driver = 'virtio-net-pci'
+        memory = '512'
+        # pynet's key, as a systemd credential the image installs for root
+        with open(os.path.join(workdir, 'ssh', SSH_PUBKEY_FILE)) as f:
+            extra = ['-smbios', 'type=11,value=io.systemd.credential:'
+                     'ssh.authorized_keys.root=' + f.read().strip()]
+    else:
+        imgdir = os.path.join(workdir, 'images')
+        if not os.path.exists(imgdir):
+            os.mkdir(imgdir)
 
-    imgfile = os.path.join(imgdir, '%02x.img' % node.id)
-    shutil.copyfile(image, imgfile)
+        imgfile = os.path.join(imgdir, '%02x.img' % node.id)
+        shutil.copyfile(image, imgfile)
+        drive = 'format=raw,file=' + imgfile
+        # TODO: machine identifier
+        host_id = HOST_ID
+        eth_driver = 'rtl8139'
+        memory = '256'
 
-    # TODO: machine identifier
-    host_id = HOST_ID
     nat_mac = "52:54:%02x:%02x:34:%02x" % (host_id, node.id, 1)
     client_mac = "52:54:%02x:%02x:34:%02x" % (host_id, node.id, 2)
 
     mesh_ifaces = []
     mesh_id = 1
 
-    eth_driver = 'rtl8139'
     # eth_driver = 'e1000'
     # eth_driver = 'pcnet' # driver is buggy
     # eth_driver = 'vmxnet3' # no driver in gluon
@@ -329,19 +376,24 @@ async def gen_qemu_call(image, node):
 
     if USE_CLIENT_TAP or node.client_tap:
         client_netdev = 'tap,id=hn2,script=no,downscript=no,ifname=%s' % node.if_client
+    elif isinstance(node, Gateway):
+        # No client NIC unless a tap was asked for: a user network there
+        # would advertise itself as a router into the gateway's bridge.
+        client_netdev = None
     else:
         # in config mode, the device is used for configuration with net 192.168.1.0/24
         client_netdev = 'user,id=hn2,hostfwd=tcp::' + str(ssh_port) + '-192.168.1.1:22,net=192.168.1.15/24'
 
     call = ['-nographic',
             '-enable-kvm',
-            '-m', '256',
+            '-m', memory,
 #            '-no-hpet',
 #            '-cpu', 'host',
             '-netdev', wan_netdev,
-            '-device', eth_driver + ',addr=0x06,netdev=hn1,id=nic1,mac=' + nat_mac,
-            '-netdev', client_netdev,
-            '-device', eth_driver + ',addr=0x05,netdev=hn2,id=nic2,mac=' + client_mac]
+            '-device', eth_driver + ',addr=0x06,netdev=hn1,id=nic1,mac=' + nat_mac]
+    if client_netdev:
+        call += ['-netdev', client_netdev,
+                 '-device', eth_driver + ',addr=0x05,netdev=hn2,id=nic2,mac=' + client_mac]
 
     # needed to boot combined-efi images, e.g. an OVMF firmware path
     bios = os.environ.get('GLUON_QEMU_BIOS')
@@ -349,8 +401,7 @@ async def gen_qemu_call(image, node):
         call += ['-bios', bios]
 
     # '-d', 'guest_errors', '-d', 'cpu_reset', '-gdb', 'tcp::' + str(3000 + node.id),
-    args = ['qemu-system-x86_64',
-            '-drive', 'format=raw,file=' + imgfile] + call + mesh_ifaces
+    args = ['qemu-system-x86_64', '-drive', drive] + call + mesh_ifaces + extra
 
     master, slave = os.openpty()
     ptydir = os.path.join(workdir, 'ptys')
@@ -436,6 +487,15 @@ async def configure_node(initial_time, node):
 
     if USE_CLIENT_TAP or node.client_tap:
         await configure_client_if(node)
+
+    if isinstance(node, Gateway):
+        # Nothing to configure: the image is complete. Its console is a
+        # NixOS one, so wait for ssh rather than a banner.
+        dbg('waiting for ssh')
+        async with Node.ssh_conn(node) as conn:
+            await ssh_call(conn, 'true')
+        dbg('gateway up')
+        return
 
     dbg('configuring node')
 
@@ -652,7 +712,15 @@ def start():
     global config_tasks
 
     for node in Node.all_nodes:
+        if isinstance(node, Gateway):
+            continue
         bathost_entries += "52:54:{host_id:02x}:{node.id:02x}:34:02 {node.hostname}\n".format(node=node, host_id=host_id)
+
+    gateways = [n for n in Node.all_nodes if isinstance(n, Gateway)]
+    if gateways:
+        images = build_gateway_images([g.hostname for g in gateways])
+        for g in gateways:
+            g.image = images[g.hostname]
 
     bathost_entries += "de:ad:be:ee:ff:01 mobile1\n"
 
@@ -667,6 +735,54 @@ def start():
         loop.run_until_complete(config_task)
 
     return loop
+
+def _fresh(path, than):
+    return os.path.exists(path) and os.path.getmtime(path) >= os.path.getmtime(than)
+
+
+def sidecars():
+    """Paths of the image's site config and package list, as run.py
+    caches them next to the image (``<image>.site.json``,
+    ``<image>.packages``); probed here when missing or older than the
+    image. ``GLUON_SITE_JSON`` and ``GLUON_PACKAGES`` override them."""
+    site = os.environ.get('GLUON_SITE_JSON', image + '.site.json')
+    packages = os.environ.get('GLUON_PACKAGES', image + '.packages')
+    if not (_fresh(site, image) and _fresh(packages, image)):
+        import run  # tests/run.py, next to this package on sys.path
+        run.probe_image(image, slot=SLOT)
+    return site, packages
+
+
+def build_gateway_images(names):
+    """nix-build the attributes of the scenario's ``<scenario>.nix``
+    (see tests/nix) and return ``{name: qcow2 path}``. nix caches, so a
+    rebuild with the same site and packages is instant."""
+    nixfile = os.path.splitext(os.path.abspath(sys.argv[0]))[0] + '.nix'
+    if not os.path.exists(nixfile):
+        raise Exception('the scenario declares a Gateway but has no ' + nixfile)
+    if shutil.which('nix-build') is None:
+        raise Exception('gateway images need nix-build on the host')
+
+    site, packages = sidecars()
+    nixdir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'nix')
+    images = {}
+    for name in names:
+        print('building gateway image %s from %s' % (name, nixfile), flush=True)
+        res = subprocess.run(
+            ['nix-build', nixdir, '-I', 'gluon=' + nixdir, '--no-out-link',
+             '--arg', 'test', nixfile, '--argstr', 'site', site,
+             '--argstr', 'packages', packages, '-A', name],
+            capture_output=True, text=True)
+        if res.returncode != 0:
+            raise Exception('building gateway image %s failed:\n%s'
+                            % (name, res.stderr[-4000:]))
+        out = res.stdout.strip().splitlines()[-1]
+        qcow2 = glob.glob(os.path.join(out, '*.qcow2'))
+        if not qcow2:
+            raise Exception('no qcow2 in %s; does the module build system.build.images.qemu?' % out)
+        images[name] = qcow2[0]
+    return images
+
 
 def discard_artifacts():
     """Remove the per-node image copies, ssh key and console symlinks.

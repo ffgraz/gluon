@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-from pynet import SLOT, Node, connect
+from pynet import SLOT, Node, Gateway, connect
 
 #: Routing protocols the rig knows how to drive.
 PROTOCOLS = ('batman-adv', 'babel', 'olsrd')
@@ -20,12 +20,14 @@ PROTOCOLS = ('batman-adv', 'babel', 'olsrd')
 #: registers mesh interfaces with "update-interval 300", so a route can
 #: take up to five minutes to propagate; the first route between two
 #: nodes was measured at ~325s, and olsrd is given the same headroom.
+#: olsrd is olsrd v1 as gluon-mesh-olsrd runs it: one daemon per address
+#: family, jsoninfo on 127.0.0.1:9090 and [::1]:9091.
 CONVERGENCE_TIMEOUT = {'batman-adv': 180, 'babel': 480, 'olsrd': 480}
 
 _DETECT = {
     'batman-adv': 'batctl',
     'babel': 'babeld',
-    'olsrd': 'olsrd2',
+    'olsrd': 'olsrd',
 }
 
 _proto = None
@@ -79,7 +81,7 @@ def wait_neighbours(node, count):
     cmds = {
         'batman-adv': '[ "$(batctl n -H | grep -c .)" -ge {} ]',
         'babel': '[ "$(echo dump | nc ::1 33123 | grep -c \'add neighbour\')" -ge {} ]',
-        'olsrd': '[ "$(echo \'nhdpinfo link\' | nc ::1 2009 | grep -c fe80)" -ge {} ]',
+        'olsrd': '[ "$(echo /links | nc ::1 9091 | grep -c remoteIP)" -ge {} ]',
     }
     node.wait_until_succeeds(cmds[proto(node)].format(count))
 
@@ -106,8 +108,29 @@ def wait_connected(frm, to):
             timeout)
     else:  # olsrd
         frm.wait_until_succeeds(
-            "echo 'olsrv2info routing' | nc ::1 2009 | grep -q '{}'".format(node_addr(to)),
+            "echo /routes | nc ::1 9091 | grep -q '{}'".format(node_addr(to)),
             timeout)
+
+
+def wait_default_route(node, family=6):
+    """Wait for a default route learned through the mesh: one in the
+    main table that does not point at the uplink. (An uplink's IPv6
+    default lives in table 1 anyway; its IPv4 one is skipped by name.)"""
+    node.wait_until_succeeds(
+        'ip -{} route show default | grep -v br-wan | grep -q default'.format(family),
+        CONVERGENCE_TIMEOUT[proto(node)])
+
+
+def wait_gateway(node, family=6):
+    """Wait until node has an internet gateway through the mesh. A
+    layer-3 node learns a default route from the routing protocol; a
+    batman-adv node is a bridge and does not route for itself (accept_ra
+    is off on br-client), it selects a batman-adv gateway instead."""
+    if proto(node) == 'batman-adv':
+        node.wait_until_succeeds('batctl gwl -H | grep -q .',
+                                 CONVERGENCE_TIMEOUT['batman-adv'])
+    else:
+        wait_default_route(node, family)
 
 
 def wait_all_connected(nodes):
@@ -345,3 +368,46 @@ class Client:
     def succeed(self, cmd):
         """Run a command in the client's network namespace."""
         return self._ns(cmd)
+
+    def wait_until_succeeds(self, cmd, timeout=180):
+        """Run a command in the namespace once a second until it works."""
+        self.at.dbg('client {}: waiting until "{}" succeeds'.format(self.netns, cmd))
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            res = subprocess.run('ip netns exec {} {}'.format(self.netns, cmd),
+                                 shell=True, capture_output=True, text=True)
+            if res.returncode == 0:
+                return res.stdout
+            time.sleep(1)
+        return self._ns(cmd)
+
+    def dhcp4(self, timeout=60):
+        """Get an IPv4 lease on the current tap and install it, with the
+        offered router as default. Done with scapy (already a test
+        dependency) rather than a DHCP client the host may not have."""
+        prog = (
+            'from scapy.all import *\n'
+            'import sys\n'
+            'conf.checkIPaddr = False\n'
+            'mac = {mac!r}\n'
+            'disc = (Ether(dst="ff:ff:ff:ff:ff:ff", src=mac)/IP(src="0.0.0.0", dst="255.255.255.255")'
+            '/UDP(sport=68, dport=67)/BOOTP(chaddr=mac2str(mac), xid=0x4242)'
+            '/DHCP(options=[("message-type", "discover"), "end"]))\n'
+            'offer = srp1(disc, iface={iface!r}, timeout={timeout}, verbose=0)\n'
+            'if offer is None: sys.exit("no DHCP offer")\n'
+            'opts = dict(o for o in offer[DHCP].options if isinstance(o, tuple))\n'
+            'req = (Ether(dst="ff:ff:ff:ff:ff:ff", src=mac)/IP(src="0.0.0.0", dst="255.255.255.255")'
+            '/UDP(sport=68, dport=67)/BOOTP(chaddr=mac2str(mac), xid=0x4242)'
+            '/DHCP(options=[("message-type", "request"), ("requested_addr", offer[BOOTP].yiaddr),'
+            ' ("server_id", opts["server_id"]), "end"]))\n'
+            'ack = srp1(req, iface={iface!r}, timeout={timeout}, verbose=0)\n'
+            'if ack is None: sys.exit("no DHCP ack")\n'
+            'import ipaddress\n'
+            'plen = ipaddress.IPv4Network("0.0.0.0/" + opts["subnet_mask"]).prefixlen\n'
+            'print(offer[BOOTP].yiaddr, plen, opts["router"])\n'
+        ).format(mac=self.mac, iface=self.at.if_client, timeout=timeout)
+        out = self._ns('{} -c {}'.format(sys.executable, shlex.quote(prog))).split()
+        addr, plen, router = out
+        self._ns('ip -4 addr replace {}/{} dev {}'.format(addr, plen, self.at.if_client))
+        self._ns('ip -4 route replace default via {} dev {}'.format(router, self.at.if_client))
+        return addr, router

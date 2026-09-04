@@ -79,23 +79,57 @@ def required_packages(path):
     return [{owner}] + declared
 
 
-def installed_packages(env, image):
-    """The packages the image has installed, from a '<image>.packages'
-    cache next to it, or by booting a node when that is missing or older
-    than the image."""
+def installed_packages(image):
+    """The packages the image has installed, from the '<image>.packages'
+    cache next to it, probed when that is missing or older than the
+    image."""
     cache = image + '.packages'
     if (os.path.exists(cache)
             and os.path.getmtime(cache) >= os.path.getmtime(image)):
-        with open(cache) as f:
-            tokens = f.read().split()
         print('using cached package list %s' % cache, flush=True)
-        return expand_package_names(tokens)
+    else:
+        probe_image(image)
+    with open(cache) as f:
+        return expand_package_names(f.read().split())
 
-    tokens = probe_packages(env)
-    with open(cache, 'w') as f:
-        f.write('\n'.join(tokens) + '\n')
-    print('cached package list to %s' % cache, flush=True)
-    return expand_package_names(tokens)
+
+def probe_image(image, slot=0):
+    """Boot one node and cache what the gateway images and the test
+    selection need next to the image: '<image>.packages' (one installed
+    package per line) and '<image>.site.json' (gluon-show-site)."""
+    print('probing image for installed packages and site config', flush=True)
+    workdir = os.path.join(BASE, 'run', '.probe%d' % slot)
+    shutil.rmtree(workdir, ignore_errors=True)
+    os.makedirs(workdir)
+    env = dict(os.environ, GLUON_IMAGE=image, PYNET_SLOT=str(slot),
+               PYTHONPATH=BASE + os.pathsep + os.environ.get('PYTHONPATH', ''))
+    result = subprocess.run(
+        [sys.executable, '-u', os.path.join(BASE, 'probe_packages.py')],
+        cwd=workdir, env=env, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        sys.exit('probing the image failed:\n'
+            + result.stdout[-2000:] + result.stderr[-2000:])
+
+    sections = {}
+    current = None
+    for line in result.stdout.splitlines():
+        match = re.match(r'--- (\w+) ---$', line)
+        if match:
+            current = sections.setdefault(match.group(1), [])
+        elif current is not None:
+            current.append(line)
+    if 'packages' not in sections or 'site' not in sections:
+        sys.exit('probe produced no package list or site config:\n'
+                 + result.stdout[-2000:])
+
+    packages = [l.strip() for l in sections['packages'] if l.strip()]
+    with open(image + '.packages', 'w') as f:
+        f.write('\n'.join(packages) + '\n')
+    with open(image + '.site.json', 'w') as f:
+        f.write('\n'.join(sections['site']) + '\n')
+    print('image has %d packages; cached to %s.{packages,site.json}'
+          % (len(packages), image), flush=True)
 
 
 def expand_package_names(tokens):
@@ -107,32 +141,6 @@ def expand_package_names(tokens):
             packages.add(token)
             packages.add(re.sub(r'-\d[^-]*(-r\d+)?$', '', token))
     return packages
-
-
-def probe_packages(env):
-    """Boot a node and report what it has installed."""
-    print('probing image for installed packages', flush=True)
-    workdir = os.path.join(BASE, 'run', '.probe')
-    shutil.rmtree(workdir, ignore_errors=True)
-    os.makedirs(workdir)
-    result = subprocess.run(
-        [sys.executable, '-u', os.path.join(BASE, 'probe_packages.py')],
-        cwd=workdir, env=dict(env, PYNET_SLOT='0'),
-        capture_output=True, text=True)
-
-    if result.returncode != 0:
-        sys.exit('probing the image failed:\n'
-            + result.stdout[-2000:] + result.stderr[-2000:])
-
-    lines = result.stdout.splitlines()
-    try:
-        marker = lines.index('--- packages ---')
-    except ValueError:
-        sys.exit('probe produced no package list:\n' + result.stdout[-2000:])
-
-    tokens = [line.strip() for line in lines[marker + 1:] if line.strip()]
-    print('image has %d packages' % len(tokens), flush=True)
-    return tokens
 
 
 def print_log(path, lines=200):
@@ -201,9 +209,14 @@ def main():
     if args.all:
         todo = [(os.path.splitext(os.path.basename(p))[0], p) for p in paths]
     else:
-        packages = installed_packages(env, image)
+        packages = installed_packages(image)
+        have_nix = shutil.which('nix-build') is not None
         for path in paths:
             name = os.path.splitext(os.path.basename(path))[0]
+            if os.path.exists(os.path.splitext(path)[0] + '.nix') and not have_nix:
+                print('~~~ %s: skipped (needs nix-build for its VM images)'
+                    % name, flush=True)
+                continue
             missing = [
                 alternatives for alternatives in required_packages(path)
                 if not alternatives & packages]

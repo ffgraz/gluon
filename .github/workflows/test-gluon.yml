@@ -65,12 +65,19 @@ jobs:
       - name: Allow KVM access
         run: sudo chmod 666 /dev/kvm
 
+      # Tests with a <test>.nix boot NixOS VMs built by nix (tests/nix)
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
       - name: Run mesh tests
         # Azure drops ICMP to the internet; QEMU's user networking answers
-        # pings to its own gateway address, so probe that instead.
+        # pings to its own gateway address, so probe that instead. PATH and
+        # NIX_PATH let root find nix-build.
         env:
           GLUON_TEST_V4_TARGET: 10.0.2.2
-        run: cd tests && sudo --preserve-env=GLUON_TEST_V4_TARGET python3 run.py -j 2 --image ../output/images/factory/gluon-ci-*-x86-64.img.gz
+        run: cd tests && sudo --preserve-env=GLUON_TEST_V4_TARGET,NIX_PATH,PATH python3 run.py -j 2 --image ../output/images/factory/gluon-ci-*-x86-64.img.gz
 
       - name: Archive node logs
         if: ${{ !cancelled() }}

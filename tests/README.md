@@ -18,6 +18,7 @@ Shared code lives here:
 - `meshlib.py` - topologies, protocol abstractions, attached clients,
     respondd and firewall helpers
 - `run.py` - selects and runs tests
+- `nix/` - NixOS gateway VMs a test can declare in a `<test>.nix`
 
 `docs/dev/tests.rst` has the rest: how tests are selected, how to run
 them, and the API reference generated from these modules.

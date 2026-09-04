@@ -108,8 +108,60 @@ pynet
   :members: add_mesh_link, uci_set, set_domain, execute, execute_in_background,
             succeed, wait_until_succeeds
 
+.. autoclass:: Gateway
+  :members: addr
+
 .. autofunction:: connect
 
 .. autofunction:: start
 
 .. autofunction:: finish
+
+Gateway VMs
+-----------
+
+A test can bring NixOS VMs into the network beside the nodes, for the
+things a mesh expects from the far side: a gateway that runs the mesh
+daemon, hands out the default route and NATs towards the internet. They
+are declared in a ``<test>.nix`` next to ``<test>.py``, an attrset of
+NixOS modules, one image per attribute::
+
+  { gateway = { imports = [ <gluon/gateway/olsrd> ]; }; }
+
+and used in the scenario as ``gw = Gateway('gateway')``, ``connect(gw, node)``.
+The modules live in ``tests/nix/gateway`` and ``<gluon/...>`` resolves
+there:
+
+``<gluon/gateway>``
+  picks the protocol modules matching the packages of the image under
+  test, several at once for an image with two mesh daemons.
+``<gluon/gateway/batman-adv>``
+  bat0 over the mesh links, bridged into ``br-client`` where the gateway
+  serves DHCPv4 (dnsmasq) and router advertisements (radvd) for the
+  mesh's clients.
+``<gluon/gateway/babel>``
+  babeld announcing the default route, IPv4 too when the site carries it
+  over babel.
+``<gluon/gateway/olsrd>``
+  olsrd v1 as gluon-mesh-olsrd runs it: one daemon per address family on
+  UDP 698, ``Mode mesh``, the default route as an HNA, jsoninfo on
+  9090/9091.
+
+Every image gets ``tests/nix/gateway/base.nix``: an uplink on QEMU's user
+network with NAT44 and NAT66 towards it (by interface, so any prefix can
+be used inside), root ssh with pynet's key passed as a systemd credential,
+a serial console with a root shell, and the NICs named by role (``uplink``,
+``client``, ``mesh1``..), the mesh ones wrapped in gluon's VXLAN unless the
+site sets ``mesh.vxlan = false``. Modules see the site
+config as the ``site`` argument and the image's package list as
+``packages``; ``config.gateway.meshDevices`` names the devices to run a
+daemon on, ``config.gateway.address4``/``address6`` the gateway's mesh
+addresses (the first free host of the node prefix, overridable).
+
+The images are built with ``nix-build`` when the scenario starts, from
+``<image>.site.json`` and ``<image>.packages``, which ``run.py`` caches
+next to the image by booting one node (a scenario run on its own does
+the same when they are missing). nix caches the result, so only the first
+run of a test on a new site pays for the build. Without ``nix-build`` on
+the host, ``run.py`` skips tests that have a ``.nix``. nixpkgs is taken
+from ``<nixpkgs>`` (``NIX_PATH``); the workflow installs a channel.
