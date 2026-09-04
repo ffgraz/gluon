@@ -81,7 +81,8 @@ def wait_neighbours(node, count):
     cmds = {
         'batman-adv': '[ "$(batctl n -H | grep -c .)" -ge {} ]',
         'babel': '[ "$(echo dump | nc ::1 33123 | grep -c \'add neighbour\')" -ge {} ]',
-        'olsrd': '[ "$(echo /links | nc ::1 9091 | grep -c remoteIP)" -ge {} ]',
+        # jsoninfo answers on one line, so count matches, not lines
+        'olsrd': '[ "$(echo /links | nc ::1 9091 | grep -o remoteIP | grep -c .)" -ge {} ]',
     }
     node.wait_until_succeeds(cmds[proto(node)].format(count))
 

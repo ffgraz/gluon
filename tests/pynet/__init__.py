@@ -35,9 +35,16 @@ SSH_PORT_BASE = 22000 + SLOT * 200
 SSH_KEY_FILE = 'id_ed25519.key'
 SSH_PUBKEY_FILE = SSH_KEY_FILE + '.pub'
 HOST_ID = 1
-GATEWAY_HOST_ID = 2  # MAC byte 3 of gateway VMs, disjoint from the nodes
+GATEWAY_HOST_ID = 2  # host byte of gateway VM MACs, disjoint from the nodes
 USE_CLIENT_TAP = False
 USE_NETNS = False
+
+
+def mac(host_id, node_id, role):
+    """52:54:<host>:<role>:34:<node>. The node id is the last byte because
+    gluon derives IPv4 node addresses from it; the role (1 WAN, 2 client,
+    0x0b.. mesh links) tells the guest's NICs apart."""
+    return '52:54:%02x:%02x:34:%02x' % (host_id, role, node_id)
 
 
 # Special thanks to:
@@ -212,7 +219,7 @@ class Node():
                 # client iface link local addr
                 ifname = self.node.if_client
                 host_id = HOST_ID
-                lladdr = "fe80::5054:%02xff:fe%02x:34%02x" % (host_id, self.node.id, 2)
+                lladdr = "fe80::5054:%02xff:fe%02x:34%02x" % (host_id, 2, self.node.id)
                 addr = lladdr + '%' + ifname
                 port = 22
             else:
@@ -268,9 +275,16 @@ class Gateway(Node):
             " | awk '{{print $4}}' | cut -d/ -f1".format(family, GATEWAY_UPLINK))
 
 
-#: The gateway image names its NICs by the role in the MAC's last byte
+#: The gateway image names its NICs by the role byte of the MAC
 #: (tests/nix/gateway/base.nix): uplink, client, mesh1..
 GATEWAY_UPLINK = 'uplink'
+
+#: IPv6 prefix of the gateway's uplink (QEMU user network). Not slirp's
+#: default fec0::/64, which the nodes carry on their own WAN and route
+#: as unreachable; the router at ::2 answers pings, and is as far as
+#: an IPv6 ping gets, since slirp does not proxy ICMPv6 beyond itself.
+GATEWAY_UPLINK_NET6 = 'fd00:1e57:6a7e::/64'
+GATEWAY_UPLINK_ROUTER6 = 'fd00:1e57:6a7e::2'
 
 
 class MobileClient():
@@ -342,8 +356,8 @@ async def gen_qemu_call(image, node):
         eth_driver = 'rtl8139'
         memory = '256'
 
-    nat_mac = "52:54:%02x:%02x:34:%02x" % (host_id, node.id, 1)
-    client_mac = "52:54:%02x:%02x:34:%02x" % (host_id, node.id, 2)
+    nat_mac = mac(host_id, node.id, 1)
+    client_mac = mac(host_id, node.id, 2)
 
     mesh_ifaces = []
     mesh_id = 1
@@ -362,8 +376,8 @@ async def gen_qemu_call(image, node):
             await wait_bash_cmd('while ! ss -tlp4n | grep ":' + str(port) + '" &>/dev/null; do sleep 1; done;')
 
         mesh_ifaces += [
-            '-device', (eth_driver + ',addr=0x%02x,netdev=mynet%d,id=m_nic%d,mac=' + \
-                "52:54:%02x:%02x:34:%02x") % (10 + mesh_id, mesh_id, mesh_id, host_id, node.id, 10 + mesh_id),
+            '-device', (eth_driver + ',addr=0x%02x,netdev=mynet%d,id=m_nic%d,mac=%s')
+                % (10 + mesh_id, mesh_id, mesh_id, mac(host_id, node.id, 10 + mesh_id)),
             '-netdev', 'socket,id=mynet%d,%s=:%d' % (mesh_id, conn_type, port)
         ]
 
@@ -373,6 +387,8 @@ async def gen_qemu_call(image, node):
     ssh_port_configured = SSH_PORT_BASE + 100 + node.id
 
     wan_netdev = 'user,id=hn1,hostfwd=tcp::' + str(ssh_port_configured) + '-10.0.2.15:22'
+    if isinstance(node, Gateway):
+        wan_netdev += ',ipv6-net=' + GATEWAY_UPLINK_NET6
 
     if USE_CLIENT_TAP or node.client_tap:
         client_netdev = 'tap,id=hn2,script=no,downscript=no,ifname=%s' % node.if_client
@@ -714,7 +730,7 @@ def start():
     for node in Node.all_nodes:
         if isinstance(node, Gateway):
             continue
-        bathost_entries += "52:54:{host_id:02x}:{node.id:02x}:34:02 {node.hostname}\n".format(node=node, host_id=host_id)
+        bathost_entries += "{} {}\n".format(mac(host_id, node.id, 2), node.hostname)
 
     gateways = [n for n in Node.all_nodes if isinstance(n, Gateway)]
     if gateways:

@@ -45,7 +45,7 @@ let
       }
       InterfaceDefaults {
         Mode "mesh"
-        ${lib.optionalString (fam == "6") ''IPv6Src "${cfg.address6}/128"''}
+        ${lib.optionalString (fam == "6") "IPv6Src ${cfg.address6}/128"}
       }
       Interface ${lib.concatMapStringsSep " " (d: ''"${d}"'') cfg.meshDevices} { }
     '';

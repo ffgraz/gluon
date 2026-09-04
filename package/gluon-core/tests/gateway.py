@@ -5,15 +5,10 @@ reaches the world through its NAT.
 
 Needs root (client taps) and nix on the host.
 """
-from pynet import start, finish
+from pynet import start, finish, GATEWAY_UPLINK_ROUTER6
 from meshlib import (
     Gateway, pair, connect, attach_client, proto, wait_neighbours,
     wait_gateway, Client, V4_TARGET)
-
-# Beyond the gateway lies QEMU's user network, which answers pings to its
-# own router address but does not proxy ICMPv6 any further; so that is
-# how far an IPv6 ping through the gateway's NAT66 can get.
-UPLINK_ROUTER6 = 'fec0::2'
 
 gw = Gateway('gateway')
 a, b = pair()
@@ -44,8 +39,9 @@ client = Client(b)
 client.move_to(b)
 client.wait_addr()
 client.wait_until_succeeds('ping -c 3 -W 2 ' + gw6)
-# Through the gateway's NAT66 to its uplink.
-client.wait_until_succeeds('ping -c 3 -W 2 ' + UPLINK_ROUTER6)
+# Through the gateway's NAT66 to the router on its uplink, which is as
+# far as an IPv6 ping gets (see GATEWAY_UPLINK_ROUTER6).
+client.wait_until_succeeds('ping -c 3 -W 2 ' + GATEWAY_UPLINK_ROUTER6)
 
 if p == 'batman-adv':
     # The gateway is the mesh's DHCPv4 server as well.

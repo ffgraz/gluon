@@ -14,7 +14,7 @@
 let
   g = import ./lib.nix { inherit lib; };
   cfg = config.gateway;
-  # NICs are named after the role pynet encodes in the last MAC byte
+  # NICs are named after the role pynet encodes in the MAC's fourth byte
   # (see the udev rules below); unused mesh ones just never appear.
   roles = {
     "01" = "uplink";
@@ -71,7 +71,7 @@ in
 
     services.udev.extraRules = lib.concatStrings (
       lib.mapAttrsToList (byte: name: ''
-        SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="52:54:??:??:34:${byte}", NAME="${name}"
+        SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="52:54:??:${byte}:34:??", NAME="${name}"
       '') roles
     );
 
