@@ -149,7 +149,10 @@ there:
 
 Every image gets ``tests/nix/gateway/base.nix``: an uplink on QEMU's user
 network with NAT44 and NAT66 towards it (by interface, so any prefix can
-be used inside), root ssh with pynet's key passed as a systemd credential,
+be used inside; the uplink's IPv6 prefix is ``pynet.GATEWAY_UPLINK_NET6``
+and its router at ``GATEWAY_UPLINK_ROUTER6`` is as far as an IPv6 ping
+gets, since the user network does not proxy ICMPv6 further), root ssh with
+pynet's key passed as a systemd credential,
 a serial console with a root shell, and the NICs named by role (``uplink``,
 ``client``, ``mesh1``..), the mesh ones wrapped in gluon's VXLAN unless the
 site sets ``mesh.vxlan = false``. Modules see the site
