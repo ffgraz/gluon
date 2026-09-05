@@ -126,13 +126,6 @@ local function load_file(path)
 	f()
 end
 
--- Remove includes of previously installed rule files
-uci:foreach('firewall', 'include', function(s)
-	if s['.name']:match('^gluon_firewall_') then
-		uci:delete('firewall', s['.name'])
-	end
-end)
-
 for _, path in ipairs(glob.glob('/lib/gluon/nftables/*.lua', 0) or {}) do
 	load_file(path)
 end
