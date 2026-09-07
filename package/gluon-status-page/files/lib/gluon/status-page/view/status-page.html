@@ -196,10 +196,16 @@
 								string.format(' (%s)', nodeinfo.software.autoupdater.branch)
 						%></dd>
 					<%- end %>
-					<% if nodeinfo.software['batman-adv'] then -%>
+					<% if nodeinfo.software['batman-adv'] or nodeinfo.software.olsr4 or nodeinfo.software.olsr6 then -%>
 						<dt><%:Mesh protocol%></dt>
 						<% if nodeinfo.software['batman-adv'] then -%>
 						<dd>batman-adv <%| nodeinfo.software['batman-adv'].version %> (compat<%| nodeinfo.software['batman-adv'].compat %>)</dd>
+						<%- end %>
+						<% if nodeinfo.software.olsr4 then -%>
+						<dd>OLSR IPv4 <%| nodeinfo.software.olsr4.version %> (<%:running%>: <%| translate(nodeinfo.software.olsr4.running and 'yes' or 'no') %>)</dd>
+						<%- end %>
+						<% if nodeinfo.software.olsr6 then -%>
+						<dd>OLSR IPv6 <%| nodeinfo.software.olsr6.version %> (<%:running%>: <%| translate(nodeinfo.software.olsr6.running and 'yes' or 'no') %>)</dd>
 						<%- end %>
 					<%- end %>
 				</dl>
