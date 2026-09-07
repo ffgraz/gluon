@@ -125,7 +125,6 @@ for _, daemon in ipairs(daemons) do
 	else
 		-- no prefix for this family
 		os.execute('/etc/init.d/' .. uci_name .. ' disable')
-		uci:delete('firewall', fw_rule)
 	end
 
 	uci:save(uci_name)
