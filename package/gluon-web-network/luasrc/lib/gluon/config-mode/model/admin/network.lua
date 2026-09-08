@@ -117,8 +117,18 @@ uci:foreach('gluon', 'interface', function(config)
 	ifaces:value('mesh', 'Mesh')
 	ifaces:value('client', 'Client')
 	ifaces:value('private', 'Private')
+	ifaces:value('exposed', 'Exposed')
 	ifaces:exclusive('uplink', 'client')
 	ifaces:exclusive('mesh', 'client')
+
+	-- A private or exposed interface belongs to that network and to nothing
+	-- else: each is a bridge of its own, so an interface in one of them cannot
+	-- carry the mesh, the uplink or the client network as well.
+	for _, role in ipairs({ 'uplink', 'mesh', 'client' }) do
+		ifaces:exclusive('private', role)
+		ifaces:exclusive('exposed', role)
+	end
+	ifaces:exclusive('private', 'exposed')
 
 	ifaces.default = config.role
 
