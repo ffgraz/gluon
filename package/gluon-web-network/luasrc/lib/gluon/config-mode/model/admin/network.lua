@@ -118,17 +118,27 @@ uci:foreach('gluon', 'interface', function(config)
 	ifaces:value('client', 'Client')
 	ifaces:value('private', 'Private')
 	ifaces:value('exposed', 'Exposed')
+	ifaces:value('link', 'Link')
 	ifaces:exclusive('uplink', 'client')
 	ifaces:exclusive('mesh', 'client')
 
-	-- A private or exposed interface belongs to that network and to nothing
-	-- else: each is a bridge of its own, so an interface in one of them cannot
-	-- carry the mesh, the uplink or the client network as well.
-	for _, role in ipairs({ 'uplink', 'mesh', 'client' }) do
-		ifaces:exclusive('private', role)
-		ifaces:exclusive('exposed', role)
+	-- A private, exposed or link interface belongs to that network and to
+	-- nothing else: each is a bridge of its own, so an interface in one of them
+	-- cannot carry the mesh, the uplink or the client network as well. A link
+	-- meshes like a mesh port does, but on a bridge of its own, because the
+	-- mesh role puts every wired port into one bridge and its /30 would then
+	-- span all of them.
+	local own = { 'private', 'exposed', 'link' }
+
+	for i, role in ipairs(own) do
+		for _, other in ipairs({ 'uplink', 'mesh', 'client' }) do
+			ifaces:exclusive(role, other)
+		end
+
+		for j = i + 1, #own do
+			ifaces:exclusive(role, own[j])
+		end
 	end
-	ifaces:exclusive('private', 'exposed')
 
 	ifaces.default = config.role
 
