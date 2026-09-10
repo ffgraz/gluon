@@ -113,9 +113,28 @@ local function get_htmode(radio)
 	return htmode .. last_width
 end
 
-local function configure_mesh(radio, index, mesh_config)
+-- The site can ask for the radio's channel to be part of the mesh id, so
+-- that nodes meshing on different channels stay apart. set_channels() has
+-- already written the channel this radio ends up on.
+local function get_mesh_id(radio, config, mesh_config)
+	if not config.include_channel_in_id(false) then
+		return mesh_config.id
+	end
+
+	local channel = uci:get('wireless', radio['.name'], 'channel')
+	if not channel or channel == 'auto' then
+		-- the real channel is probed at runtime, so the id can only
+		-- carry the one the site asks for
+		channel = config.channel()
+	end
+
+	return string.format(mesh_config.id, channel)
+end
+
+local function configure_mesh(radio, index, config)
 	local radio_name = radio['.name']
 	local name = 'mesh_' .. radio_name
+	local mesh_config = config.mesh()
 
 	local macfilter = uci:get('wireless', name, 'macfilter')
 	local maclist = uci:get('wireless', name, 'maclist')
@@ -139,7 +158,7 @@ local function configure_mesh(radio, index, mesh_config)
 		device = radio_name,
 		network = name,
 		mode = 'mesh',
-		mesh_id = mesh_config.id,
+		mesh_id = get_mesh_id(radio, config, mesh_config),
 		mesh_fwding = false,
 		mesh_nolearn = true,
 		macaddr = macaddr,
@@ -277,11 +296,11 @@ wireless.foreach_radio(uci, function(radio, index, config)
 	if band == '2g' then
 		uci:set('wireless', radio_name, 'legacy_rates', false)
 		if enable_mesh then
-			configure_mesh(radio, index, config.mesh())
+			configure_mesh(radio, index, config)
 		end
 	elseif band == '6g' then
 		if enable_mesh then
-			configure_mesh(radio, index, config.mesh())
+			configure_mesh(radio, index, config)
 		end
 	elseif band == '5g' then
 		if wireless.is_outdoor(uci) then
@@ -291,7 +310,7 @@ wireless.foreach_radio(uci, function(radio, index, config)
 			uci:delete('wireless', radio_name, 'country3')
 
 			if enable_mesh then
-				configure_mesh(radio, index, config.mesh())
+				configure_mesh(radio, index, config)
 			end
 		end
 	end
