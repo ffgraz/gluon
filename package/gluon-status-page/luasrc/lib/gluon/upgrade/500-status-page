@@ -19,7 +19,16 @@ uci:section('uhttpd', 'uhttpd', 'main', {
 uci:save('uhttpd')
 
 
-for _, zone in ipairs({'mesh', 'loc_client'}) do
+--[[
+	wan as well as the mesh and the client network: a node is often reached
+	over its uplink and nowhere else - on a bench, behind someone's router, or
+	while the mesh side is exactly what is being debugged - and the status page
+	being unreachable then is the moment it was wanted most.
+
+	The same reasoning 300-firewall-rules already applies to ssh, which it
+	opens from wan for the same reason.
+]]
+for _, zone in ipairs({'mesh', 'loc_client', 'wan'}) do
 	uci:section('firewall', 'rule', zone .. '_http', {
 		src = zone,
 		dest_port = '80',
