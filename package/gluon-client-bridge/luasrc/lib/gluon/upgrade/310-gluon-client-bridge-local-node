@@ -22,8 +22,15 @@ uci:section('network', 'device', 'local_node_dev', {
 local ip4, ip6
 
 if next_node.ip4 then
-	local plen = site.prefix4():match('/%d+$')
-	ip4 = next_node.ip4 .. plen
+	-- The netmask has to describe the network clients are actually on, which is
+	-- the range ddhcpd hands out wherever that differs from the mesh prefix.
+	-- Taking it from prefix4 puts a connected route for the whole mesh prefix on
+	-- local-node, and that swallows node-to-node traffic with no more specific
+	-- route - the v6 side avoids this by using /128. Resolved like
+	-- ffgraz-ddhcpd's block_network, and check_site guarantees prefix4 is set
+	-- here, so the fallback chain always yields a prefix.
+	local network = site.ddhcpd.range(site.prefix4_ddhcpd(site.prefix4()))
+	ip4 = next_node.ip4 .. network:match('/%d+$')
 end
 
 if next_node.ip6 then
