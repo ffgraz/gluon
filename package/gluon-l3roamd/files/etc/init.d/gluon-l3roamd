@@ -55,7 +55,17 @@ start_service () {
 		[ "$(ifstatus local_node | jsonfilter -e '@.up')" = 'true' ] && echo ' -i local-node'
 	)
 
-	prefix4="$(lua -e 'prefix4 = require("gluon.site").prefix4() if prefix4 then print(" -p " .. prefix4) end')"
+	# l3roamd claims this prefix on l3roam0 to pick up traffic for roaming
+	# clients, so it has to be the network clients are actually numbered from.
+	# Where ddhcpd serves a range other than the mesh prefix, node addresses sit
+	# inside prefix4 but outside that range, and claiming prefix4 swallows
+	# node-to-node traffic that has no more specific route. Resolved exactly
+	# like ffgraz-ddhcpd's block_network so the two cannot disagree.
+	prefix4="$(lua -e '
+local site = require("gluon.site")
+local prefix4 = site.ddhcpd.range(site.prefix4_ddhcpd(site.prefix4()))
+if prefix4 then print(" -p " .. prefix4) end
+')"
 	prefix6="$(lua -e 'print(" -p " .. require("gluon.site").prefix6())')"
 	localip="$(uci get network.loopback.ip6addr | cut -d/ -f1)"
 	echo "$localip" > $nodeipfile
