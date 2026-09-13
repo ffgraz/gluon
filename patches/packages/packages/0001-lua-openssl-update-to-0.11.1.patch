@@ -1,0 +1,94 @@
+From e18ae85b3f97ed2608ade7fcc64597153d93ca87 Mon Sep 17 00:00:00 2001
+From: Amnon Paz <pazamnon@gmail.com>
+Date: Sat, 25 Apr 2026 11:42:54 +0300
+Subject: [PATCH 1/2] lua-openssl: update to 0.11.1
+
+Update Makefile with the version
+Remove LuaJIT fix patch - No longer needed
+Add "ts-time-cb-signature" patch - Fixes build on various platforms
+
+Signed-off-by: Amnon Paz <pazamnon@gmail.com>
+(cherry picked from commit b1a49e6ca32515f914976dc548bc573158486873)
+---
+ lang/lua/lua-openssl/Makefile                 |  4 +--
+ .../patches/0001-Fix-time-cb-signature.patch  | 29 +++++++++++++++++++
+ .../lua-openssl/patches/010-no-luajit.patch   | 14 ---------
+ 3 files changed, 31 insertions(+), 16 deletions(-)
+ create mode 100644 lang/lua/lua-openssl/patches/0001-Fix-time-cb-signature.patch
+ delete mode 100644 lang/lua/lua-openssl/patches/010-no-luajit.patch
+
+diff --git a/lang/lua/lua-openssl/Makefile b/lang/lua/lua-openssl/Makefile
+index ddacdefab..29fbef1c3 100644
+--- a/lang/lua/lua-openssl/Makefile
++++ b/lang/lua/lua-openssl/Makefile
+@@ -8,13 +8,13 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=lua-openssl
+-PKG_SOURCE_VERSION:=0.10.0-0
++PKG_SOURCE_VERSION:=0.11.1
+ PKG_VERSION:=$(subst -,.,$(PKG_SOURCE_VERSION))
+ PKG_RELEASE:=1
+ 
+ PKG_SOURCE_PROTO:=git
+ PKG_SOURCE_URL:=https://github.com/zhaozg/lua-openssl.git
+-PKG_MIRROR_HASH:=e3c6173321132e2ce69cdedd8638acdc970a3fb1c0c3677d4edd9fe39e84853f
++PKG_MIRROR_HASH:=286531d44618d2c8843c9acfbe9d56d309caed0a9374b4559b1077099b795958
+ 
+ PKG_MAINTAINER:=Amnon Paz <pazamnon@gmail.com>
+ PKG_LICENSE:=MIT
+diff --git a/lang/lua/lua-openssl/patches/0001-Fix-time-cb-signature.patch b/lang/lua/lua-openssl/patches/0001-Fix-time-cb-signature.patch
+new file mode 100644
+index 000000000..7ecc346f0
+--- /dev/null
++++ b/lang/lua/lua-openssl/patches/0001-Fix-time-cb-signature.patch
+@@ -0,0 +1,29 @@
++From 0a9270e907ca1241a0b2f1ed031b6cc04e234b7e Mon Sep 17 00:00:00 2001
++From: Amnon Paz <pazamnon@gmail.com>
++Date: Sat, 25 Apr 2026 20:53:16 +0300
++Subject: [PATCH] Fix time cb signature
++
++---
++ src/ots.c | 4 ++--
++ 1 file changed, 2 insertions(+), 2 deletions(-)
++
++--- a/src/ots.c
+++++ b/src/ots.c
++@@ -1507,7 +1507,7 @@ static int openssl_ts_resp_ctx_set_seria
++ };
++ 
++ static int
++-openssl_time_cb(TS_RESP_CTX *ctx, void *data, time_t *sec, long *usec)
+++openssl_time_cb(TS_RESP_CTX *ctx, void *data, long *sec, long *usec)
++ {
++   int        err;
++   TS_CB_ARG *arg;
++@@ -1527,7 +1527,7 @@ openssl_time_cb(TS_RESP_CTX *ctx, void *
++   err = lua_pcall(L, 1, 2, 0);
++   if (err == 0) {
++     if (lua_isnumber(L, -2)) {
++-      *sec = (time_t)luaL_checkinteger(L, -2);
+++      *sec = (long)luaL_checkinteger(L, -2);
++       *usec = (long)luaL_optinteger(L, -1, 0);
++       lua_pop(L, 2); /* remove callback returned value */
++       return 1;
+diff --git a/lang/lua/lua-openssl/patches/010-no-luajit.patch b/lang/lua/lua-openssl/patches/010-no-luajit.patch
+deleted file mode 100644
+index 553096855..000000000
+--- a/lang/lua/lua-openssl/patches/010-no-luajit.patch
++++ /dev/null
+@@ -1,14 +0,0 @@
+---- a/CMakeLists.txt
+-+++ b/CMakeLists.txt
+-@@ -12,10 +12,7 @@ endif()
+- 
+- include(GNUInstallDirs)
+- 
+--find_package(LuaJIT)
+--if(NOT LUAJIT_FOUND)
+--    find_package(Lua REQUIRED)
+--endif()
+-+find_package(Lua REQUIRED)
+- find_package(OpenSSL REQUIRED)
+- 
+- set(CMAKE_THREAD_PREFER_PTHREAD TRUE)

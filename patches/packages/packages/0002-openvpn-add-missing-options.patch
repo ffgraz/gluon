@@ -1,0 +1,244 @@
+From efe25cae1770465b35f720d0339a9723094512a7 Mon Sep 17 00:00:00 2001
+From: Martin Schiller <ms@dev.tdt.de>
+Date: Sun, 13 Sep 2026 20:37:10 +0200
+Subject: [PATCH 2/2] openvpn: add missing options
+
+Add missing options taken from the OpenVPN 2.6 manual.
+
+Backport of 390cdc14197c45d0dba08bfc519c0d075390449f, which never
+reached openwrt-25.12. Without it the uci translation drops every
+option in the list - mark among them, silently.
+
+Signed-off-by: Martin Schiller <ms@dev.tdt.de>
+---
+ net/openvpn/Makefile              |  2 +-
+ net/openvpn/files/openvpn.options | 56 +++++++++++++++++++++++++++++++
+ 2 files changed, 57 insertions(+), 1 deletion(-)
+
+diff --git a/net/openvpn/Makefile b/net/openvpn/Makefile
+index a650c4702..b97b2eef3 100644
+--- a/net/openvpn/Makefile
++++ b/net/openvpn/Makefile
+@@ -10,7 +10,7 @@ include $(TOPDIR)/rules.mk
+ PKG_NAME:=openvpn
+ 
+ PKG_VERSION:=2.7.6
+-PKG_RELEASE:=1
++PKG_RELEASE:=2
+ 
+ PKG_SOURCE_URL:=\
+ 	https://build.openvpn.net/downloads/releases/ \
+diff --git a/net/openvpn/files/openvpn.options b/net/openvpn/files/openvpn.options
+index 5ccc33236..c7e027e9d 100644
+--- a/net/openvpn/files/openvpn.options
++++ b/net/openvpn/files/openvpn.options
+@@ -2,6 +2,8 @@ OPENVPN_PARAMS='
+ allow_compression
+ askpass
+ auth
++auth_gen_token
++auth_gen_token_secret
+ auth_retry
+ auth_user_pass
+ auth_user_pass_verify
+@@ -15,10 +17,14 @@ chroot
+ cipher
+ client_config_dir
+ client_connect
++client_crresponse
+ client_disconnect
++client_nat
+ comp_lzo
++compat_mode
+ compress
+ connect_freq
++connect_freq_initial
+ connect_retry
+ connect_retry_max
+ connect_timeout
+@@ -28,6 +34,9 @@ dev
+ dev_node
+ dev_type
+ dh
++dhcp_option
++dns
++down
+ ecdh_curve
+ echo
+ engine
+@@ -40,6 +49,7 @@ hash_size
+ http_proxy
+ http_proxy_option
+ http_proxy_timeout
++http_proxy_user_pass
+ ifconfig
+ ifconfig_ipv6
+ ifconfig_ipv6_pool
+@@ -47,13 +57,16 @@ ifconfig_ipv6_push
+ ifconfig_pool
+ ifconfig_pool_persist
+ ifconfig_push
++ignore_unknown_option
+ inactive
+ ipchange
++iproute
+ iroute
+ iroute_ipv6
+ keepalive
+ key
+ key_direction
++keying_material_exporter
+ learn_address
+ link_mtu
+ lladdr
+@@ -62,8 +75,14 @@ log
+ log_append
+ lport
+ management
++management_client_group
++management_client_user
++management_external_cert
++management_external_key
+ management_log_cache
++mark
+ max_clients
++max_packet_size
+ max_routes_per_client
+ mode
+ mssfix
+@@ -74,16 +93,26 @@ peer_fingerprint
+ ping
+ ping_exit
+ ping_restart
++pkcs11_cert_private
++pkcs11_id
++pkcs11_pin_cache
++pkcs11_private_mode
++pkcs11_protected_authentication
++pkcs11_providers
+ pkcs12
+ plugin
+ port
+ port_share
+ prng
+ proto
++proto_force
++providers
+ pull_filter
+ push
++push_remove
+ rcvbuf
+ redirect_gateway
++redirect_private
+ remap_usr1
+ remote
+ remote_cert_eku
+@@ -99,47 +128,63 @@ route
+ route_delay
+ route_gateway
+ route_ipv6
++route_ipv6_gateway
+ route_metric
+ route_pre_down
+ route_up
+ rport
++script_security
+ secret
+ server
+ server_bridge
+ server_ipv6
+ server_poll_timeout
++session_timeout
++setcon
+ setenv
++setenv_safe
+ shaper
+ sndbuf
++socket_flags
+ socks_proxy
++stale_routes_check
++static_challenge
+ status
+ status_version
+ syslog
+ tcp_queue_limit
+ tls_auth
++tls_cert_profile
+ tls_crypt
+ tls_crypt_v2
+ tls_crypt_v2_verify
+ tls_export_cert
+ tls_timeout
+ tls_verify
++tls_version_max
+ tls_version_min
+ tmp_dir
+ topology
+ tran_window
++tun_max_mtu
+ tun_mtu
+ tun_mtu_extra
+ txqueuelen
++up
+ user
+ verb
+ verify_client_cert
++verify_hash
+ verify_x509_name
+ vlan_accept
+ vlan_pvid
++writepid
++x509_track
+ x509_username_field
+ '
+ 
+ OPENVPN_BOOLS='
++allow_pull_fqdn
+ allow_recursive_routing
+ auth_nocache
+ auth_user_pass_optional
+@@ -154,15 +199,23 @@ disable_dco
+ disable_occ
+ down_pre
+ duplicate_cn
++errors_to_stderr
+ fast_io
+ float
++force_tls_key_material_export
+ http_proxy_retry
+ ifconfig_noexec
+ ifconfig_nowarn
++machine_readable_output
++management_client
++management_client_auth
+ management_forget_disconnect
+ management_hold
+ management_query_passwords
++management_query_proxy
++management_query_remote
+ management_signal
++management_up_down
+ mktun
+ mlock
+ mtu_test
+@@ -177,10 +230,12 @@ persist_local_ip
+ persist_remote_ip
+ persist_tun
+ ping_timer_rem
++pkcs11_id_management
+ pull
+ push_peer_info
+ push_reset
+ remote_random
++remote_random_hostname
+ rmtun
+ route_noexec
+ route_nopull
+@@ -194,6 +249,7 @@ tls_exit
+ tls_server
+ up_delay
+ up_restart
++use_prediction_resistance
+ username_as_common_name
+ vlan_tagging
+ '
